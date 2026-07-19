@@ -1,0 +1,10332 @@
+import { MODULE_ID, ERROR_MESSAGES, TOKEN_DISPOSITIONS } from './constants.js';
+import { permissionManager } from './permissions.js';
+import { transactionManager } from './transaction-manager.js';
+// Local type definitions to avoid shared package import issues
+interface CharacterInfo {
+  id: string;
+  name: string;
+  type: string;
+  img?: string;
+  system: Record<string, unknown>;
+  items: CharacterItem[];
+  effects: CharacterEffect[];
+  actions?: any[]; // PF2e actions (strikes, spells, etc.)
+  itemVariants?: any[]; // Item rule element variants (ChoiceSet, etc.)
+  itemToggles?: any[]; // Item rule element toggles (RollOption, ToggleProperty, equipped)
+  spellcasting?: SpellcastingEntry[]; // PF2e/D&D 5e spellcasting entries
+}
+
+interface SpellcastingEntry {
+  id: string;
+  name: string;
+  tradition?: string | undefined; // arcane, divine, primal, occult (PF2e)
+  type: string; // prepared, spontaneous, innate, focus (PF2e) or class name (5e)
+  ability?: string | undefined; // spellcasting ability (int, wis, cha)
+  dc?: number | undefined;
+  attack?: number | undefined;
+  slots?: Record<string, { value: number; max: number }> | undefined; // spell slots per level/rank
+  spells: SpellInfo[];
+}
+
+interface SpellInfo {
+  id: string;
+  name: string;
+  level: number; // spell level/rank
+  prepared?: boolean | undefined; // for prepared casters
+  expended?: boolean | undefined; // has this spell slot been used
+  traits?: string[] | undefined;
+  actionCost?: string | undefined; // 1, 2, 3, reaction, free
+  // Targeting info - helps Claude decide whether to specify targets
+  range?: string | undefined; // "touch", "self", "60 feet", etc.
+  target?: string | undefined; // "1 creature", "self", "area", etc.
+  area?: string | undefined; // "20-foot radius", "30-foot cone", etc. (for template spells)
+}
+
+interface CharacterItem {
+  id: string;
+  name: string;
+  type: string;
+  img?: string;
+  system: Record<string, unknown>;
+}
+
+interface CharacterEffect {
+  id: string;
+  name: string;
+  icon?: string;
+  disabled: boolean;
+  duration?: {
+    type: string;
+    duration?: number;
+    remaining?: number;
+  };
+}
+
+interface CompendiumSearchResult {
+  id: string;
+  name: string;
+  type: string;
+  img?: string;
+  pack: string;
+  packLabel: string;
+  system?: Record<string, unknown>;
+  summary?: string;
+  hasImage?: boolean;
+  description?: string;
+}
+
+// D&D 5e Enhanced Creature Index
+interface DnD5eCreatureIndex {
+  id: string;
+  name: string;
+  type: string;
+  pack: string;
+  packLabel: string;
+  challengeRating: number;
+  creatureType: string;
+  size: string;
+  hitPoints: number;
+  armorClass: number;
+  hasSpells: boolean;
+  hasLegendaryActions: boolean;
+  alignment: string;
+  description?: string;
+  img?: string;
+}
+
+// Pathfinder 2e Enhanced Creature Index
+interface PF2eCreatureIndex {
+  id: string;
+  name: string;
+  type: string;
+  pack: string;
+  packLabel: string;
+  level: number; // PF2e: -1 to 25+
+  traits: string[]; // PF2e: ['dragon', 'fire', 'amphibious']
+  creatureType: string; // Primary trait extracted from traits array
+  rarity: string; // PF2e: 'common', 'uncommon', 'rare', 'unique'
+  size: string;
+  hitPoints: number;
+  armorClass: number;
+  hasSpells: boolean;
+  alignment: string;
+  description?: string;
+  img?: string;
+}
+
+// Cosmere RPG (Plotweaver) Enhanced Creature Index
+//
+// Plotweaver categorises adversaries by `tier` (1-4) and `role`
+// (minion/rival/boss) rather than CR or level — those are the primary
+// encounter-design dials. Defenses are split into phy/cog/spi instead
+// of a single AC, and Investiture is the Surge/Stormlight resource.
+interface CosmereRpgCreatureIndex {
+  id: string;
+  name: string;
+  type: string; // 'adversary' for compendium creatures
+  pack: string;
+  packLabel: string;
+  tier: number; // 1-4
+  role: string; // minion | rival | boss | (system-extended)
+  creatureType: string; // humanoid | animal | spren | …
+  subtype: string; // free-form secondary type
+  size: string;
+  hitPoints: number; // resources.hea.max (override-aware)
+  focus: number; // resources.foc.max
+  investiture: number; // resources.inv.max — typically 0
+  hasInvestiture: boolean;
+  defensePhysical: number;
+  defenseCognitive: number;
+  defenseSpiritual: number;
+  deflect: number;
+  walkSpeed: number;
+  description?: string;
+  img?: string;
+}
+
+interface MGT2eCreatureIndex {
+  id: string;
+  name: string;
+  type: string; // traveller | npc | creature | spacecraft | …
+  pack: string;
+  packLabel: string;
+  hits: number;
+  creatureType: string;
+  hasPsionics: boolean;
+  characteristics: Record<string, { value: number; dm: number }>;
+  img?: string;
+}
+
+// Union type across all supported systems
+type EnhancedCreatureIndex =
+  | DnD5eCreatureIndex
+  | PF2eCreatureIndex
+  | CosmereRpgCreatureIndex
+  | MGT2eCreatureIndex;
+
+interface PersistentIndexMetadata {
+  version: string;
+  timestamp: number;
+  packFingerprints: Map<string, PackFingerprint>;
+  totalCreatures: number;
+  gameSystem: string; // 'dnd5e' or 'pf2e'
+}
+
+interface PackFingerprint {
+  packId: string;
+  packLabel: string;
+  lastModified: number;
+  documentCount: number;
+  checksum: string;
+}
+
+interface PersistentEnhancedIndex {
+  metadata: PersistentIndexMetadata;
+  creatures: EnhancedCreatureIndex[];
+}
+
+interface SceneInfo {
+  id: string;
+  name: string;
+  img?: string;
+  background?: string;
+  width: number;
+  height: number;
+  padding: number;
+  active: boolean;
+  navigation: boolean;
+  tokens: SceneToken[];
+  walls: number;
+  lights: number;
+  sounds: number;
+  notes: SceneNote[];
+}
+
+interface SceneToken {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  actorId?: string;
+  img: string;
+  hidden: boolean;
+  disposition: number;
+}
+
+interface SceneNote {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+}
+
+interface WorldInfo {
+  id: string;
+  title: string;
+  system: string;
+  systemVersion: string;
+  foundryVersion: string;
+  users: WorldUser[];
+}
+
+interface WorldUser {
+  id: string;
+  name: string;
+  active: boolean;
+  isGM: boolean;
+}
+
+// Phase 2: Write Operation Interfaces
+interface ActorCreationRequest {
+  creatureType: string;
+  customNames?: string[] | undefined;
+  packPreference?: string | undefined;
+  quantity?: number | undefined;
+  addToScene?: boolean | undefined;
+}
+
+interface ActorCreationResult {
+  success: boolean;
+  actors: CreatedActorInfo[];
+  errors?: string[] | undefined;
+  tokensPlaced?: number;
+  totalRequested: number;
+  totalCreated: number;
+}
+
+interface CreatedActorInfo {
+  id: string;
+  name: string;
+  originalName: string;
+  type: string;
+  sourcePackId: string;
+  sourcePackLabel: string;
+  img?: string;
+}
+
+interface CompendiumEntryFull {
+  id: string;
+  name: string;
+  type: string;
+  img?: string;
+  pack: string;
+  packLabel: string;
+  system: Record<string, unknown>;
+  items?: CompendiumItem[];
+  effects?: CompendiumEffect[];
+  fullData: Record<string, unknown>;
+}
+
+interface CompendiumItem {
+  id: string;
+  name: string;
+  type: string;
+  img?: string;
+  system: Record<string, unknown>;
+}
+
+interface CompendiumEffect {
+  id: string;
+  name: string;
+  icon?: string;
+  disabled: boolean;
+  duration?: Record<string, unknown>;
+}
+
+interface SceneTokenPlacement {
+  actorIds: string[];
+  placement: 'random' | 'grid' | 'center' | 'coordinates';
+  hidden: boolean;
+  coordinates?: { x: number; y: number }[];
+}
+
+interface TokenPlacementResult {
+  success: boolean;
+  tokensCreated: number;
+  tokenIds: string[];
+  errors?: string[] | undefined;
+}
+
+/**
+ * Persistent Enhanced Creature Index System
+ * Stores pre-computed creature data in JSON file within Foundry world directory for instant filtering
+ * Uses file-based storage following Foundry best practices for large data sets
+ */
+class PersistentCreatureIndex {
+  private moduleId: string = MODULE_ID;
+  private readonly INDEX_VERSION = '1.0.0';
+  private readonly INDEX_FILENAME = 'enhanced-creature-index.json';
+  private buildInProgress = false;
+  private hooksRegistered = false;
+
+  constructor() {
+    this.registerFoundryHooks();
+  }
+
+  /**
+   * Get the file path for the enhanced creature index
+   */
+  private getIndexFilePath(): string {
+    // Store in world data directory using world ID
+    return `worlds/${game.world.id}/${this.INDEX_FILENAME}`;
+  }
+
+  /**
+   * Get or build the enhanced creature index
+   */
+  async getEnhancedIndex(): Promise<EnhancedCreatureIndex[]> {
+    // Check if we have a valid persistent index
+    const existingIndex = await this.loadPersistedIndex();
+
+    if (existingIndex && this.isIndexValid(existingIndex)) {
+      return existingIndex.creatures;
+    }
+
+    // Build new index if needed
+    return await this.buildEnhancedIndex();
+  }
+
+  /**
+   * Force rebuild of the enhanced index
+   */
+  async rebuildIndex(): Promise<EnhancedCreatureIndex[]> {
+    return await this.buildEnhancedIndex(true);
+  }
+
+  /**
+   * Load persisted index from JSON file
+   */
+  private async loadPersistedIndex(): Promise<PersistentEnhancedIndex | null> {
+    try {
+      const filePath = this.getIndexFilePath();
+
+      // Check if file exists using Foundry's FilePicker
+      let fileExists = false;
+      try {
+        const browseResult = await (
+          foundry as any
+        ).applications.apps.FilePicker.implementation.browse('data', `worlds/${game.world.id}`);
+        fileExists = browseResult.files.some((f: any) => f.endsWith(this.INDEX_FILENAME));
+      } catch (error) {
+        // Directory doesn't exist or other error, return null
+        return null;
+      }
+
+      if (!fileExists) {
+        return null;
+      }
+
+      // Load file content
+      const response = await fetch(filePath);
+      if (!response.ok) {
+        console.warn(`[${this.moduleId}] Failed to load index file: ${response.status}`);
+        return null;
+      }
+
+      const rawData = await response.json();
+
+      // Convert Map data back from JSON
+      const metadata = rawData.metadata;
+      if (metadata?.packFingerprints) {
+        metadata.packFingerprints = new Map(metadata.packFingerprints);
+      }
+
+      return rawData;
+    } catch (error) {
+      console.warn(`[${this.moduleId}] Failed to load persisted index from file:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Save enhanced index to JSON file
+   */
+  private async savePersistedIndex(index: PersistentEnhancedIndex): Promise<void> {
+    try {
+      // Convert Map to Array for JSON serialization
+      const saveData = {
+        ...index,
+        metadata: {
+          ...index.metadata,
+          packFingerprints: Array.from(index.metadata.packFingerprints.entries()),
+        },
+      };
+
+      const jsonContent = JSON.stringify(saveData, null, 2);
+
+      // Create a File object and upload it using Foundry's file system
+      const file = new File([jsonContent], this.INDEX_FILENAME, { type: 'application/json' });
+
+      // Upload the file to the world directory
+      const uploadResponse = await (
+        foundry as any
+      ).applications.apps.FilePicker.implementation.upload('data', `worlds/${game.world.id}`, file);
+
+      if (uploadResponse) {
+      } else {
+        throw new Error('File upload failed');
+      }
+    } catch (error) {
+      console.error(`[${this.moduleId}] Failed to save enhanced index to file:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if existing index is valid (all packs unchanged)
+   */
+  private isIndexValid(existingIndex: PersistentEnhancedIndex): boolean {
+    // Check version
+    if (existingIndex.metadata.version !== this.INDEX_VERSION) {
+      return false;
+    }
+
+    // NEW: Check system compatibility
+    const currentSystem = (game as any).system.id;
+    if (existingIndex.metadata.gameSystem !== currentSystem) {
+      console.log(
+        `[${this.moduleId}] System changed from ${existingIndex.metadata.gameSystem} to ${currentSystem}, index invalidated`
+      );
+      return false;
+    }
+
+    // Check each pack fingerprint
+    const actorPacks = Array.from(game.packs.values()).filter(
+      pack => pack.metadata.type === 'Actor'
+    );
+
+    for (const pack of actorPacks) {
+      const currentFingerprint = this.generatePackFingerprint(pack);
+      const savedFingerprint = existingIndex.metadata.packFingerprints.get(pack.metadata.id);
+
+      if (!savedFingerprint) {
+        return false;
+      }
+
+      if (!this.fingerprintsMatch(currentFingerprint, savedFingerprint)) {
+        return false;
+      }
+    }
+
+    // Check if any saved packs no longer exist
+    for (const [packId] of existingIndex.metadata.packFingerprints) {
+      if (!game.packs.get(packId)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Register Foundry hooks for real-time pack change detection
+   */
+  private registerFoundryHooks(): void {
+    if (this.hooksRegistered) return;
+
+    // Listen for compendium document changes
+    Hooks.on('createDocument', (document: any) => {
+      if (
+        document.pack &&
+        (document.type === 'npc' || document.type === 'character' || document.type === 'creature')
+      ) {
+        this.invalidateIndex();
+      }
+    });
+
+    Hooks.on('updateDocument', (document: any) => {
+      if (
+        document.pack &&
+        (document.type === 'npc' || document.type === 'character' || document.type === 'creature')
+      ) {
+        this.invalidateIndex();
+      }
+    });
+
+    Hooks.on('deleteDocument', (document: any) => {
+      if (
+        document.pack &&
+        (document.type === 'npc' || document.type === 'character' || document.type === 'creature')
+      ) {
+        this.invalidateIndex();
+      }
+    });
+
+    // Listen for pack creation/deletion
+    Hooks.on('createCompendium', (pack: any) => {
+      if (pack.metadata.type === 'Actor') {
+        this.invalidateIndex();
+      }
+    });
+
+    Hooks.on('deleteCompendium', (pack: any) => {
+      if (pack.metadata.type === 'Actor') {
+        this.invalidateIndex();
+      }
+    });
+
+    this.hooksRegistered = true;
+  }
+
+  /**
+   * Invalidate the current index (mark for rebuild on next access)
+   */
+  private async invalidateIndex(): Promise<void> {
+    try {
+      // Check if auto-rebuild is enabled
+      const autoRebuild = game.settings.get(this.moduleId, 'autoRebuildIndex');
+
+      if (!autoRebuild) {
+        return;
+      }
+
+      // Delete the index file to force rebuild
+      const filePath = this.getIndexFilePath();
+
+      try {
+        // Check if file exists first by trying to browse to the world directory
+        const browseResult = await (
+          foundry as any
+        ).applications.apps.FilePicker.implementation.browse('data', `worlds/${game.world.id}`);
+        const fileExists = browseResult.files.some((f: any) => f.endsWith(this.INDEX_FILENAME));
+
+        if (fileExists) {
+          // File exists, delete it using fetch with DELETE method
+          await fetch(filePath, { method: 'DELETE' });
+          // File deletion completed (or failed silently)
+        }
+      } catch (error) {
+        // File doesn't exist or deletion failed - that's okay
+      }
+    } catch (error) {
+      console.warn(`[${this.moduleId}] Failed to invalidate index:`, error);
+    }
+  }
+
+  /**
+   * Generate fingerprint for pack change detection with improved accuracy
+   */
+  private generatePackFingerprint(pack: any): PackFingerprint {
+    // Get actual modification time if available
+    let lastModified = Date.now();
+    if (pack.metadata.lastModified) {
+      lastModified = new Date(pack.metadata.lastModified).getTime();
+    }
+
+    return {
+      packId: pack.metadata.id,
+      packLabel: pack.metadata.label,
+      lastModified,
+      documentCount: pack.index?.size || 0,
+      checksum: this.generatePackChecksum(pack),
+    };
+  }
+
+  /**
+   * Generate checksum for pack contents
+   */
+  private generatePackChecksum(pack: any): string {
+    // Simple checksum based on pack metadata and size
+    const data = `${pack.metadata.id}-${pack.metadata.label}-${pack.index?.size || 0}`;
+    return btoa(data).slice(0, 16); // Simple hash for demonstration
+  }
+
+  /**
+   * Compare two pack fingerprints
+   */
+  private fingerprintsMatch(current: PackFingerprint, saved: PackFingerprint): boolean {
+    return current.documentCount === saved.documentCount && current.checksum === saved.checksum;
+  }
+
+  /**
+   * Build enhanced creature index from all Actor packs with detailed progress tracking
+   */
+  private async buildEnhancedIndex(force = false): Promise<EnhancedCreatureIndex[]> {
+    if (this.buildInProgress && !force) {
+      throw new Error('Index build already in progress');
+    }
+
+    // Detect game system ONCE at build time
+    const gameSystem = (game as any).system.id;
+
+    console.log(`[${this.moduleId}] Building enhanced creature index for system: ${gameSystem}`);
+
+    // Route to system-specific builder
+    if (gameSystem === 'pf2e') {
+      return await this.buildPF2eIndex(force);
+    } else if (gameSystem === 'dnd5e') {
+      return await this.buildDnD5eIndex(force);
+    } else if (gameSystem === 'cosmere-rpg') {
+      return await this.buildCosmereRpgIndex(force);
+    } else if (gameSystem === 'mgt2e') {
+      return await this.buildMGT2eIndex(force);
+    } else {
+      // Unknown system — skip silently rather than blocking world load
+      console.warn(
+        `[${this.moduleId}] Enhanced creature index not implemented for system: ${gameSystem}. Skipping.`
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Build D&D 5e enhanced creature index
+   */
+  private async buildDnD5eIndex(_force = false): Promise<DnD5eCreatureIndex[]> {
+    this.buildInProgress = true;
+
+    const startTime = Date.now();
+    let progressNotification: any = null;
+    let totalErrors = 0; // Track extraction errors
+
+    try {
+      const actorPacks = Array.from(game.packs.values()).filter(
+        pack => pack.metadata.type === 'Actor'
+      );
+      const enhancedCreatures: DnD5eCreatureIndex[] = [];
+      const packFingerprints = new Map<string, PackFingerprint>();
+
+      // Show initial progress notification
+      ui.notifications?.info(
+        `Starting enhanced creature index build from ${actorPacks.length} packs...`
+      );
+
+      for (let i = 0; i < actorPacks.length; i++) {
+        const pack = actorPacks[i];
+        const progressPercent = Math.round((i / actorPacks.length) * 100);
+
+        // Update progress notification every few packs or for important packs
+        if (i % 3 === 0 || pack.metadata.label.toLowerCase().includes('monster')) {
+          if (progressNotification) {
+            progressNotification.remove();
+          }
+          progressNotification = ui.notifications?.info(
+            `Building creature index... ${progressPercent}% (${i + 1}/${actorPacks.length}) Processing: ${pack.metadata.label}`
+          );
+        }
+
+        try {
+          // Ensure pack index is loaded
+          if (!pack.indexed) {
+            await pack.getIndex({});
+          }
+
+          // Generate pack fingerprint for change detection
+          packFingerprints.set(pack.metadata.id, this.generatePackFingerprint(pack));
+
+          // Show pack processing details for large packs
+          const packSize = pack.index?.size || 0;
+          if (packSize > 50) {
+            if (progressNotification) {
+              progressNotification.remove();
+            }
+            progressNotification = ui.notifications?.info(
+              `Processing large pack: ${pack.metadata.label} (${packSize} documents)...`
+            );
+          }
+
+          // Process creatures in this pack
+          const packResult = await this.extractDnD5eDataFromPack(pack);
+          enhancedCreatures.push(...packResult.creatures);
+          totalErrors += packResult.errors;
+
+          // Pack processing completed: ${pack.metadata.label} - ${packResult.creatures.length} creatures extracted
+
+          // Show milestone notifications for significant progress
+          if (i === 0 || (i + 1) % 5 === 0 || i === actorPacks.length - 1) {
+            const totalCreaturesSoFar = enhancedCreatures.length;
+            if (progressNotification) {
+              progressNotification.remove();
+            }
+            progressNotification = ui.notifications?.info(
+              `Index Progress: ${i + 1}/${actorPacks.length} packs complete, ${totalCreaturesSoFar} creatures indexed`
+            );
+          }
+        } catch (error) {
+          console.warn(`[${this.moduleId}] Failed to process pack ${pack.metadata.label}:`, error);
+          // Show error notification for pack failures
+          ui.notifications?.warn(
+            `Warning: Failed to index pack "${pack.metadata.label}" - continuing with other packs`
+          );
+        }
+      }
+
+      // Clear progress notification and show final processing step
+      if (progressNotification) {
+        progressNotification.remove();
+      }
+      ui.notifications?.info(
+        `Saving enhanced index to world database... (${enhancedCreatures.length} creatures)`
+      );
+
+      // Create persistent index structure
+      const persistentIndex: PersistentEnhancedIndex = {
+        metadata: {
+          version: this.INDEX_VERSION,
+          timestamp: Date.now(),
+          packFingerprints,
+          totalCreatures: enhancedCreatures.length,
+          gameSystem: 'dnd5e', // Mark as D&D 5e index
+        },
+        creatures: enhancedCreatures,
+      };
+
+      // Save to world flags
+      await this.savePersistedIndex(persistentIndex);
+
+      const buildTimeSeconds = Math.round((Date.now() - startTime) / 1000);
+      const errorText = totalErrors > 0 ? ` (${totalErrors} extraction errors)` : '';
+      const successMessage = `Enhanced creature index complete! ${enhancedCreatures.length} creatures indexed from ${actorPacks.length} packs in ${buildTimeSeconds}s${errorText}`;
+
+      ui.notifications?.info(successMessage);
+
+      return enhancedCreatures;
+    } catch (error) {
+      // Clear any progress notifications on error
+      if (progressNotification) {
+        progressNotification.remove();
+      }
+
+      const errorMessage = `Failed to build enhanced creature index: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error(`[${this.moduleId}] ${errorMessage}`);
+      ui.notifications?.error(errorMessage);
+
+      throw error;
+    } finally {
+      this.buildInProgress = false;
+
+      // Ensure progress notification is cleared
+      if (progressNotification) {
+        progressNotification.remove();
+      }
+    }
+  }
+
+  /**
+   * Extract D&D 5e data from all documents in a pack
+   */
+  private async extractDnD5eDataFromPack(
+    pack: any
+  ): Promise<{ creatures: DnD5eCreatureIndex[]; errors: number }> {
+    const creatures: DnD5eCreatureIndex[] = [];
+    let errors = 0;
+
+    try {
+      // Load all documents from pack
+      const documents = await pack.getDocuments();
+
+      for (const doc of documents) {
+        try {
+          // Only process NPCs, characters, and creatures
+          if (doc.type !== 'npc' && doc.type !== 'character' && doc.type !== 'creature') {
+            continue;
+          }
+
+          const result = this.extractDnD5eCreatureData(doc, pack);
+          if (result) {
+            creatures.push(result.creature);
+            errors += result.errors;
+          }
+        } catch (error) {
+          console.warn(
+            `[${this.moduleId}] Failed to extract data from ${doc.name} in ${pack.metadata.label}:`,
+            error
+          );
+          errors++;
+        }
+      }
+    } catch (error) {
+      console.warn(
+        `[${this.moduleId}] Failed to load documents from ${pack.metadata.label}:`,
+        error
+      );
+      errors++;
+    }
+
+    return { creatures, errors };
+  }
+
+  /**
+   * Extract D&D 5e creature data from a single document
+   */
+  private extractDnD5eCreatureData(
+    doc: any,
+    pack: any
+  ): { creature: DnD5eCreatureIndex; errors: number } | null {
+    try {
+      const system = doc.system || {};
+
+      // Extract challenge rating with comprehensive fallbacks
+      // Based on debug logs: system.details.cr contains the actual value
+      let challengeRating =
+        system.details?.cr ??
+        system.details?.cr?.value ??
+        system.cr?.value ??
+        system.cr ??
+        system.attributes?.cr?.value ??
+        system.attributes?.cr ??
+        system.challenge?.rating ??
+        system.challenge?.cr ??
+        0;
+
+      // Handle null values (spell effects, etc.)
+      if (challengeRating === null || challengeRating === undefined) {
+        challengeRating = 0;
+      }
+
+      if (typeof challengeRating === 'string') {
+        if (challengeRating === '1/8') challengeRating = 0.125;
+        else if (challengeRating === '1/4') challengeRating = 0.25;
+        else if (challengeRating === '1/2') challengeRating = 0.5;
+        else challengeRating = parseFloat(challengeRating) || 0;
+      }
+
+      // Ensure it's a number
+      challengeRating = Number(challengeRating) || 0;
+
+      // Extract creature type with proper type checking
+      // Based on debug logs: system.details.type.value contains the actual value
+      let creatureType =
+        system.details?.type?.value ??
+        system.details?.type ??
+        system.type?.value ??
+        system.type ??
+        system.race?.value ??
+        system.race ??
+        system.details?.race ??
+        'unknown';
+
+      // Handle null/undefined values properly
+      if (creatureType === null || creatureType === undefined || creatureType === '') {
+        creatureType = 'unknown';
+      }
+
+      // Ensure creatureType is a string before calling toLowerCase()
+      if (typeof creatureType !== 'string') {
+        creatureType = String(creatureType || 'unknown');
+      }
+
+      // Extract size with proper type checking
+      let size =
+        system.traits?.size?.value ||
+        system.traits?.size ||
+        system.size?.value ||
+        system.size ||
+        system.details?.size ||
+        'medium';
+
+      // Ensure size is a string
+      if (typeof size !== 'string') {
+        size = String(size || 'medium');
+      }
+
+      // Extract hit points with more fallbacks
+      const hitPoints =
+        system.attributes?.hp?.max ||
+        system.hp?.max ||
+        system.attributes?.hp?.value ||
+        system.hp?.value ||
+        system.health?.max ||
+        system.health?.value ||
+        0;
+
+      // Extract armor class with more fallbacks
+      const armorClass =
+        system.attributes?.ac?.value ||
+        system.ac?.value ||
+        system.attributes?.ac ||
+        system.ac ||
+        system.armor?.value ||
+        system.armor ||
+        10;
+
+      // Extract alignment with proper type checking
+      let alignment =
+        system.details?.alignment?.value ||
+        system.details?.alignment ||
+        system.alignment?.value ||
+        system.alignment ||
+        'unaligned';
+
+      // Ensure alignment is a string
+      if (typeof alignment !== 'string') {
+        alignment = String(alignment || 'unaligned');
+      }
+
+      // Check for spells with more comprehensive detection
+      const hasSpells = !!(
+        system.spells ||
+        system.attributes?.spellcasting ||
+        (system.details?.spellLevel && system.details.spellLevel > 0) ||
+        (system.resources?.spell && system.resources.spell.max > 0) ||
+        system.spellcasting ||
+        system.traits?.spellcasting ||
+        system.details?.spellcaster
+      );
+
+      // Check for legendary actions with more comprehensive detection
+      const hasLegendaryActions = !!(
+        system.resources?.legact ||
+        system.legendary ||
+        (system.resources?.legres && system.resources.legres.value > 0) ||
+        system.details?.legendary ||
+        system.traits?.legendary ||
+        (system.resources?.legendary && system.resources.legendary.max > 0)
+      );
+
+      // DEBUG: Log what we extracted for comparison
+
+      // Successful extraction
+      return {
+        creature: {
+          id: doc._id,
+          name: doc.name,
+          type: doc.type,
+          pack: pack.metadata.id,
+          packLabel: pack.metadata.label,
+          challengeRating,
+          creatureType: creatureType.toLowerCase(),
+          size: size.toLowerCase(),
+          hitPoints,
+          armorClass,
+          hasSpells,
+          hasLegendaryActions,
+          alignment: alignment.toLowerCase(),
+          description: doc.system?.details?.biography || doc.system?.description || '',
+          img: doc.img,
+        },
+        errors: 0,
+      };
+    } catch (error) {
+      console.warn(`[${this.moduleId}] Failed to extract enhanced data from ${doc.name}:`, error);
+
+      // Return a basic fallback record with error count instead of null to avoid losing creatures
+      return {
+        creature: {
+          id: doc._id,
+          name: doc.name,
+          type: doc.type,
+          pack: pack.metadata.id,
+          packLabel: pack.metadata.label,
+          challengeRating: 0,
+          creatureType: 'unknown',
+          size: 'medium',
+          hitPoints: 1,
+          armorClass: 10,
+          hasSpells: false,
+          hasLegendaryActions: false,
+          alignment: 'unaligned',
+          description: 'Data extraction failed',
+          img: doc.img || '',
+        },
+        errors: 1,
+      };
+    }
+  }
+
+  /**
+   * Build Pathfinder 2e enhanced creature index
+   */
+  private async buildPF2eIndex(_force = false): Promise<PF2eCreatureIndex[]> {
+    this.buildInProgress = true;
+
+    const startTime = Date.now();
+    let progressNotification: any = null;
+    let totalErrors = 0;
+
+    try {
+      const actorPacks = Array.from(game.packs.values()).filter(
+        pack => pack.metadata.type === 'Actor'
+      );
+      const enhancedCreatures: PF2eCreatureIndex[] = [];
+      const packFingerprints = new Map<string, PackFingerprint>();
+
+      ui.notifications?.info(
+        `Starting PF2e creature index build from ${actorPacks.length} packs...`
+      );
+
+      let currentPack = 0;
+      for (const pack of actorPacks) {
+        currentPack++;
+
+        if (progressNotification) {
+          progressNotification.remove();
+        }
+        progressNotification = ui.notifications?.info(
+          `Building PF2e index: Pack ${currentPack}/${actorPacks.length} (${pack.metadata.label})...`
+        );
+
+        const fingerprint = await this.generatePackFingerprint(pack);
+        packFingerprints.set(pack.metadata.id, fingerprint);
+
+        const result = await this.extractPF2eDataFromPack(pack);
+        enhancedCreatures.push(...result.creatures);
+        totalErrors += result.errors;
+      }
+
+      if (progressNotification) {
+        progressNotification.remove();
+      }
+      ui.notifications?.info(
+        `Saving PF2e index to world database... (${enhancedCreatures.length} creatures)`
+      );
+
+      const persistentIndex: PersistentEnhancedIndex = {
+        metadata: {
+          version: this.INDEX_VERSION,
+          timestamp: Date.now(),
+          packFingerprints,
+          totalCreatures: enhancedCreatures.length,
+          gameSystem: 'pf2e', // Mark as PF2e index
+        },
+        creatures: enhancedCreatures,
+      };
+
+      await this.savePersistedIndex(persistentIndex);
+
+      const buildTimeSeconds = Math.round((Date.now() - startTime) / 1000);
+      const errorText = totalErrors > 0 ? ` (${totalErrors} extraction errors)` : '';
+      const successMessage = `PF2e creature index complete! ${enhancedCreatures.length} creatures indexed from ${actorPacks.length} packs in ${buildTimeSeconds}s${errorText}`;
+
+      ui.notifications?.info(successMessage);
+
+      return enhancedCreatures;
+    } catch (error) {
+      if (progressNotification) {
+        progressNotification.remove();
+      }
+
+      const errorMessage = `Failed to build PF2e creature index: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error(`[${this.moduleId}] ${errorMessage}`);
+      ui.notifications?.error(errorMessage);
+
+      throw error;
+    } finally {
+      this.buildInProgress = false;
+
+      if (progressNotification) {
+        progressNotification.remove();
+      }
+    }
+  }
+
+  /**
+   * Extract PF2e creature data from all documents in a pack
+   */
+  private async extractPF2eDataFromPack(
+    pack: any
+  ): Promise<{ creatures: PF2eCreatureIndex[]; errors: number }> {
+    const creatures: PF2eCreatureIndex[] = [];
+    let errors = 0;
+
+    try {
+      const documents = await pack.getDocuments();
+
+      for (const doc of documents) {
+        try {
+          // Support NPCs, characters, and creatures
+          if (doc.type !== 'npc' && doc.type !== 'character' && doc.type !== 'creature') {
+            continue;
+          }
+
+          const result = this.extractPF2eCreatureData(doc, pack);
+          if (result) {
+            creatures.push(result.creature);
+            errors += result.errors;
+          }
+        } catch (error) {
+          console.warn(
+            `[${this.moduleId}] Failed to extract PF2e data from ${doc.name} in ${pack.metadata.label}:`,
+            error
+          );
+          errors++;
+        }
+      }
+    } catch (error) {
+      console.warn(
+        `[${this.moduleId}] Failed to load documents from ${pack.metadata.label}:`,
+        error
+      );
+      errors++;
+    }
+
+    return { creatures, errors };
+  }
+
+  /**
+   * Extract Pathfinder 2e creature data from a single document
+   */
+  private extractPF2eCreatureData(
+    doc: any,
+    pack: any
+  ): { creature: PF2eCreatureIndex; errors: number } | null {
+    try {
+      const system = doc.system || {};
+
+      // Level extraction (PF2e primary power metric)
+      let level = system.details?.level?.value ?? 0;
+      level = Number(level) || 0;
+
+      // Traits extraction (PF2e uses array of traits)
+      const traitsValue = system.traits?.value || [];
+      const traits = Array.isArray(traitsValue) ? traitsValue : [];
+
+      // Extract primary creature type from traits
+      const creatureTraits = [
+        'aberration',
+        'animal',
+        'beast',
+        'celestial',
+        'construct',
+        'dragon',
+        'elemental',
+        'fey',
+        'fiend',
+        'fungus',
+        'humanoid',
+        'monitor',
+        'ooze',
+        'plant',
+        'undead',
+      ];
+      const creatureType =
+        traits.find((t: string) => creatureTraits.includes(t.toLowerCase()))?.toLowerCase() ||
+        'unknown';
+
+      // Rarity extraction (PF2e specific)
+      const rarity = system.traits?.rarity || 'common';
+
+      // Size extraction
+      let size = system.traits?.size?.value || 'med';
+      // Normalize PF2e size values (tiny, sm, med, lg, huge, grg)
+      const sizeMap: Record<string, string> = {
+        tiny: 'tiny',
+        sm: 'small',
+        med: 'medium',
+        lg: 'large',
+        huge: 'huge',
+        grg: 'gargantuan',
+      };
+      size = sizeMap[size.toLowerCase()] || 'medium';
+
+      // Hit Points
+      const hitPoints = system.attributes?.hp?.max || 0;
+
+      // Armor Class
+      const armorClass = system.attributes?.ac?.value || 10;
+
+      // Spellcasting detection (PF2e uses spellcasting entries)
+      const spellcasting = system.spellcasting || {};
+      const hasSpells = Object.keys(spellcasting).length > 0;
+
+      // Alignment
+      let alignment = system.details?.alignment?.value || 'N';
+      if (typeof alignment !== 'string') {
+        alignment = String(alignment || 'N');
+      }
+
+      return {
+        creature: {
+          id: doc._id,
+          name: doc.name,
+          type: doc.type,
+          pack: pack.metadata.id,
+          packLabel: pack.metadata.label,
+          level,
+          traits,
+          creatureType,
+          rarity,
+          size,
+          hitPoints,
+          armorClass,
+          hasSpells,
+          alignment: alignment.toUpperCase(),
+          description: system.details?.publicNotes || system.details?.biography || '',
+          img: doc.img,
+        },
+        errors: 0,
+      };
+    } catch (error) {
+      console.warn(`[${this.moduleId}] Failed to extract PF2e data from ${doc.name}:`, error);
+
+      // Fallback with error count
+      return {
+        creature: {
+          id: doc._id,
+          name: doc.name,
+          type: doc.type,
+          pack: pack.metadata.id,
+          packLabel: pack.metadata.label,
+          level: 0,
+          traits: [],
+          creatureType: 'unknown',
+          rarity: 'common',
+          size: 'medium',
+          hitPoints: 1,
+          armorClass: 10,
+          hasSpells: false,
+          alignment: 'N',
+          description: 'Data extraction failed',
+          img: doc.img || '',
+        },
+        errors: 1,
+      };
+    }
+  }
+
+  /**
+   * Build Cosmere RPG (Plotweaver) enhanced creature index.
+   *
+   * Indexes `adversary`-type actors. Player characters are excluded —
+   * they're individual sheets, not encounter material.
+   */
+  private async buildCosmereRpgIndex(_force = false): Promise<CosmereRpgCreatureIndex[]> {
+    this.buildInProgress = true;
+
+    const startTime = Date.now();
+    let progressNotification: any = null;
+    let totalErrors = 0;
+
+    try {
+      const actorPacks = Array.from(game.packs.values()).filter(
+        pack => pack.metadata.type === 'Actor'
+      );
+      const enhancedCreatures: CosmereRpgCreatureIndex[] = [];
+      const packFingerprints = new Map<string, PackFingerprint>();
+
+      ui.notifications?.info(
+        `Starting Cosmere RPG creature index build from ${actorPacks.length} packs...`
+      );
+
+      for (let i = 0; i < actorPacks.length; i++) {
+        const pack = actorPacks[i];
+        const progressPercent = Math.round((i / actorPacks.length) * 100);
+
+        if (i % 3 === 0 || pack.metadata.label.toLowerCase().includes('adversar')) {
+          if (progressNotification) {
+            progressNotification.remove();
+          }
+          progressNotification = ui.notifications?.info(
+            `Building creature index... ${progressPercent}% (${i + 1}/${actorPacks.length}) Processing: ${pack.metadata.label}`
+          );
+        }
+
+        try {
+          if (!pack.indexed) {
+            await pack.getIndex({});
+          }
+
+          packFingerprints.set(pack.metadata.id, this.generatePackFingerprint(pack));
+
+          const packResult = await this.extractCosmereRpgDataFromPack(pack);
+          enhancedCreatures.push(...packResult.creatures);
+          totalErrors += packResult.errors;
+
+          if (i === 0 || (i + 1) % 5 === 0 || i === actorPacks.length - 1) {
+            const totalCreaturesSoFar = enhancedCreatures.length;
+            if (progressNotification) {
+              progressNotification.remove();
+            }
+            progressNotification = ui.notifications?.info(
+              `Index Progress: ${i + 1}/${actorPacks.length} packs complete, ${totalCreaturesSoFar} creatures indexed`
+            );
+          }
+        } catch (error) {
+          console.warn(`[${this.moduleId}] Failed to process pack ${pack.metadata.label}:`, error);
+          ui.notifications?.warn(
+            `Warning: Failed to index pack "${pack.metadata.label}" - continuing with other packs`
+          );
+        }
+      }
+
+      if (progressNotification) {
+        progressNotification.remove();
+      }
+      ui.notifications?.info(
+        `Saving enhanced index to world database... (${enhancedCreatures.length} creatures)`
+      );
+
+      const persistentIndex: PersistentEnhancedIndex = {
+        metadata: {
+          version: this.INDEX_VERSION,
+          timestamp: Date.now(),
+          packFingerprints,
+          totalCreatures: enhancedCreatures.length,
+          gameSystem: 'cosmere-rpg',
+        },
+        creatures: enhancedCreatures,
+      };
+
+      await this.savePersistedIndex(persistentIndex);
+
+      const buildTimeSeconds = Math.round((Date.now() - startTime) / 1000);
+      const errorText = totalErrors > 0 ? ` (${totalErrors} extraction errors)` : '';
+      const successMessage = `Cosmere RPG creature index complete! ${enhancedCreatures.length} creatures indexed from ${actorPacks.length} packs in ${buildTimeSeconds}s${errorText}`;
+
+      ui.notifications?.info(successMessage);
+
+      return enhancedCreatures;
+    } catch (error) {
+      if (progressNotification) {
+        progressNotification.remove();
+      }
+
+      const errorMessage = `Failed to build Cosmere RPG creature index: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error(`[${this.moduleId}] ${errorMessage}`);
+      ui.notifications?.error(errorMessage);
+
+      throw error;
+    } finally {
+      this.buildInProgress = false;
+      if (progressNotification) {
+        progressNotification.remove();
+      }
+    }
+  }
+
+  // ─── mgt2e index builder ────────────────────────────────────────────────────
+
+  private calcMGT2eDM(value: number): number {
+    if (value <= 0) return -3;
+    if (value <= 2) return -2; // matches calcDM() in mcp-server constants.ts
+    if (value <= 5) return -1;
+    if (value <= 8) return 0;
+    if (value <= 11) return 1;
+    if (value <= 14) return 2;
+    return 3;
+  }
+
+  private async buildMGT2eIndex(_force = false): Promise<MGT2eCreatureIndex[]> {
+    this.buildInProgress = true;
+    const startTime = Date.now();
+    let progressNotification: any = null;
+    let totalErrors = 0;
+
+    try {
+      const actorPacks = Array.from(game.packs.values()).filter(
+        pack => pack.metadata.type === 'Actor'
+      );
+      const enhancedCreatures: MGT2eCreatureIndex[] = [];
+      const packFingerprints = new Map<string, PackFingerprint>();
+
+      ui.notifications?.info(
+        `Starting Traveller creature index build from ${actorPacks.length} packs...`
+      );
+
+      for (let i = 0; i < actorPacks.length; i++) {
+        const pack = actorPacks[i];
+        if (!pack.indexed) await pack.getIndex({});
+        packFingerprints.set(pack.metadata.id, this.generatePackFingerprint(pack));
+
+        if (i % 3 === 0) {
+          if (progressNotification) progressNotification.remove();
+          progressNotification = ui.notifications?.info(
+            `Building Traveller index... ${Math.round((i / actorPacks.length) * 100)}% — ${pack.metadata.label}`
+          );
+        }
+
+        try {
+          const result = await this.extractMGT2eDataFromPack(pack);
+          enhancedCreatures.push(...result.creatures);
+          totalErrors += result.errors;
+        } catch (error) {
+          console.warn(`[${this.moduleId}] Failed to process pack ${pack.metadata.label}:`, error);
+        }
+      }
+
+      if (progressNotification) progressNotification.remove();
+
+      const persistentIndex: PersistentEnhancedIndex = {
+        metadata: {
+          version: this.INDEX_VERSION,
+          timestamp: Date.now(),
+          packFingerprints,
+          totalCreatures: enhancedCreatures.length,
+          gameSystem: 'mgt2e',
+        },
+        creatures: enhancedCreatures,
+      };
+
+      await this.savePersistedIndex(persistentIndex);
+
+      const secs = Math.round((Date.now() - startTime) / 1000);
+      const errText = totalErrors > 0 ? ` (${totalErrors} errors)` : '';
+      ui.notifications?.info(
+        `Traveller creature index complete! ${enhancedCreatures.length} actors indexed in ${secs}s${errText}`
+      );
+
+      return enhancedCreatures;
+    } catch (error) {
+      if (progressNotification) progressNotification.remove();
+      const msg = `Failed to build Traveller creature index: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error(`[${this.moduleId}] ${msg}`);
+      ui.notifications?.error(msg);
+      throw error;
+    } finally {
+      this.buildInProgress = false;
+      if (progressNotification) progressNotification.remove();
+    }
+  }
+
+  private async extractMGT2eDataFromPack(
+    pack: any
+  ): Promise<{ creatures: MGT2eCreatureIndex[]; errors: number }> {
+    const creatures: MGT2eCreatureIndex[] = [];
+    let errors = 0;
+
+    try {
+      const documents = await pack.getDocuments();
+      for (const doc of documents) {
+        // Index creature, npc and traveller actor types
+        if (!['creature', 'npc', 'traveller'].includes(doc.type)) continue;
+
+        try {
+          const system = (doc as any).system ?? {};
+          const chars = system.characteristics ?? {};
+          const charMap: Record<string, { value: number; dm: number }> = {};
+          for (const [k, v] of Object.entries(chars)) {
+            const val = typeof v === 'object' ? ((v as any).value ?? 0) : (v as number);
+            charMap[k.toUpperCase()] = { value: val, dm: this.calcMGT2eDM(val) };
+          }
+
+          const hitsMax =
+            typeof system.hits === 'object'
+              ? (system.hits.max ?? system.hits.value ?? 0)
+              : (system.hits ?? 0);
+
+          const hasPsionics = (charMap['PSI']?.value ?? 0) > 0;
+          const creatureType = system.details?.type ?? system.details?.creatureType ?? '';
+
+          creatures.push({
+            id: doc.id,
+            name: doc.name,
+            type: doc.type,
+            pack: pack.collection,
+            packLabel: pack.metadata?.label ?? pack.collection,
+            hits: hitsMax,
+            creatureType,
+            hasPsionics,
+            characteristics: charMap,
+            img: (doc as any).img,
+          });
+        } catch {
+          errors++;
+        }
+      }
+    } catch {
+      errors++;
+    }
+
+    return { creatures, errors };
+  }
+
+  /**
+   * Extract Cosmere RPG creatures from a single pack.
+   */
+  private async extractCosmereRpgDataFromPack(
+    pack: any
+  ): Promise<{ creatures: CosmereRpgCreatureIndex[]; errors: number }> {
+    const creatures: CosmereRpgCreatureIndex[] = [];
+    let errors = 0;
+
+    try {
+      const documents = await pack.getDocuments();
+
+      for (const doc of documents) {
+        try {
+          if (doc.type !== 'adversary') {
+            continue;
+          }
+
+          const result = this.extractCosmereRpgCreatureData(doc, pack);
+          if (result) {
+            creatures.push(result.creature);
+            errors += result.errors;
+          }
+        } catch (error) {
+          console.warn(
+            `[${this.moduleId}] Failed to extract Cosmere RPG data from ${doc.name} in ${pack.metadata.label}:`,
+            error
+          );
+          errors++;
+        }
+      }
+    } catch (error) {
+      console.warn(
+        `[${this.moduleId}] Failed to load documents from ${pack.metadata.label}:`,
+        error
+      );
+      errors++;
+    }
+
+    return { creatures, errors };
+  }
+
+  /**
+   * Resolve a Cosmere DerivedValueField (`{value, derived, override?, useOverride, bonus?}`).
+   * Honours `useOverride: true` so manually-typed values (like Investiture max
+   * on a sheet the system can't auto-derive) come through correctly.
+   */
+  private readDerived(field: any): number | undefined {
+    if (field == null) return undefined;
+    if (typeof field === 'number') return field;
+    if (typeof field === 'object') {
+      if (field.useOverride === true && typeof field.override === 'number') {
+        return field.override;
+      }
+      if (typeof field.value === 'number') return field.value;
+      if (typeof field.derived === 'number') return field.derived;
+    }
+    return undefined;
+  }
+
+  /**
+   * Extract a single Cosmere RPG adversary into the creature index format.
+   */
+  private extractCosmereRpgCreatureData(
+    doc: any,
+    pack: any
+  ): { creature: CosmereRpgCreatureIndex; errors: number } | null {
+    try {
+      const system = doc.system ?? {};
+
+      const tier = typeof system.tier === 'number' ? system.tier : 0;
+      const role =
+        typeof system.role === 'string' && system.role.length > 0
+          ? system.role.toLowerCase()
+          : 'unknown';
+
+      const size =
+        typeof system.size === 'string' && system.size.length > 0
+          ? system.size.toLowerCase()
+          : 'medium';
+
+      const creatureType =
+        typeof system.type?.id === 'string' && system.type.id.length > 0
+          ? system.type.id.toLowerCase()
+          : 'unknown';
+
+      const subtype =
+        typeof system.type?.subtype === 'string' && system.type.subtype.length > 0
+          ? system.type.subtype
+          : '';
+
+      const hitPoints = this.readDerived(system.resources?.hea?.max) ?? 0;
+      const focus = this.readDerived(system.resources?.foc?.max) ?? 0;
+      const investiture = this.readDerived(system.resources?.inv?.max) ?? 0;
+
+      const defensePhysical = this.readDerived(system.defenses?.phy) ?? 0;
+      const defenseCognitive = this.readDerived(system.defenses?.cog) ?? 0;
+      const defenseSpiritual = this.readDerived(system.defenses?.spi) ?? 0;
+
+      const deflect = this.readDerived(system.deflect) ?? 0;
+      const walkSpeed = this.readDerived(system.movement?.walk?.rate) ?? 0;
+
+      return {
+        creature: {
+          id: doc._id,
+          name: doc.name,
+          type: doc.type,
+          pack: pack.metadata.id,
+          packLabel: pack.metadata.label,
+          tier,
+          role,
+          creatureType,
+          subtype,
+          size,
+          hitPoints,
+          focus,
+          investiture,
+          hasInvestiture: investiture > 0,
+          defensePhysical,
+          defenseCognitive,
+          defenseSpiritual,
+          deflect,
+          walkSpeed,
+          img: doc.img,
+        },
+        errors: 0,
+      };
+    } catch (error) {
+      console.warn(
+        `[${this.moduleId}] Failed to extract Cosmere RPG data from ${doc.name}:`,
+        error
+      );
+      return {
+        creature: {
+          id: doc._id,
+          name: doc.name,
+          type: doc.type,
+          pack: pack.metadata.id,
+          packLabel: pack.metadata.label,
+          tier: 0,
+          role: 'unknown',
+          creatureType: 'unknown',
+          subtype: '',
+          size: 'medium',
+          hitPoints: 0,
+          focus: 0,
+          investiture: 0,
+          hasInvestiture: false,
+          defensePhysical: 0,
+          defenseCognitive: 0,
+          defenseSpiritual: 0,
+          deflect: 0,
+          walkSpeed: 0,
+          description: 'Data extraction failed',
+          img: doc.img || '',
+        },
+        errors: 1,
+      };
+    }
+  }
+}
+
+export class FoundryDataAccess {
+  private moduleId: string = MODULE_ID;
+  private persistentIndex: PersistentCreatureIndex = new PersistentCreatureIndex();
+
+  constructor() {}
+
+  /**
+   * Force rebuild of enhanced creature index
+   */
+  async rebuildEnhancedCreatureIndex(): Promise<{
+    success: boolean;
+    totalCreatures: number;
+    message: string;
+  }> {
+    try {
+      const creatures = await this.persistentIndex.rebuildIndex();
+      return {
+        success: true,
+        totalCreatures: creatures.length,
+        message: `Enhanced creature index rebuilt: ${creatures.length} creatures indexed from all packs`,
+      };
+    } catch (error) {
+      console.error(`[${this.moduleId}] Failed to rebuild enhanced creature index:`, error);
+      return {
+        success: false,
+        totalCreatures: 0,
+        message: `Failed to rebuild index: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Get character/actor information by name or ID
+   */
+  async getCharacterInfo(identifier: string): Promise<CharacterInfo> {
+    let actor: Actor | undefined;
+
+    // Try to find by ID first, then by name
+    if (identifier.length === 16) {
+      // Foundry ID length
+      actor = game.actors.get(identifier);
+    }
+
+    if (!actor) {
+      actor = game.actors.find(a => a.name?.toLowerCase() === identifier.toLowerCase());
+    }
+
+    if (!actor) {
+      throw new Error(`${ERROR_MESSAGES.CHARACTER_NOT_FOUND}: ${identifier}`);
+    }
+
+    // Build character data structure
+    const characterData: CharacterInfo = {
+      id: actor.id || '',
+      name: actor.name || '',
+      type: actor.type,
+      ...(actor.img ? { img: actor.img } : {}),
+      system: this.sanitizeData((actor as any).system),
+      items: actor.items.map(item => {
+        return {
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          ...(item.img ? { img: item.img } : {}),
+          system: this.sanitizeData(item.system),
+        };
+      }),
+      effects: actor.effects.map(effect => {
+        const eff = effect;
+        const dur = eff.duration;
+        const durRaw = eff._source?.duration;
+        return {
+          id: effect.id,
+          name: eff.name || eff.label || 'Unknown Effect',
+          ...(eff.icon ? { icon: eff.icon } : {}),
+          disabled: eff.disabled,
+          ...(dur
+            ? {
+                duration: {
+                  type: dur.units ?? durRaw?.type ?? 'none',
+                  duration: dur.seconds ?? durRaw?.duration,
+                  remaining: dur.remaining,
+                },
+              }
+            : {}),
+        };
+      }),
+    };
+
+    // Add PF2e-specific data if available
+    const actorAny = actor as any;
+
+    // Include actions (PF2e strikes, spells, etc.)
+    if (actorAny.system?.actions) {
+      characterData.actions = actorAny.system.actions.map((action: any) => ({
+        name: action.label || action.name,
+        type: action.type,
+        ...(action.item ? { itemId: action.item.id } : {}),
+        ...(action.variants
+          ? {
+              variants: action.variants.map((v: any) => ({
+                label: v.label,
+                ...(v.traits ? { traits: v.traits } : {}),
+              })),
+            }
+          : {}),
+        ...(action.ready !== undefined ? { ready: action.ready } : {}),
+      }));
+    }
+
+    // Include item variants and toggles
+    const itemVariants: any[] = [];
+    const itemToggles: any[] = [];
+
+    actor.items.forEach(item => {
+      const itemAny = item;
+
+      // Extract rule element variants (e.g., weapon variants, stance toggles)
+      if (itemAny.system?.rules) {
+        itemAny.system.rules.forEach((rule: any, ruleIndex: number) => {
+          // Variants (ChoiceSet, RollOption with choices)
+          if (rule.key === 'ChoiceSet' || (rule.key === 'RollOption' && rule.choices)) {
+            itemVariants.push({
+              itemId: item.id,
+              itemName: item.name,
+              ruleIndex,
+              ruleKey: rule.key,
+              label: rule.label || rule.prompt,
+              ...(rule.selection ? { selected: rule.selection } : {}),
+              ...(rule.choices ? { choices: rule.choices } : {}),
+            });
+          }
+
+          // Toggles (RollOption toggleable, ToggleProperty)
+          if ((rule.key === 'RollOption' && rule.toggleable) || rule.key === 'ToggleProperty') {
+            itemToggles.push({
+              itemId: item.id,
+              itemName: item.name,
+              ruleIndex,
+              ruleKey: rule.key,
+              label: rule.label,
+              option: rule.option,
+              ...(rule.value !== undefined ? { enabled: rule.value } : {}),
+              ...(rule.toggleable !== undefined ? { toggleable: rule.toggleable } : {}),
+            });
+          }
+        });
+      }
+
+      // Also check for item-level toggles (e.g., equipped, identified)
+      if (itemAny.system?.equipped !== undefined) {
+        itemToggles.push({
+          itemId: item.id,
+          itemName: item.name,
+          type: 'equipped',
+          enabled: itemAny.system.equipped,
+        });
+      }
+    });
+
+    // Add to character data if any found
+    if (itemVariants.length > 0) {
+      characterData.itemVariants = itemVariants;
+    }
+    if (itemToggles.length > 0) {
+      characterData.itemToggles = itemToggles;
+    }
+
+    // Extract spellcasting data (PF2e and D&D 5e)
+    const spellcastingEntries = this.extractSpellcastingData(actor);
+    if (spellcastingEntries.length > 0) {
+      characterData.spellcasting = spellcastingEntries;
+    }
+
+    return characterData;
+  }
+
+  /**
+   * Search within a character's items, spells, actions, and effects
+   * More token-efficient than getCharacterInfo when you need specific items
+   */
+  async searchCharacterItems(params: {
+    characterIdentifier: string;
+    query?: string | undefined;
+    type?: string | undefined;
+    category?: string | undefined;
+    limit?: number | undefined;
+  }): Promise<{
+    characterId: string;
+    characterName: string;
+    query?: string;
+    type?: string;
+    category?: string;
+    matches: Array<{
+      id: string;
+      name: string;
+      type: string;
+      description?: string;
+      // For spells
+      level?: number;
+      prepared?: boolean;
+      expended?: boolean;
+      range?: string;
+      target?: string;
+      area?: string;
+      actionCost?: string;
+      traits?: string[];
+      // For items
+      quantity?: number;
+      equipped?: boolean;
+      invested?: boolean;
+      // For actions
+      actionType?: string;
+    }>;
+    totalMatches: number;
+  }> {
+    this.validateFoundryState();
+
+    const { characterIdentifier, query, type, category, limit = 20 } = params;
+
+    // Find the actor
+    const actor = this.findActorByIdentifier(characterIdentifier);
+    if (!actor) {
+      throw new Error(`Character not found: ${characterIdentifier}`);
+    }
+
+    const actorAny = actor;
+    const systemId = (game.system as any).id;
+    const matches: Array<any> = [];
+
+    // Normalize search query
+    const searchQuery = query?.toLowerCase().trim();
+    const searchType = type?.toLowerCase().trim();
+    const searchCategory = category?.toLowerCase().trim();
+
+    // Helper to check if text matches query (safely handles non-strings)
+    const matchesQuery = (text: unknown): boolean => {
+      if (!searchQuery) return true;
+      if (typeof text !== 'string') return false;
+      return text.toLowerCase().includes(searchQuery);
+    };
+
+    // Helper to check if item matches type filter
+    const matchesType = (itemType: string): boolean => {
+      if (!searchType) return true;
+      return itemType.toLowerCase() === searchType;
+    };
+
+    // Search items
+    for (const item of actor.items) {
+      const itemSystem = item.system;
+
+      // Check type filter
+      if (!matchesType(item.type)) continue;
+
+      // Check query filter (name or description)
+      // Ensure description is a string (could be an object in some systems)
+      let description = itemSystem?.description?.value || itemSystem?.description;
+      if (typeof description !== 'string') description = '';
+      if (!matchesQuery(item.name) && !matchesQuery(description)) continue;
+
+      // Build result based on item type
+      const result: any = {
+        id: item.id,
+        name: item.name,
+        type: item.type,
+      };
+
+      // Add description (truncated for token efficiency)
+      if (description) {
+        // Strip HTML and truncate
+        const plainText = description.replace(/<[^>]*>/g, '').trim();
+        result.description =
+          plainText.length > 300 ? `${plainText.substring(0, 300)}...` : plainText;
+      }
+
+      // Spell-specific fields
+      if (item.type === 'spell') {
+        result.level = itemSystem?.level?.value ?? itemSystem?.level ?? itemSystem?.rank ?? 0;
+        const itemRaw = item._source?.system;
+        result.prepared =
+          itemSystem?.prepared ?? itemRaw?.preparation?.prepared ?? itemSystem?.location?.prepared;
+        result.expended = itemSystem?.location?.expended;
+
+        // Get targeting info
+        if (systemId === 'pf2e') {
+          const targeting = this.extractPF2eSpellTargeting(itemSystem);
+          if (targeting.range) result.range = targeting.range;
+          if (targeting.target) result.target = targeting.target;
+          if (targeting.area) result.area = targeting.area;
+          result.actionCost = this.formatPF2eActionCost(itemSystem?.time?.value);
+          result.traits = itemSystem?.traits?.value || [];
+        } else if (systemId === 'dnd5e') {
+          const targeting = this.extractDnD5eSpellTargeting(itemSystem);
+          if (targeting.range) result.range = targeting.range;
+          if (targeting.target) result.target = targeting.target;
+          if (targeting.area) result.area = targeting.area;
+          result.actionCost = itemSystem?.activation?.type;
+        } else if (systemId === 'dsa5') {
+          const targeting = this.extractDSA5SpellTargeting(itemSystem);
+          if (targeting.range) result.range = targeting.range;
+          if (targeting.target) result.target = targeting.target;
+          if (targeting.area) result.area = targeting.area;
+          result.actionCost = itemSystem?.castingTime?.value;
+        } else if (systemId === 'wfrp4e') {
+          // WFRP4e spells use a Casting Number (CN) rather than levels/slots.
+          if (itemSystem?.range?.value) result.range = itemSystem.range.value;
+          if (itemSystem?.target?.value) result.target = itemSystem.target.value;
+          const cn = itemSystem?.cn?.value;
+          if (cn !== undefined && cn !== null) result.actionCost = `CN ${cn}`;
+        }
+
+        // Category filter for spells
+        if (searchCategory) {
+          const spellLevel = result.level || 0;
+          const isPrepared = result.prepared !== false;
+          const isCantrip = spellLevel === 0;
+          const isFocus =
+            itemSystem?.traits?.value?.includes('focus') || itemSystem?.category?.value === 'focus';
+
+          if (searchCategory === 'cantrip' && !isCantrip) continue;
+          if (searchCategory === 'prepared' && !isPrepared) continue;
+          if (searchCategory === 'focus' && !isFocus) continue;
+        }
+      }
+
+      // Equipment-specific fields
+      if (['weapon', 'armor', 'equipment', 'consumable', 'backpack', 'loot'].includes(item.type)) {
+        result.quantity = itemSystem?.quantity ?? 1;
+        result.equipped = itemSystem?.equipped ?? false;
+        result.invested = itemSystem?.equipped?.invested ?? itemSystem?.invested ?? undefined;
+
+        // Category filter for equipment
+        if (searchCategory) {
+          if (searchCategory === 'equipped' && !result.equipped) continue;
+          if (searchCategory === 'invested' && !result.invested) continue;
+        }
+      }
+
+      // WFRP4e equipment fields (British 'armour'; 'trapping' is generic gear)
+      if (
+        systemId === 'wfrp4e' &&
+        ['weapon', 'armour', 'trapping', 'ammunition', 'container'].includes(item.type)
+      ) {
+        result.quantity = itemSystem?.quantity?.value ?? 1;
+        result.equipped = itemSystem?.equipped?.value ?? item.isEquipped ?? false;
+
+        if (searchCategory === 'equipped' && !result.equipped) continue;
+      }
+
+      // WFRP4e prayer targeting (divine magic; item type 'prayer')
+      if (systemId === 'wfrp4e' && item.type === 'prayer') {
+        if (itemSystem?.range?.value) result.range = itemSystem.range.value;
+        if (itemSystem?.target?.value) result.target = itemSystem.target.value;
+      }
+
+      // Feat/feature fields
+      if (['feat', 'feature', 'class', 'ancestry', 'heritage', 'background'].includes(item.type)) {
+        if (systemId === 'pf2e') {
+          result.traits = itemSystem?.traits?.value || [];
+          result.level = itemSystem?.level?.value ?? undefined;
+          result.actionCost = this.formatPF2eActionCost(itemSystem?.actionType?.value);
+        }
+      }
+
+      // Action fields
+      if (item.type === 'action') {
+        if (systemId === 'pf2e') {
+          result.traits = itemSystem?.traits?.value || [];
+          result.actionCost = this.formatPF2eActionCost(
+            itemSystem?.actionType?.value || itemSystem?.actions?.value
+          );
+        }
+      }
+
+      matches.push(result);
+
+      // Stop if we've reached the limit
+      if (matches.length >= limit) break;
+    }
+
+    // Also search actions if type filter includes 'action' or is empty
+    if (!searchType || searchType === 'action') {
+      const actions =
+        actorAny.system?.actions || actorAny.items?.filter((i: any) => i.type === 'action') || [];
+      for (const action of actions) {
+        if (matches.length >= limit) break;
+
+        const actionName = action.name || action.label || '';
+        if (!matchesQuery(actionName)) continue;
+
+        const result: any = {
+          id: action.id || action.slug || actionName,
+          name: actionName,
+          type: 'action',
+          actionType: action.type || action.actionType || 'action',
+        };
+
+        if (systemId === 'pf2e') {
+          result.traits = action.traits || [];
+          result.actionCost = this.formatPF2eActionCost(action.actionCost?.value || action.actions);
+        }
+
+        matches.push(result);
+      }
+    }
+
+    // Search effects if type filter includes 'effect' or is empty
+    if (!searchType || searchType === 'effect') {
+      const effects = actor.effects || [];
+      for (const effect of effects) {
+        if (matches.length >= limit) break;
+
+        const effectAny = effect;
+        if (!matchesQuery(effectAny.name || effectAny.label)) continue;
+
+        matches.push({
+          id: effectAny.id,
+          name: effectAny.name || effectAny.label,
+          type: 'effect',
+          description: effectAny.description || undefined,
+        });
+      }
+    }
+
+    this.auditLog(
+      'searchCharacterItems',
+      {
+        characterId: actor.id,
+        query,
+        type,
+        category,
+        matchCount: matches.length,
+      },
+      'success'
+    );
+
+    const result: {
+      characterId: string;
+      characterName: string;
+      query?: string;
+      type?: string;
+      category?: string;
+      matches: any[];
+      totalMatches: number;
+    } = {
+      characterId: actor.id || '',
+      characterName: actor.name || '',
+      matches,
+      totalMatches: matches.length,
+    };
+
+    if (query) result.query = query;
+    if (type) result.type = type;
+    if (category) result.category = category;
+
+    return result;
+  }
+
+  /**
+   * Extract spellcasting data from an actor (supports PF2e, D&D 5e, DSA5, and WFRP4e)
+   */
+  private extractSpellcastingData(actor: Actor): SpellcastingEntry[] {
+    const entries: SpellcastingEntry[] = [];
+    const actorAny = actor as any;
+    const systemId = (game.system as any).id;
+
+    // Get all spell items from the actor
+    const spellItems = actor.items.filter(item => item.type === 'spell');
+
+    if (systemId === 'pf2e') {
+      // PF2e: Extract from spellcastingEntries
+      const spellcastingEntries =
+        actorAny.spellcasting?.contents ||
+        actorAny.items?.filter((i: any) => i.type === 'spellcastingEntry') ||
+        [];
+
+      for (const entry of spellcastingEntries) {
+        const entryData = entry.system || entry;
+        const entrySpells: SpellInfo[] = [];
+
+        // Get spells associated with this entry
+        // In PF2e, spells have a location property pointing to their spellcasting entry
+        const entryId = entry.id;
+        const associatedSpells = spellItems.filter((spell: any) => {
+          const spellSystem = spell.system;
+          return spellSystem?.location?.value === entryId || spellSystem?.location === entryId;
+        });
+
+        for (const spell of associatedSpells) {
+          const spellSystem = spell.system as any;
+          const targeting = this.extractPF2eSpellTargeting(spellSystem);
+          entrySpells.push({
+            id: spell.id || '',
+            name: spell.name || '',
+            level: spellSystem?.level?.value ?? spellSystem?.rank ?? 0,
+            prepared: spellSystem?.location?.prepared ?? true,
+            expended: spellSystem?.location?.expended ?? false,
+            traits: spellSystem?.traits?.value || [],
+            actionCost: this.formatPF2eActionCost(spellSystem?.time?.value),
+            range: targeting.range,
+            target: targeting.target,
+            area: targeting.area,
+          });
+        }
+
+        // Also check for spells in the entry's spell collection
+        if (entry.spells) {
+          for (const [levelKey, levelData] of Object.entries(entry.spells as Record<string, any>)) {
+            const spellsAtLevel = levelData?.value || levelData || [];
+            if (Array.isArray(spellsAtLevel)) {
+              for (const spellRef of spellsAtLevel) {
+                // Skip if we already have this spell
+                if (entrySpells.some(s => s.id === spellRef.id)) continue;
+
+                const spellItem = actor.items.get(spellRef.id || spellRef);
+                if (spellItem) {
+                  const spellSystem = spellItem.system as any;
+                  const targeting = this.extractPF2eSpellTargeting(spellSystem);
+                  entrySpells.push({
+                    id: spellItem.id || '',
+                    name: spellItem.name || '',
+                    level:
+                      parseInt(levelKey.replace('spell', '')) || spellSystem?.level?.value || 0,
+                    prepared: spellRef.prepared ?? true,
+                    expended: spellRef.expended ?? false,
+                    traits: spellSystem?.traits?.value || [],
+                    actionCost: this.formatPF2eActionCost(spellSystem?.time?.value),
+                    range: targeting.range,
+                    target: targeting.target,
+                    area: targeting.area,
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        entries.push({
+          id: entry.id || '',
+          name: entry.name || 'Spellcasting',
+          tradition: entryData?.tradition?.value || entryData?.tradition || undefined,
+          type: entryData?.prepared?.value || entryData?.prepared || 'prepared',
+          ability: entryData?.ability?.value || entryData?.ability || undefined,
+          dc: entryData?.spelldc?.dc || entryData?.dc?.value || undefined,
+          attack: entryData?.spelldc?.value || entryData?.attack?.value || undefined,
+          slots: this.extractPF2eSpellSlots(entryData),
+          spells: entrySpells.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name)),
+        });
+      }
+
+      // Also capture focus spells and innate spells that might not be in entries
+      const focusSpells = spellItems.filter((spell: any) => {
+        const spellSystem = spell.system;
+        return (
+          spellSystem?.traits?.value?.includes('focus') || spellSystem?.category?.value === 'focus'
+        );
+      });
+
+      if (focusSpells.length > 0 && !entries.some(e => e.type === 'focus')) {
+        entries.push({
+          id: 'focus-spells',
+          name: 'Focus Spells',
+          type: 'focus',
+          spells: focusSpells.map((spell: any) => {
+            const spellSystem = spell.system;
+            const targeting = this.extractPF2eSpellTargeting(spellSystem);
+            return {
+              id: spell.id || '',
+              name: spell.name || '',
+              level: spellSystem?.level?.value || 0,
+              traits: spellSystem?.traits?.value || [],
+              actionCost: this.formatPF2eActionCost(spellSystem?.time?.value),
+              range: targeting.range,
+              target: targeting.target,
+              area: targeting.area,
+            };
+          }),
+        });
+      }
+    } else if (systemId === 'dnd5e') {
+      // D&D 5e: Extract from classes with spellcasting
+      const classes = actor.items.filter(item => item.type === 'class');
+      const spellSlots = actorAny.system?.spells || {};
+
+      // Group spells by their source class or create a general entry
+      const spellsByClass: Record<string, SpellInfo[]> = {};
+
+      for (const spell of spellItems) {
+        const spellSystem = spell.system as any;
+        const spellRaw = (spell as any)._source?.system || spellSystem;
+        const sourceItem = spellSystem?.sourceItem;
+        const sourceClass =
+          (sourceItem
+            ? typeof sourceItem === 'string'
+              ? sourceItem
+              : sourceItem.identifier || sourceItem.id
+            : spellRaw?.sourceClass) || 'general';
+
+        if (!spellsByClass[sourceClass]) {
+          spellsByClass[sourceClass] = [];
+        }
+
+        const targeting = this.extractDnD5eSpellTargeting(spellSystem);
+        spellsByClass[sourceClass].push({
+          id: spell.id || '',
+          name: spell.name || '',
+          level: spellSystem?.level || 0,
+          prepared: spellSystem?.prepared ?? spellRaw?.preparation?.prepared ?? true,
+          traits: [], // D&D 5e doesn't use traits the same way
+          actionCost: spellSystem?.activation?.type || undefined,
+          range: targeting.range,
+          target: targeting.target,
+          area: targeting.area,
+        });
+      }
+
+      // Create entries for each spellcasting class
+      for (const classItem of classes) {
+        const classSystem = classItem.system as any;
+        if (
+          classSystem?.spellcasting?.progression &&
+          classSystem.spellcasting.progression !== 'none'
+        ) {
+          const className = classItem.name || 'Unknown';
+          const classSpells =
+            spellsByClass[classItem.id || ''] || spellsByClass[className.toLowerCase()] || [];
+
+          entries.push({
+            id: classItem.id || '',
+            name: `${className} Spellcasting`,
+            type: classSystem?.spellcasting?.type || 'prepared',
+            ability: classSystem?.spellcasting?.ability || undefined,
+            slots: this.extractDnD5eSpellSlots(spellSlots),
+            spells: classSpells.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name)),
+          });
+        }
+      }
+
+      // If no class-based entries found but we have spells, create a general entry
+      if (entries.length === 0 && spellItems.length > 0) {
+        const allSpells: SpellInfo[] = [];
+        for (const spell of spellItems) {
+          const spellSystem = spell.system as any;
+          const targeting = this.extractDnD5eSpellTargeting(spellSystem);
+          allSpells.push({
+            id: spell.id || '',
+            name: spell.name || '',
+            level: spellSystem?.level || 0,
+            prepared: spellSystem?.preparation?.prepared ?? true,
+            actionCost: spellSystem?.activation?.type || undefined,
+            range: targeting.range,
+            target: targeting.target,
+            area: targeting.area,
+          });
+        }
+
+        entries.push({
+          id: 'spellcasting',
+          name: 'Spellcasting',
+          type: 'prepared',
+          slots: this.extractDnD5eSpellSlots(spellSlots),
+          spells: allSpells.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name)),
+        });
+      }
+    } else if (systemId === 'dsa5') {
+      // DSA5: Extract Zauber (spells), Liturgien (liturgies), Zeremonien (ceremonies), Rituale (rituals)
+      const astralSpells = actor.items.filter(item => item.type === 'spell');
+      const karmaSpells = actor.items.filter(item => ['liturgy', 'ceremony'].includes(item.type));
+      const rituals = actor.items.filter(item => item.type === 'ritual');
+
+      // Get AsP and KaP from actor
+      const asp = actorAny.system?.status?.astralenergy || actorAny.system?.astralenergy;
+      const kap = actorAny.system?.status?.karmaenergy || actorAny.system?.karmaenergy;
+
+      // Zauber (Arcane spells using AsP)
+      if (astralSpells.length > 0) {
+        entries.push({
+          id: 'zauber',
+          name: 'Zauber (Spells)',
+          type: 'arcane',
+          slots: asp
+            ? {
+                asp: { value: asp.value ?? 0, max: asp.max ?? 0 },
+              }
+            : undefined,
+          spells: astralSpells
+            .map((spell: any) => {
+              const spellSystem = spell.system;
+              const targeting = this.extractDSA5SpellTargeting(spellSystem);
+              return {
+                id: spell.id || '',
+                name: spell.name || '',
+                level: spellSystem?.level?.value ?? spellSystem?.level ?? 0,
+                traits: spellSystem?.effect?.attributes || [],
+                actionCost: spellSystem?.castingTime?.value || undefined,
+                range: targeting.range,
+                target: targeting.target,
+                area: targeting.area,
+              };
+            })
+            .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name)),
+        });
+      }
+
+      // Liturgien & Zeremonien (Divine spells using KaP)
+      if (karmaSpells.length > 0) {
+        entries.push({
+          id: 'liturgien',
+          name: 'Liturgien & Zeremonien (Liturgies)',
+          type: 'divine',
+          slots: kap
+            ? {
+                kap: { value: kap.value ?? 0, max: kap.max ?? 0 },
+              }
+            : undefined,
+          spells: karmaSpells
+            .map((spell: any) => {
+              const spellSystem = spell.system;
+              const targeting = this.extractDSA5SpellTargeting(spellSystem);
+              return {
+                id: spell.id || '',
+                name: spell.name || '',
+                level: spellSystem?.level?.value ?? spellSystem?.level ?? 0,
+                traits: spellSystem?.effect?.attributes || [],
+                actionCost: spellSystem?.castingTime?.value || undefined,
+                range: targeting.range,
+                target: targeting.target,
+                area: targeting.area,
+              };
+            })
+            .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name)),
+        });
+      }
+
+      // Rituale (Rituals - can use either AsP or KaP depending on tradition)
+      if (rituals.length > 0) {
+        entries.push({
+          id: 'rituale',
+          name: 'Rituale (Rituals)',
+          type: 'ritual',
+          spells: rituals
+            .map((spell: any) => {
+              const spellSystem = spell.system;
+              const targeting = this.extractDSA5SpellTargeting(spellSystem);
+              return {
+                id: spell.id || '',
+                name: spell.name || '',
+                level: spellSystem?.level?.value ?? spellSystem?.level ?? 0,
+                traits: spellSystem?.effect?.attributes || [],
+                actionCost: spellSystem?.castingTime?.value || undefined,
+                range: targeting.range,
+                target: targeting.target,
+                area: targeting.area,
+              };
+            })
+            .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name)),
+        });
+      }
+    } else if (systemId === 'wfrp4e') {
+      // WFRP4e: arcane spells grouped by Lore, divine prayers grouped by God.
+      // WFRP4e has no spell levels or slots; spells use a Casting Number (CN).
+      const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+      // Arcane spells, grouped by lore
+      const spellsByLore = new Map<string, SpellInfo[]>();
+      for (const spell of actor.items.filter(item => item.type === 'spell')) {
+        const spellSystem = spell.system as any;
+        const loreRaw = spellSystem?.lore?.value;
+        const lore = String((Array.isArray(loreRaw) ? loreRaw[0] : loreRaw) || 'arcane');
+        const cn = spellSystem?.cn?.value;
+        const info: SpellInfo = {
+          id: spell.id || '',
+          name: spell.name || '',
+          level: 0,
+          actionCost: cn !== undefined && cn !== null ? `CN ${cn}` : undefined,
+          range: spellSystem?.range?.value || undefined,
+          target: spellSystem?.target?.value || undefined,
+        };
+        if (!spellsByLore.has(lore)) spellsByLore.set(lore, []);
+        spellsByLore.get(lore)!.push(info);
+      }
+      for (const [lore, loreSpells] of spellsByLore) {
+        entries.push({
+          id: `lore-${lore}`,
+          name: `Lore of ${cap(lore)}`,
+          type: 'arcane',
+          tradition: 'arcane',
+          spells: loreSpells.sort((a, b) => a.name.localeCompare(b.name)),
+        });
+      }
+
+      // Divine prayers, grouped by god
+      const prayersByGod = new Map<string, SpellInfo[]>();
+      for (const prayer of actor.items.filter(item => item.type === 'prayer')) {
+        const praySystem = prayer.system as any;
+        const god = String(praySystem?.god?.value || 'divine');
+        const info: SpellInfo = {
+          id: prayer.id || '',
+          name: prayer.name || '',
+          level: 0,
+          range: praySystem?.range?.value || undefined,
+          target: praySystem?.target?.value || undefined,
+        };
+        if (!prayersByGod.has(god)) prayersByGod.set(god, []);
+        prayersByGod.get(god)!.push(info);
+      }
+      for (const [god, godPrayers] of prayersByGod) {
+        entries.push({
+          id: `prayers-${god}`,
+          name: god === 'divine' ? 'Prayers' : `Prayers (${cap(god)})`,
+          type: 'divine',
+          tradition: 'divine',
+          spells: godPrayers.sort((a, b) => a.name.localeCompare(b.name)),
+        });
+      }
+    }
+
+    return entries;
+  }
+
+  /**
+   * Format PF2e action cost to human-readable string
+   */
+  private formatPF2eActionCost(actionValue: any): string | undefined {
+    if (!actionValue) return undefined;
+    if (typeof actionValue === 'number') {
+      return actionValue === 1 ? '1 action' : `${actionValue} actions`;
+    }
+    if (actionValue === 'reaction') return 'reaction';
+    if (actionValue === 'free') return 'free action';
+    return String(actionValue);
+  }
+
+  /**
+   * Extract PF2e spell slots from spellcasting entry data
+   */
+  private extractPF2eSpellSlots(
+    entryData: any
+  ): Record<string, { value: number; max: number }> | undefined {
+    const slots: Record<string, { value: number; max: number }> = {};
+
+    // PF2e stores slots per rank
+    for (let rank = 1; rank <= 10; rank++) {
+      const slotKey = `slot${rank}`;
+      const slotData = entryData?.slots?.[slotKey] || entryData?.[slotKey];
+      if (slotData && (slotData.max > 0 || slotData.value > 0)) {
+        slots[`rank${rank}`] = {
+          value: slotData.value ?? 0,
+          max: slotData.max ?? 0,
+        };
+      }
+    }
+
+    return Object.keys(slots).length > 0 ? slots : undefined;
+  }
+
+  /**
+   * Extract D&D 5e spell slots from actor system data
+   */
+  private extractDnD5eSpellSlots(
+    spellsData: any
+  ): Record<string, { value: number; max: number }> | undefined {
+    const slots: Record<string, { value: number; max: number }> = {};
+
+    // D&D 5e stores slots as spell1, spell2, etc.
+    for (let level = 1; level <= 9; level++) {
+      const slotKey = `spell${level}`;
+      const slotData = spellsData?.[slotKey];
+      if (slotData && (slotData.max > 0 || slotData.value > 0)) {
+        slots[`level${level}`] = {
+          value: slotData.value ?? 0,
+          max: slotData.max ?? 0,
+        };
+      }
+    }
+
+    // Also check for pact slots (warlock)
+    const pactSlot = spellsData?.pact;
+    if (pactSlot && (pactSlot.max > 0 || pactSlot.value > 0)) {
+      slots['pact'] = {
+        value: pactSlot.value ?? 0,
+        max: pactSlot.max ?? 0,
+      };
+    }
+
+    return Object.keys(slots).length > 0 ? slots : undefined;
+  }
+
+  /**
+   * Extract spell targeting info for D&D 5e
+   * D&D 5e spells have: target.type ("self", "creature", "point", etc.), range.value, range.units
+   */
+  private extractDnD5eSpellTargeting(spellSystem: any): {
+    range?: string;
+    target?: string;
+    area?: string;
+  } {
+    const result: { range?: string; target?: string; area?: string } = {};
+
+    // Range (e.g., "60 feet", "Self", "Touch")
+    const rangeValue = spellSystem?.range?.value;
+    const rangeUnits = spellSystem?.range?.units;
+    if (rangeUnits === 'self') {
+      result.range = 'Self';
+    } else if (rangeUnits === 'touch') {
+      result.range = 'Touch';
+    } else if (rangeUnits === 'spec') {
+      result.range = spellSystem?.range?.special || 'Special';
+    } else if (rangeValue && rangeUnits) {
+      result.range = `${rangeValue} ${rangeUnits}`;
+    }
+
+    // Target type (e.g., "1 creature", "self", "area")
+    const targetType = spellSystem?.target?.type;
+    const targetValue = spellSystem?.target?.value;
+    if (targetType === 'self') {
+      result.target = 'self';
+    } else if (targetType === 'creature' || targetType === 'ally' || targetType === 'enemy') {
+      result.target = targetValue
+        ? `${targetValue} ${targetType}${targetValue > 1 ? 's' : ''}`
+        : targetType;
+    } else if (targetType === 'object') {
+      result.target = targetValue ? `${targetValue} object${targetValue > 1 ? 's' : ''}` : 'object';
+    } else if (targetType === 'space' || targetType === 'point') {
+      result.target = 'point';
+    } else if (targetType) {
+      result.target = targetType;
+    }
+
+    // Area (for AoE spells - e.g., "20-foot radius", "30-foot cone")
+    const areaType = spellSystem?.target?.template?.type;
+    const areaSize = spellSystem?.target?.template?.size;
+    const areaUnits = spellSystem?.target?.template?.units || 'ft';
+    if (areaType && areaSize) {
+      result.area = `${areaSize}-${areaUnits} ${areaType}`;
+      // If spell has area, target is usually "area"
+      if (!result.target || result.target === 'point') {
+        result.target = 'area';
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Extract spell targeting info for PF2e
+   * PF2e spells have: target (string), range.value, area.type, area.value
+   */
+  private extractPF2eSpellTargeting(spellSystem: any): {
+    range?: string;
+    target?: string;
+    area?: string;
+  } {
+    const result: { range?: string; target?: string; area?: string } = {};
+
+    // Range (e.g., "30 feet", "touch")
+    const rangeValue = spellSystem?.range?.value;
+    if (rangeValue) {
+      result.range = String(rangeValue);
+    }
+
+    // Target (PF2e has a descriptive target string)
+    const targetValue = spellSystem?.target?.value;
+    if (targetValue) {
+      result.target = String(targetValue);
+    }
+
+    // Area (e.g., "15-foot emanation", "30-foot cone")
+    const areaType = spellSystem?.area?.type;
+    const areaValue = spellSystem?.area?.value;
+    if (areaType) {
+      if (areaValue) {
+        result.area = `${areaValue}-foot ${areaType}`;
+      } else {
+        result.area = areaType;
+      }
+      // If has area but no explicit target, it's an area spell
+      if (!result.target) {
+        result.target = 'area';
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Extract spell targeting info for DSA5
+   * DSA5 spells have: targetCategory, range, etc.
+   */
+  private extractDSA5SpellTargeting(spellSystem: any): {
+    range?: string;
+    target?: string;
+    area?: string;
+  } {
+    const result: { range?: string; target?: string; area?: string } = {};
+
+    // Range
+    const rangeValue = spellSystem?.range?.value || spellSystem?.Reichweite;
+    if (rangeValue) {
+      result.range = String(rangeValue);
+    }
+
+    // Target category
+    const targetCategory = spellSystem?.targetCategory?.value || spellSystem?.Zielkategorie;
+    if (targetCategory) {
+      result.target = String(targetCategory);
+    }
+
+    // Area (Wirkungsbereich)
+    const areaValue = spellSystem?.effectRadius?.value || spellSystem?.Wirkungsbereich;
+    if (areaValue) {
+      result.area = String(areaValue);
+    }
+
+    return result;
+  }
+
+  /**
+   * Search compendium packs for items matching query with optional filters
+   */
+  async searchCompendium(
+    query: string,
+    packType?: string,
+    filters?: {
+      challengeRating?: number | { min?: number; max?: number };
+      creatureType?: string;
+      size?: string;
+      alignment?: string;
+      hasLegendaryActions?: boolean;
+      spellcaster?: boolean;
+    }
+  ): Promise<CompendiumSearchResult[]> {
+    // Add defensive checks for query parameter
+    if (!query || typeof query !== 'string' || query.trim().length < 2) {
+      throw new Error('Search query must be a string with at least 2 characters');
+    }
+
+    // ENHANCED SEARCH: If we have creature-specific filters and Actor packType, use enhanced index
+    if (
+      filters &&
+      packType === 'Actor' &&
+      (filters.challengeRating || filters.creatureType || filters.hasLegendaryActions)
+    ) {
+      // Check if enhanced creature index is enabled
+      const enhancedIndexEnabled = game.settings.get(this.moduleId, 'enableEnhancedCreatureIndex');
+
+      if (enhancedIndexEnabled) {
+        try {
+          // Convert search criteria and use enhanced search
+          const criteria: any = { limit: 100 }; // Default limit for search
+
+          if (filters.challengeRating) criteria.challengeRating = filters.challengeRating;
+          if (filters.creatureType) criteria.creatureType = filters.creatureType;
+          if (filters.size) criteria.size = filters.size;
+          if (filters.hasLegendaryActions)
+            criteria.hasLegendaryActions = filters.hasLegendaryActions;
+
+          const enhancedResult = await this.listCreaturesByCriteria(criteria);
+
+          // No name filtering needed - trust the enhanced creature index!
+          const filteredResults = enhancedResult.creatures;
+
+          // Convert to CompendiumSearchResult format
+          return filteredResults.map(
+            creature =>
+              ({
+                id: creature.id || creature.name,
+                name: creature.name,
+                type: creature.type || 'npc',
+                pack: creature.pack,
+                packLabel: creature.packLabel || creature.pack,
+                description: creature.description || '',
+                hasImage: creature.hasImage || !!creature.img,
+                summary: `CR ${creature.challengeRating} ${creature.creatureType} from ${creature.packLabel}`,
+                // Enhanced data (not part of interface but will be included)
+                challengeRating: creature.challengeRating,
+                creatureType: creature.creatureType,
+                size: creature.size,
+                hasLegendaryActions: creature.hasLegendaryActions,
+              }) as CompendiumSearchResult & {
+                challengeRating: number;
+                creatureType: string;
+                size: string;
+                hasLegendaryActions: boolean;
+              }
+          );
+        } catch (error) {
+          console.warn(
+            `[${this.moduleId}] Enhanced search failed, falling back to basic search:`,
+            error
+          );
+          // Continue to basic search below
+        }
+      }
+    }
+
+    const results: CompendiumSearchResult[] = [];
+    const cleanQuery = query.toLowerCase().trim();
+    const searchTerms = cleanQuery
+      .split(' ')
+      .filter(term => term && typeof term === 'string' && term.length > 0);
+
+    if (searchTerms.length === 0) {
+      throw new Error('Search query must contain valid search terms');
+    }
+
+    // Filter packs by type if specified
+    const packs = Array.from(game.packs.values()).filter(pack => {
+      if (packType && pack.metadata.type !== packType) {
+        return false;
+      }
+      return pack.metadata.type !== 'Scene'; // Exclude scene packs for safety
+    });
+
+    for (const pack of packs) {
+      try {
+        // Ensure pack index is loaded.
+        // In Foundry v13 getIndex() returns the index Collection; always call it
+        // and use the return value so we don't depend on pack.indexed state.
+        let packIndex: any;
+        try {
+          packIndex = await (pack as any).getIndex({ fields: ['name', 'img', 'type'] });
+        } catch {
+          // Fallback: older Foundry API without fields option
+          packIndex = await (pack as any).getIndex();
+        }
+
+        // Use the returned index if available, otherwise fall back to pack.index
+        const indexSource =
+          packIndex && typeof packIndex.values === 'function' ? packIndex : (pack as any).index;
+
+        const entriesToSearch = Array.from((indexSource as any).values());
+
+        for (const entry of entriesToSearch) {
+          try {
+            // Type assertion and comprehensive safety checks for entry properties
+            const typedEntry = entry as any;
+            if (
+              !typedEntry?.name ||
+              typeof typedEntry.name !== 'string' ||
+              typedEntry.name.trim().length === 0
+            ) {
+              continue;
+            }
+
+            // Ensure searchTerms are valid before using them
+            if (!searchTerms || !Array.isArray(searchTerms) || searchTerms.length === 0) {
+              continue;
+            }
+
+            // Use already created typedEntry
+
+            const entryNameLower = typedEntry.name.toLowerCase();
+            const nameMatch = searchTerms.every(term => {
+              if (!term || typeof term !== 'string') {
+                return false;
+              }
+              return entryNameLower.includes(term);
+            });
+
+            if (nameMatch) {
+              // For Actor packs with filters, use simple name/description matching
+              if (
+                filters &&
+                this.shouldApplyFilters(entry, filters) &&
+                pack.metadata.type === 'Actor'
+              ) {
+                // Convert filters to search criteria for compatibility
+                const searchCriteria: any = {};
+
+                if (filters.challengeRating) {
+                  const searchTerms = [];
+                  if (typeof filters.challengeRating === 'number') {
+                    if (filters.challengeRating >= 15) {
+                      searchTerms.push('ancient', 'legendary', 'elder', 'greater');
+                    } else if (filters.challengeRating >= 10) {
+                      searchTerms.push('adult', 'warlord', 'champion', 'master');
+                    } else if (filters.challengeRating >= 5) {
+                      searchTerms.push('captain', 'knight', 'priest', 'mage');
+                    } else {
+                      searchTerms.push('guard', 'soldier', 'warrior', 'scout');
+                    }
+                  }
+                  searchCriteria.searchTerms = searchTerms;
+                }
+
+                if (filters.creatureType) {
+                  const typeTerms = [filters.creatureType];
+                  if (filters.creatureType.toLowerCase() === 'humanoid') {
+                    typeTerms.push('human', 'elf', 'dwarf', 'orc', 'goblin');
+                  }
+                  searchCriteria.searchTerms = [
+                    ...(searchCriteria.searchTerms || []),
+                    ...typeTerms,
+                  ];
+                }
+
+                if (!this.matchesSearchCriteria(typedEntry, searchCriteria)) {
+                  continue;
+                }
+              }
+
+              // Standard index entry result
+              results.push({
+                id: typedEntry._id || '',
+                name: typedEntry.name,
+                type: typedEntry.type || 'unknown',
+                img: typedEntry.img || undefined,
+                pack: pack.metadata.id,
+                packLabel: pack.metadata.label,
+                description: typedEntry.description || '',
+                hasImage: !!typedEntry.img,
+                summary: `${typedEntry.type} from ${pack.metadata.label}`,
+              });
+            }
+          } catch (entryError) {
+            // Log individual entry errors but continue processing
+            console.warn(
+              `[${this.moduleId}] Error processing entry in pack ${pack.metadata.id}:`,
+              entryError
+            );
+            continue;
+          }
+
+          // Limit results per pack to prevent overwhelming responses
+          if (results.length >= 100) break;
+        }
+      } catch (error) {
+        console.warn(`[${this.moduleId}] Failed to search pack ${pack.metadata.id}:`, error);
+      }
+
+      // Global limit to prevent memory issues
+      if (results.length >= 100) break;
+    }
+
+    // Sort results by relevance with enhanced ranking for filtered searches
+    results.sort((a, b) => {
+      // Exact name matches first
+      const aExact = a.name.toLowerCase() === query.toLowerCase();
+      const bExact = b.name.toLowerCase() === query.toLowerCase();
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+
+      // If filters are used, prioritize by filter match quality
+      if (filters) {
+        const aScore = this.calculateRelevanceScore(a, filters, query);
+        const bScore = this.calculateRelevanceScore(b, filters, query);
+        if (aScore !== bScore) return bScore - aScore; // Higher score first
+      }
+
+      // Fallback to alphabetical
+      return a.name.localeCompare(b.name);
+    });
+
+    return results.slice(0, 50); // Final limit
+  }
+
+  /**
+   * Check if filters should be applied to this entry
+   */
+  private shouldApplyFilters(entry: any, filters: any): boolean {
+    // Only apply filters to Actor entries (which includes NPCs/monsters/creatures)
+    if (entry.type !== 'npc' && entry.type !== 'character' && entry.type !== 'creature') {
+      return false;
+    }
+
+    // Check if any filters are actually specified
+    return Object.keys(filters).some(key => filters[key] !== undefined);
+  }
+
+  /**
+   * Check if entry passes all specified filters
+   * @unused - Replaced with simple index-only approach
+   */
+  // @ts-ignore - Unused method kept for compatibility
+  private passesFilters(
+    entry: any,
+    filters: {
+      challengeRating?: number | { min?: number; max?: number };
+      creatureType?: string;
+      size?: string;
+      alignment?: string;
+      hasLegendaryActions?: boolean;
+      spellcaster?: boolean;
+    }
+  ): boolean {
+    const system = entry.system || {};
+
+    // Challenge Rating filter
+    if (filters.challengeRating !== undefined) {
+      // Try multiple possible CR locations in D&D 5e data structure
+      let entryCR =
+        system.details?.cr?.value || system.details?.cr || system.cr?.value || system.cr || 0;
+
+      // Handle fractional CRs (common in D&D 5e)
+      if (typeof entryCR === 'string') {
+        if (entryCR === '1/8') entryCR = 0.125;
+        else if (entryCR === '1/4') entryCR = 0.25;
+        else if (entryCR === '1/2') entryCR = 0.5;
+        else entryCR = parseFloat(entryCR) || 0;
+      }
+
+      if (typeof filters.challengeRating === 'number') {
+        // Exact CR match
+        if (entryCR !== filters.challengeRating) {
+          return false;
+        }
+      } else if (typeof filters.challengeRating === 'object') {
+        // CR range
+        const { min, max } = filters.challengeRating;
+        if (min !== undefined && entryCR < min) {
+          return false;
+        }
+        if (max !== undefined && entryCR > max) {
+          return false;
+        }
+      }
+    }
+
+    // Creature Type filter
+    if (filters.creatureType) {
+      const entryType = system.details?.type?.value || system.type?.value || '';
+      if (entryType.toLowerCase() !== filters.creatureType.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Size filter
+    if (filters.size) {
+      const entrySize = system.traits?.size || system.size || '';
+      if (entrySize.toLowerCase() !== filters.size.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Alignment filter
+    if (filters.alignment) {
+      const entryAlignment = system.details?.alignment || system.alignment || '';
+      if (!entryAlignment.toLowerCase().includes(filters.alignment.toLowerCase())) {
+        return false;
+      }
+    }
+
+    // Legendary Actions filter
+    if (filters.hasLegendaryActions !== undefined) {
+      const hasLegendary = !!(
+        system.resources?.legact ||
+        system.legendary ||
+        (system.resources?.legres && system.resources.legres.value > 0)
+      );
+      if (hasLegendary !== filters.hasLegendaryActions) {
+        return false;
+      }
+    }
+
+    // Spellcaster filter
+    if (filters.spellcaster !== undefined) {
+      const isSpellcaster = !!(
+        system.spells ||
+        system.attributes?.spellcasting ||
+        (system.details?.spellLevel && system.details.spellLevel > 0)
+      );
+      if (isSpellcaster !== filters.spellcaster) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Calculate relevance score for search result ranking
+   */
+  private calculateRelevanceScore(entry: any, filters: any, query: string): number {
+    let score = 0;
+    const system = entry.system || {};
+
+    // Bonus for creature type match (high importance for encounter building)
+    if (filters.creatureType) {
+      const entryType = system.details?.type?.value || system.type?.value || '';
+      if (entryType.toLowerCase() === filters.creatureType.toLowerCase()) {
+        score += 20;
+      }
+    }
+
+    // Bonus for CR match (exact match gets higher score than range)
+    if (filters.challengeRating !== undefined) {
+      const entryCR = system.details?.cr || system.cr || 0;
+      if (typeof filters.challengeRating === 'number') {
+        if (entryCR === filters.challengeRating) score += 15;
+      } else if (typeof filters.challengeRating === 'object') {
+        const { min, max } = filters.challengeRating;
+        if (min !== undefined && max !== undefined) {
+          // Bonus for being in range, extra for being in middle of range
+          if (entryCR >= min && entryCR <= max) {
+            score += 10;
+            const rangeMid = (min + max) / 2;
+            const distFromMid = Math.abs(entryCR - rangeMid);
+            score += Math.max(0, 5 - distFromMid); // Up to 5 bonus for being near middle
+          }
+        }
+      }
+    }
+
+    // Bonus for common creature names (better for encounters)
+    const commonNames = [
+      'knight',
+      'warrior',
+      'guard',
+      'soldier',
+      'mage',
+      'priest',
+      'bandit',
+      'orc',
+      'goblin',
+      'dragon',
+    ];
+    const lowerName = entry.name.toLowerCase();
+    if (commonNames.some(name => lowerName.includes(name))) {
+      score += 5;
+    }
+
+    // Bonus for query term matches in name
+    const queryTerms = query.toLowerCase().split(' ');
+    for (const term of queryTerms) {
+      if (term.length > 2 && lowerName.includes(term)) {
+        score += 3;
+      }
+    }
+
+    return score;
+  }
+
+  /**
+   * List creatures by criteria using enhanced persistent index - optimized for instant filtering
+   */
+  async listCreaturesByCriteria(criteria: {
+    challengeRating?: number | { min?: number; max?: number };
+    creatureType?: string;
+    size?: string;
+    hasSpells?: boolean;
+    hasLegendaryActions?: boolean;
+    limit?: number;
+  }): Promise<{ creatures: any[]; searchSummary: any }> {
+    const limit = criteria.limit || 500;
+
+    // Check if enhanced creature index is enabled
+    const enhancedIndexEnabled = game.settings.get(this.moduleId, 'enableEnhancedCreatureIndex');
+
+    if (!enhancedIndexEnabled) {
+      return this.fallbackBasicCreatureSearch(criteria, limit);
+    }
+
+    try {
+      // Get enhanced creature index (builds if needed)
+      const enhancedCreatures = await this.persistentIndex.getEnhancedIndex();
+
+      // Apply filters to enhanced data
+      let filteredCreatures = enhancedCreatures.filter(creature =>
+        this.passesEnhancedCriteria(creature, criteria)
+      );
+
+      // Sort by power level then name for consistent ordering (system-aware).
+      // Power-level dial: tier (cosmere), level (pf2e), challengeRating (dnd5e).
+      const powerLevel = (c: EnhancedCreatureIndex): number => {
+        if ('hits' in c && 'hasPsionics' in c) return (c as MGT2eCreatureIndex).hits;
+        if ('tier' in c) return (c as CosmereRpgCreatureIndex).tier;
+        if ('level' in c) return (c as PF2eCreatureIndex).level;
+        return (c as DnD5eCreatureIndex).challengeRating;
+      };
+      filteredCreatures.sort((a, b) => {
+        const powerA = powerLevel(a);
+        const powerB = powerLevel(b);
+        if (powerA !== powerB) return powerA - powerB;
+        return a.name.localeCompare(b.name);
+      });
+
+      // Apply limit
+      if (filteredCreatures.length > limit) {
+        filteredCreatures = filteredCreatures.slice(0, limit);
+      }
+
+      // Convert enhanced creatures to result format (system-aware)
+      const results = filteredCreatures.map(creature => {
+        const isMGT2e = 'hits' in creature && 'hasPsionics' in creature;
+        const isCosmere = !isMGT2e && 'tier' in creature;
+        const isPF2e = !isMGT2e && !isCosmere && 'level' in creature;
+
+        const base = {
+          id: creature.id,
+          name: creature.name,
+          type: creature.type,
+          pack: creature.pack,
+          packLabel: creature.packLabel,
+          description: (creature as any).description || '',
+          hasImage: !!creature.img,
+          creatureType: (creature as any).creatureType,
+          size: (creature as any).size,
+          hitPoints: (creature as any).hitPoints,
+        };
+
+        if (isMGT2e) {
+          const m = creature as MGT2eCreatureIndex;
+          const strDm = m.characteristics?.STR?.dm ?? 0;
+          const dexDm = m.characteristics?.DEX?.dm ?? 0;
+          return {
+            ...base,
+            hits: m.hits,
+            creatureType: m.creatureType,
+            hasPsionics: m.hasPsionics,
+            characteristics: m.characteristics,
+            summary: `${m.type} — ${m.hits} hits${m.creatureType ? ', ' + m.creatureType : ''} (STR DM${strDm >= 0 ? '+' : ''}${strDm}, DEX DM${dexDm >= 0 ? '+' : ''}${dexDm}) from ${m.packLabel}`,
+          };
+        }
+
+        if (isCosmere) {
+          const c = creature;
+          return {
+            ...base,
+            summary: `Tier ${c.tier} ${c.role} ${c.creatureType} from ${c.packLabel}`,
+            tier: c.tier,
+            role: c.role,
+            subtype: c.subtype,
+            focus: c.focus,
+            investiture: c.investiture,
+            hasInvestiture: c.hasInvestiture,
+            defenses: {
+              physical: c.defensePhysical,
+              cognitive: c.defenseCognitive,
+              spiritual: c.defenseSpiritual,
+            },
+            deflect: c.deflect,
+            walkSpeed: c.walkSpeed,
+          };
+        }
+
+        if (isPF2e) {
+          const p = creature;
+          return {
+            ...base,
+            armorClass: p.armorClass,
+            hasSpells: p.hasSpells,
+            alignment: p.alignment,
+            summary: `Level ${p.level} ${p.creatureType} (${p.rarity}) from ${p.packLabel}`,
+            level: p.level,
+            traits: p.traits,
+            rarity: p.rarity,
+          };
+        }
+
+        const d = creature as DnD5eCreatureIndex;
+        return {
+          ...base,
+          armorClass: d.armorClass,
+          hasSpells: d.hasSpells,
+          alignment: d.alignment,
+          summary: `CR ${d.challengeRating} ${d.creatureType} from ${d.packLabel}`,
+          challengeRating: d.challengeRating,
+          hasLegendaryActions: d.hasLegendaryActions,
+        };
+      });
+
+      // Calculate pack distribution for summary
+      const packResults = new Map();
+      results.forEach(creature => {
+        const count = packResults.get(creature.packLabel) || 0;
+        packResults.set(creature.packLabel, count + 1);
+      });
+
+      // Get unique pack information
+      const uniquePacks = Array.from(new Set(enhancedCreatures.map(c => c.pack)));
+      const topPacks = uniquePacks.slice(0, 5).map(packId => {
+        const sampleCreature = enhancedCreatures.find(c => c.pack === packId);
+        return {
+          id: packId,
+          label: sampleCreature?.packLabel || 'Unknown Pack',
+          priority: 100, // All packs are prioritized equally in enhanced index
+        };
+      });
+
+      if (packResults.size > 0) {
+      }
+
+      return {
+        creatures: results,
+        searchSummary: {
+          packsSearched: uniquePacks.length,
+          topPacks,
+          totalCreaturesFound: results.length,
+          resultsByPack: Object.fromEntries(packResults),
+          criteria,
+          indexMetadata: {
+            totalIndexedCreatures: enhancedCreatures.length,
+            searchMethod: 'enhanced_persistent_index',
+          },
+        },
+      };
+    } catch (error) {
+      console.error(`[${this.moduleId}] Enhanced creature search failed:`, error);
+      // Fallback to basic search if enhanced index fails
+      return this.fallbackBasicCreatureSearch(criteria, limit);
+    }
+  }
+
+  /**
+   * Check if enhanced creature passes all specified criteria (system-aware routing).
+   *
+   * Discriminator order matters: cosmere-rpg has a `tier` field, pf2e has
+   * `level`, dnd5e has `challengeRating`. Check cosmere first (tier is the
+   * narrowest signal), then pf2e, then fall through to dnd5e.
+   */
+  private passesEnhancedCriteria(creature: EnhancedCreatureIndex, criteria: any): boolean {
+    if ('hits' in creature && 'hasPsionics' in creature) {
+      return this.passesMGT2eCriteria(creature as MGT2eCreatureIndex, criteria);
+    }
+    if ('tier' in creature) {
+      return this.passesCosmereRpgCriteria(creature, criteria);
+    }
+    if ('level' in creature) {
+      return this.passesPF2eCriteria(creature, criteria);
+    }
+    return this.passesDnD5eCriteria(creature, criteria);
+  }
+
+  /**
+   * MGT2e criteria filter — minHits/maxHits, hasPsionics, creatureType, actorType.
+   */
+  private passesMGT2eCriteria(creature: MGT2eCreatureIndex, criteria: any): boolean {
+    if (criteria.minHits !== undefined && creature.hits < criteria.minHits) return false;
+    if (criteria.maxHits !== undefined && creature.hits > criteria.maxHits) return false;
+    if (criteria.hasPsionics !== undefined && creature.hasPsionics !== criteria.hasPsionics)
+      return false;
+    if (criteria.creatureType && creature.creatureType !== criteria.creatureType) return false;
+    if (criteria.actorType && creature.type !== criteria.actorType) return false;
+    return true;
+  }
+
+  /**
+   * Cosmere RPG criteria filter — tier, role, creatureType, size,
+   * hasInvestiture, hitPoints range, defenses minimums, deflect minimum.
+   */
+  private passesCosmereRpgCriteria(
+    creature: CosmereRpgCreatureIndex,
+    criteria: {
+      tier?: number | { min?: number; max?: number };
+      role?: string;
+      creatureType?: string;
+      size?: string;
+      hasInvestiture?: boolean;
+      hitPoints?: number | { min?: number; max?: number };
+      health?: number | { min?: number; max?: number };
+      defensesMin?: { phy?: number; cog?: number; spi?: number };
+      deflectMin?: number;
+    }
+  ): boolean {
+    if (criteria.tier !== undefined) {
+      if (typeof criteria.tier === 'number') {
+        if (creature.tier !== criteria.tier) return false;
+      } else {
+        const { min, max } = criteria.tier;
+        if (min !== undefined && creature.tier < min) return false;
+        if (max !== undefined && creature.tier > max) return false;
+      }
+    }
+
+    if (criteria.role && creature.role.toLowerCase() !== criteria.role.toLowerCase()) {
+      return false;
+    }
+
+    if (
+      criteria.creatureType &&
+      creature.creatureType.toLowerCase() !== criteria.creatureType.toLowerCase()
+    ) {
+      return false;
+    }
+
+    if (criteria.size && creature.size.toLowerCase() !== criteria.size.toLowerCase()) {
+      return false;
+    }
+
+    if (
+      criteria.hasInvestiture !== undefined &&
+      creature.hasInvestiture !== criteria.hasInvestiture
+    ) {
+      return false;
+    }
+
+    // Accept either `hitPoints` or `health` from callers — they're synonyms
+    // here (hitPoints is the cross-system convention; health is the cosmere-
+    // native term).
+    const hpRange = criteria.hitPoints ?? criteria.health;
+    if (hpRange !== undefined) {
+      if (typeof hpRange === 'number') {
+        if (creature.hitPoints !== hpRange) return false;
+      } else {
+        const { min, max } = hpRange;
+        if (min !== undefined && creature.hitPoints < min) return false;
+        if (max !== undefined && creature.hitPoints > max) return false;
+      }
+    }
+
+    if (criteria.defensesMin) {
+      const { phy, cog, spi } = criteria.defensesMin;
+      if (phy !== undefined && creature.defensePhysical < phy) return false;
+      if (cog !== undefined && creature.defenseCognitive < cog) return false;
+      if (spi !== undefined && creature.defenseSpiritual < spi) return false;
+    }
+
+    if (criteria.deflectMin !== undefined && creature.deflect < criteria.deflectMin) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if D&D 5e creature passes all specified criteria
+   */
+  private passesDnD5eCriteria(
+    creature: DnD5eCreatureIndex,
+    criteria: {
+      challengeRating?: number | { min?: number; max?: number };
+      creatureType?: string;
+      size?: string;
+      hasSpells?: boolean;
+      hasLegendaryActions?: boolean;
+    }
+  ): boolean {
+    // Challenge Rating filter
+    if (criteria.challengeRating !== undefined) {
+      if (typeof criteria.challengeRating === 'number') {
+        if (creature.challengeRating !== criteria.challengeRating) {
+          return false;
+        }
+      } else if (typeof criteria.challengeRating === 'object') {
+        const { min, max } = criteria.challengeRating;
+        if (min !== undefined && creature.challengeRating < min) {
+          return false;
+        }
+        if (max !== undefined && creature.challengeRating > max) {
+          return false;
+        }
+      }
+    }
+
+    // Creature Type filter
+    if (criteria.creatureType) {
+      if (creature.creatureType.toLowerCase() !== criteria.creatureType.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Size filter
+    if (criteria.size) {
+      if (creature.size.toLowerCase() !== criteria.size.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Spellcaster filter
+    if (criteria.hasSpells !== undefined) {
+      if (creature.hasSpells !== criteria.hasSpells) {
+        return false;
+      }
+    }
+
+    // Legendary Actions filter
+    if (criteria.hasLegendaryActions !== undefined) {
+      if (creature.hasLegendaryActions !== criteria.hasLegendaryActions) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if PF2e creature passes all specified criteria
+   */
+  private passesPF2eCriteria(
+    creature: PF2eCreatureIndex,
+    criteria: {
+      level?: number | { min?: number; max?: number };
+      traits?: string[];
+      rarity?: string;
+      creatureType?: string;
+      size?: string;
+      hasSpells?: boolean;
+    }
+  ): boolean {
+    // Level filter
+    if (criteria.level !== undefined) {
+      if (typeof criteria.level === 'number') {
+        if (creature.level !== criteria.level) {
+          return false;
+        }
+      } else if (typeof criteria.level === 'object') {
+        const { min = -1, max = 25 } = criteria.level;
+        if (creature.level < min || creature.level > max) {
+          return false;
+        }
+      }
+    }
+
+    // Traits filter (creature must have ALL specified traits)
+    if (criteria.traits && criteria.traits.length > 0) {
+      const hasAllTraits = criteria.traits.every(requiredTrait =>
+        creature.traits.some(t => t.toLowerCase() === requiredTrait.toLowerCase())
+      );
+      if (!hasAllTraits) {
+        return false;
+      }
+    }
+
+    // Rarity filter
+    if (criteria.rarity && creature.rarity !== criteria.rarity) {
+      return false;
+    }
+
+    // Creature type filter
+    if (
+      criteria.creatureType &&
+      creature.creatureType.toLowerCase() !== criteria.creatureType.toLowerCase()
+    ) {
+      return false;
+    }
+
+    // Size filter
+    if (criteria.size && creature.size.toLowerCase() !== criteria.size.toLowerCase()) {
+      return false;
+    }
+
+    // Spellcasting filter
+    if (criteria.hasSpells !== undefined && creature.hasSpells !== criteria.hasSpells) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Fallback to basic creature search if enhanced index fails
+   */
+  private async fallbackBasicCreatureSearch(
+    criteria: any,
+    limit: number
+  ): Promise<{ creatures: any[]; searchSummary: any }> {
+    console.warn(`[${this.moduleId}] Falling back to basic search due to enhanced index failure`);
+
+    // Use a simple text-based search as fallback
+    const searchTerms: string[] = [];
+
+    if (criteria.creatureType) {
+      searchTerms.push(criteria.creatureType);
+    }
+
+    if (criteria.challengeRating) {
+      if (typeof criteria.challengeRating === 'number') {
+        // Add CR-based name patterns as fallback
+        if (criteria.challengeRating >= 15) searchTerms.push('ancient', 'legendary');
+        else if (criteria.challengeRating >= 10) searchTerms.push('adult', 'champion');
+        else if (criteria.challengeRating >= 5) searchTerms.push('captain', 'knight');
+      }
+    }
+
+    const searchQuery = searchTerms.join(' ') || 'monster';
+    const basicResults = await this.searchCompendium(searchQuery, 'Actor');
+
+    return {
+      creatures: basicResults.slice(0, limit),
+      searchSummary: {
+        packsSearched: 0,
+        topPacks: [],
+        totalCreaturesFound: basicResults.length,
+        resultsByPack: {},
+        criteria,
+        fallback: true,
+        searchMethod: 'basic_fallback',
+      },
+    };
+  }
+
+  /**
+   * Prioritize compendium packs by likelihood of containing relevant creatures
+   * @unused - Replaced by enhanced persistent index system
+   */
+  // @ts-ignore - Unused method kept for compatibility
+  private prioritizePacksForCreatures(packs: any[]): any[] {
+    const priorityOrder = [
+      // Tier 1: Core D&D 5e content (highest priority)
+      { pattern: /^dnd5e\.monsters/, priority: 100 }, // Core D&D 5e monsters
+      { pattern: /^dnd5e\.actors/, priority: 95 }, // Core D&D 5e actors
+      { pattern: /ddb.*monsters/i, priority: 90 }, // D&D Beyond monsters
+
+      // Tier 2: Official modules and supplements
+      { pattern: /^world\..*ddb.*monsters/i, priority: 85 }, // World-specific DDB monsters
+      { pattern: /monsters/i, priority: 80 }, // Any pack with "monsters"
+
+      // Tier 3: Campaign and adventure content
+      { pattern: /^world\.(?!.*summon|.*hero)/i, priority: 70 }, // World packs (not summons/heroes)
+
+      // Tier 4: Specialized content
+      { pattern: /summon|familiar/i, priority: 40 }, // Summons and familiars
+
+      // Tier 5: Unlikely to contain monsters (lowest priority)
+      { pattern: /hero|player|pc/i, priority: 10 }, // Player characters
+    ];
+
+    return packs.sort((a, b) => {
+      const aScore = this.getPackPriority(a.metadata.id, a.metadata.label, priorityOrder);
+      const bScore = this.getPackPriority(b.metadata.id, b.metadata.label, priorityOrder);
+
+      if (aScore !== bScore) {
+        return bScore - aScore; // Higher score first
+      }
+
+      // Secondary sort by pack label alphabetically
+      return a.metadata.label.localeCompare(b.metadata.label);
+    });
+  }
+
+  /**
+   * Get priority score for a pack based on ID and label
+   */
+  private getPackPriority(
+    packId: string,
+    packLabel: string,
+    priorityOrder: { pattern: RegExp; priority: number }[]
+  ): number {
+    for (const rule of priorityOrder) {
+      if (rule.pattern.test(packId) || rule.pattern.test(packLabel)) {
+        return rule.priority;
+      }
+    }
+    // Default priority for unmatched packs
+    return 50;
+  }
+
+  /**
+   * Check if creature entry passes the given criteria
+   * @unused - Legacy method replaced by passesEnhancedCriteria
+   */
+  // @ts-ignore - Legacy method kept for compatibility
+  private passesCriteria(
+    entry: any,
+    criteria: {
+      challengeRating?: number | { min?: number; max?: number };
+      creatureType?: string;
+      size?: string;
+      hasSpells?: boolean;
+      hasLegendaryActions?: boolean;
+    }
+  ): boolean {
+    const system = entry.system || {};
+
+    // Challenge Rating filter - enhanced extraction
+    if (criteria.challengeRating !== undefined) {
+      // Try multiple possible CR locations in D&D 5e data structure
+      let entryCR =
+        system.details?.cr?.value || system.details?.cr || system.cr?.value || system.cr || 0;
+
+      // Handle fractional CRs (common in D&D 5e)
+      if (typeof entryCR === 'string') {
+        if (entryCR === '1/8') entryCR = 0.125;
+        else if (entryCR === '1/4') entryCR = 0.25;
+        else if (entryCR === '1/2') entryCR = 0.5;
+        else entryCR = parseFloat(entryCR) || 0;
+      }
+
+      if (typeof criteria.challengeRating === 'number') {
+        if (entryCR !== criteria.challengeRating) {
+          return false;
+        }
+      } else if (typeof criteria.challengeRating === 'object') {
+        const { min = 0, max = 30 } = criteria.challengeRating;
+        if (entryCR < min || entryCR > max) {
+          return false;
+        }
+      }
+    }
+
+    // Creature Type filter - enhanced extraction
+    if (criteria.creatureType) {
+      // Try multiple possible type locations in D&D 5e data structure
+      const entryType =
+        system.details?.type?.value ||
+        system.details?.type ||
+        system.type?.value ||
+        system.type ||
+        '';
+      if (entryType.toLowerCase() !== criteria.creatureType.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Size filter
+    if (criteria.size) {
+      const entrySize = system.traits?.size || system.size || '';
+      if (entrySize.toLowerCase() !== criteria.size.toLowerCase()) return false;
+    }
+
+    // Spellcaster filter
+    if (criteria.hasSpells !== undefined) {
+      const isSpellcaster = !!(
+        system.spells ||
+        system.attributes?.spellcasting ||
+        (system.details?.spellLevel && system.details.spellLevel > 0)
+      );
+      if (isSpellcaster !== criteria.hasSpells) return false;
+    }
+
+    // Legendary Actions filter
+    if (criteria.hasLegendaryActions !== undefined) {
+      const hasLegendary = !!(
+        system.resources?.legact ||
+        system.legendary ||
+        (system.resources?.legres && system.resources.legres.value > 0)
+      );
+      if (hasLegendary !== criteria.hasLegendaryActions) return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Simple name/description-based matching for creatures using index data only
+   */
+  private matchesSearchCriteria(
+    entry: any,
+    criteria: {
+      searchTerms?: string[];
+      excludeTerms?: string[];
+      size?: string;
+      hasSpells?: boolean;
+      hasLegendaryActions?: boolean;
+    }
+  ): boolean {
+    const name = (entry.name || '').toLowerCase();
+    const description = (entry.description || '').toLowerCase();
+    const searchText = `${name} ${description}`;
+
+    // Include terms - at least one must match
+    if (criteria.searchTerms && criteria.searchTerms.length > 0) {
+      const hasMatch = criteria.searchTerms.some(term => searchText.includes(term.toLowerCase()));
+      if (!hasMatch) {
+        return false;
+      }
+    }
+
+    // Exclude terms - none should match
+    if (criteria.excludeTerms && criteria.excludeTerms.length > 0) {
+      const hasExcluded = criteria.excludeTerms.some(term =>
+        searchText.includes(term.toLowerCase())
+      );
+      if (hasExcluded) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * List all actors with basic information
+   */
+  async listActors(): Promise<Array<{ id: string; name: string; type: string; img?: string }>> {
+    return game.actors.map(actor => ({
+      id: actor.id || '',
+      name: actor.name || '',
+      type: actor.type,
+      ...(actor.img ? { img: actor.img } : {}),
+    }));
+  }
+
+  /**
+   * Get active scene information
+   */
+  async getActiveScene(): Promise<SceneInfo> {
+    const scene = (game.scenes as any).current;
+    if (!scene) {
+      throw new Error(ERROR_MESSAGES.SCENE_NOT_FOUND);
+    }
+
+    const sceneData: SceneInfo = {
+      id: scene.id,
+      name: scene.name,
+      img: scene.img || undefined,
+      background: scene._source?.background?.src || undefined,
+      width: scene.width,
+      height: scene.height,
+      padding: scene.padding,
+      active: scene.active,
+      navigation: scene.navigation,
+      tokens: scene.tokens.map((token: any) => ({
+        id: token.id,
+        name: token.name,
+        x: token.x,
+        y: token.y,
+        width: token.width,
+        height: token.height,
+        actorId: token.actorId || undefined,
+        img: token.texture?.src || '',
+        hidden: token.hidden,
+        disposition: this.getTokenDisposition(token.disposition),
+      })),
+      walls: scene.walls.size,
+      lights: scene.lights.size,
+      sounds: scene.sounds.size,
+      notes: scene.notes.map((note: any) => ({
+        id: note.id,
+        text: note.text || '',
+        x: note.x,
+        y: note.y,
+      })),
+    };
+
+    return sceneData;
+  }
+
+  /**
+   * Get world information
+   */
+  async getWorldInfo(): Promise<WorldInfo> {
+    // World info doesn't require special permissions as it's basic metadata
+
+    return {
+      id: game.world.id,
+      title: game.world.title,
+      system: game.system.id,
+      systemVersion: game.system.version,
+      foundryVersion: game.version,
+      users: game.users.map(user => ({
+        id: user.id || '',
+        name: user.name || '',
+        active: user.active,
+        isGM: user.isGM,
+      })),
+    };
+  }
+
+  /**
+   * Get available compendium packs
+   */
+  async getAvailablePacks() {
+    return Array.from(game.packs.values()).map(pack => ({
+      id: pack.metadata.id,
+      label: pack.metadata.label,
+      type: pack.metadata.type,
+      system: pack.metadata.system,
+      private: pack.metadata.private,
+    }));
+  }
+
+  /**
+   * Sanitize data to remove sensitive information and make it JSON-safe
+   */
+  private sanitizeData(data: any): any {
+    if (data === null || data === undefined) {
+      return data;
+    }
+
+    if (typeof data !== 'object') {
+      return data;
+    }
+
+    try {
+      // removeSensitiveFields now returns a sanitized copy
+      const sanitized = this.removeSensitiveFields(data);
+
+      // Use custom JSON serializer to avoid deprecated property warnings
+      const jsonString = this.safeJSONStringify(sanitized);
+      return JSON.parse(jsonString);
+    } catch (error) {
+      console.warn(`[${this.moduleId}] Failed to sanitize data:`, error);
+      return {};
+    }
+  }
+
+  /**
+   * Remove sensitive fields from data object with circular reference protection
+   * Returns a sanitized copy instead of modifying the original
+   */
+  private removeSensitiveFields(
+    obj: any,
+    visited: WeakSet<object> = new WeakSet(),
+    depth: number = 0
+  ): any {
+    // Handle primitives
+    if (obj === null || typeof obj !== 'object') {
+      return obj;
+    }
+
+    // Safety depth limit to prevent extremely deep recursion
+    if (depth > 50) {
+      console.warn(`[${this.moduleId}] Sanitization depth limit reached at depth ${depth}`);
+      return '[Max depth reached]';
+    }
+
+    // Check for circular reference
+    if (visited.has(obj)) {
+      return '[Circular Reference]';
+    }
+
+    // Mark this object as visited
+    visited.add(obj);
+
+    try {
+      // Handle arrays
+      if (Array.isArray(obj)) {
+        return obj.map(item => this.removeSensitiveFields(item, visited, depth + 1));
+      }
+
+      // Create a new sanitized object
+      const sanitized: any = {};
+
+      // Use Object.keys (does not invoke getters) so we can filter deprecated
+      // accessor properties before reading their values.
+      const keys = Object.keys(obj);
+
+      // dnd5e 5.3 moved senses.darkvision/blindsight/tremorsense/truesight to
+      // senses.ranges.*. The legacy keys remain as deprecated getters that
+      // log a warning when read. Detect this shape and skip the legacy keys.
+      const DEPRECATED_DND5E_SENSE_KEYS = ['darkvision', 'blindsight', 'tremorsense', 'truesight'];
+      const isDnd5eSensesShape =
+        keys.includes('ranges') && keys.some(k => DEPRECATED_DND5E_SENSE_KEYS.includes(k));
+
+      for (const key of keys) {
+        // Skip sensitive and problematic fields entirely
+        if (this.isSensitiveOrProblematicField(key)) {
+          continue;
+        }
+
+        // Skip most private properties except essential ones.
+        // _stats (Foundry document audit metadata) and _source (raw stored data
+        // duplicate) are bloat in tool output; we keep only _id.
+        if (key.startsWith('_') && key !== '_id') {
+          continue;
+        }
+
+        if (isDnd5eSensesShape && DEPRECATED_DND5E_SENSE_KEYS.includes(key)) {
+          continue;
+        }
+
+        // Recursively sanitize the value (read only after filter to avoid getter-triggered warnings)
+        sanitized[key] = this.removeSensitiveFields(obj[key], visited, depth + 1);
+      }
+
+      return sanitized;
+    } catch (error) {
+      console.warn(`[${this.moduleId}] Error during sanitization at depth ${depth}:`, error);
+      return '[Sanitization failed]';
+    }
+  }
+
+  /**
+   * Check if a field should be excluded from sanitized output
+   */
+  private isSensitiveOrProblematicField(key: string): boolean {
+    const sensitiveKeys = [
+      'password',
+      'token',
+      'secret',
+      'key',
+      'auth',
+      'credential',
+      'session',
+      'cookie',
+      'private',
+    ];
+
+    const problematicKeys = [
+      'parent',
+      '_parent',
+      'collection',
+      'apps',
+      'document',
+      '_document',
+      'constructor',
+      'prototype',
+      '__proto__',
+      'valueOf',
+      'toString',
+      // dnd5e item leveling metadata; full of cycles back to the actor and other items.
+      // Not gameplay-relevant for LLM consumers.
+      'advancement',
+    ];
+
+    // Skip deprecated ability save properties that trigger warnings
+    const deprecatedKeys = [
+      'save', // Skip the deprecated 'save' property on abilities
+    ];
+
+    return (
+      sensitiveKeys.includes(key) || problematicKeys.includes(key) || deprecatedKeys.includes(key)
+    );
+  }
+
+  /**
+   * Custom JSON serializer that handles Foundry objects safely
+   */
+  private safeJSONStringify(obj: any): string {
+    try {
+      return JSON.stringify(obj, (key, value) => {
+        // Skip deprecated properties during JSON serialization
+        if (key === 'save' && typeof value === 'object' && value !== null) {
+          // If this looks like a deprecated ability save object, skip it
+          return undefined;
+        }
+        return value;
+      });
+    } catch (error) {
+      console.warn(`[${this.moduleId}] JSON stringify failed, using fallback:`, error);
+      return '{}';
+    }
+  }
+
+  /**
+   * Get token disposition as number
+   */
+  private getTokenDisposition(disposition: any): number {
+    if (typeof disposition === 'number') {
+      return disposition;
+    }
+
+    // Default to neutral if unknown
+    return TOKEN_DISPOSITIONS.NEUTRAL;
+  }
+
+  /**
+   * Validate that Foundry is ready and world is active
+   */
+  validateFoundryState(): void {
+    if (!game?.ready) {
+      throw new Error('Foundry VTT is not ready');
+    }
+
+    if (!game.world) {
+      throw new Error('No active world');
+    }
+
+    if (!game.user) {
+      throw new Error('No active user');
+    }
+  }
+
+  /**
+   * Audit log for write operations
+   */
+  private auditLog(
+    operation: string,
+    data: any,
+    result: 'success' | 'failure',
+    error?: string
+  ): void {
+    // Always audit write operations (no setting required)
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      operation,
+      user: game.user?.name || 'Unknown',
+      userId: game.user?.id || 'unknown',
+      world: game.world?.id || 'unknown',
+      data: this.sanitizeData(data),
+      result,
+      error,
+    };
+
+    // Store in flags for persistence (optional)
+    if (game.world && (game.world as any).setFlag) {
+      const auditLogs = (game.world as any).getFlag(this.moduleId, 'auditLogs') || [];
+      auditLogs.push(logEntry);
+
+      // Keep only last 100 entries to prevent bloat
+      if (auditLogs.length > 100) {
+        auditLogs.splice(0, auditLogs.length - 100);
+      }
+
+      (game.world as any).setFlag(this.moduleId, 'auditLogs', auditLogs);
+    }
+  }
+
+  // ===== PHASE 2 & 3: WRITE OPERATIONS =====
+
+  /**
+   * Create journal entry for quests, with optional additional pages
+   */
+  async createJournalEntry(request: {
+    name: string;
+    content: string;
+    folderName?: string;
+    additionalPages?: Array<{ name: string; content: string }>;
+  }): Promise<{ id: string; name: string; pageCount: number }> {
+    this.validateFoundryState();
+
+    // Use permission system for journal creation
+    const permissionCheck = permissionManager.checkWritePermission('createActor', {
+      quantity: 1, // Treat journal creation similar to actor creation for permissions
+    });
+
+    if (!permissionCheck.allowed) {
+      throw new Error(`Journal creation denied: ${permissionCheck.reason}`);
+    }
+
+    try {
+      // Build pages array: main page + any additional pages
+      const pages: Array<{ type: string; name: string; text: { content: string } }> = [
+        {
+          type: 'text',
+          name: 'Quest Details',
+          text: {
+            content: request.content,
+          },
+        },
+      ];
+
+      if (request.additionalPages) {
+        for (const page of request.additionalPages) {
+          pages.push({
+            type: 'text',
+            name: page.name,
+            text: {
+              content: page.content,
+            },
+          });
+        }
+      }
+
+      // Create journal entry with proper Foundry v13 structure
+      const journalData = {
+        name: request.name,
+        pages,
+        ownership: { default: 0 }, // GM only by default
+        folder: await this.getOrCreateFolder(request.folderName || request.name, 'JournalEntry'),
+      };
+
+      const journal = await JournalEntry.create(journalData);
+
+      if (!journal) {
+        throw new Error('Failed to create journal entry');
+      }
+
+      const result = {
+        id: journal.id,
+        name: journal.name || request.name,
+        pageCount: pages.length,
+      };
+
+      this.auditLog('createJournalEntry', request, 'success');
+      return result;
+    } catch (error) {
+      this.auditLog(
+        'createJournalEntry',
+        request,
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Create a clean JournalEntry from an explicit list of pages.
+   * Unlike createJournalEntry, this does NOT prepend a "Quest Details" page.
+   * Each page's content is stored verbatim.
+   */
+  async createCleanJournal(request: {
+    name: string;
+    folderName?: string;
+    pages: Array<{ name: string; content: string }>;
+  }): Promise<{ id: string; name: string; pageCount: number }> {
+    this.validateFoundryState();
+
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Journal creation denied: ${permissionCheck.reason}`);
+    }
+
+    try {
+      const pages = (request.pages || []).map(p => ({
+        type: 'text',
+        name: p.name,
+        text: { content: p.content },
+      }));
+
+      const journalData = {
+        name: request.name,
+        pages,
+        ownership: { default: 0 },
+        folder: await this.getOrCreateFolder(request.folderName || request.name, 'JournalEntry'),
+      };
+
+      const journal = await JournalEntry.create(journalData);
+      if (!journal) {
+        throw new Error('Failed to create journal entry');
+      }
+
+      this.auditLog('createCleanJournal', request, 'success');
+      return { id: journal.id, name: journal.name || request.name, pageCount: pages.length };
+    } catch (error) {
+      this.auditLog(
+        'createCleanJournal',
+        request,
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Permanently delete a single page from a journal entry.
+   */
+  async deleteJournalPage(request: {
+    journalId: string;
+    pageId: string;
+  }): Promise<{ success: boolean; deletedPageId: string }> {
+    this.validateFoundryState();
+
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Journal page delete denied: ${permissionCheck.reason}`);
+    }
+
+    const journal = game.journal.get(request.journalId);
+    if (!journal) {
+      throw new Error('Journal entry not found');
+    }
+    const page = journal.pages.get(request.pageId);
+    if (!page) {
+      throw new Error(`Page not found: ${request.pageId}`);
+    }
+    await page.delete();
+    this.auditLog('deleteJournalPage', request, 'success');
+    return { success: true, deletedPageId: request.pageId };
+  }
+
+  /**
+   * Permanently delete an entire journal entry (all pages).
+   */
+  async deleteJournalEntry(request: {
+    journalId: string;
+  }): Promise<{ success: boolean; deletedJournalId: string }> {
+    this.validateFoundryState();
+
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Journal delete denied: ${permissionCheck.reason}`);
+    }
+
+    const journal = game.journal.get(request.journalId);
+    if (!journal) {
+      throw new Error('Journal entry not found');
+    }
+    const name = journal.name;
+    await journal.delete();
+    this.auditLog('deleteJournalEntry', request, 'success');
+    return { success: true, deletedJournalId: request.journalId, deletedName: name } as any;
+  }
+
+  /**
+   * List all journal entries with page metadata
+   */
+  async listJournals(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      type: string;
+      pageCount: number;
+      pages: Array<{ id: string; name: string; type: string }>;
+    }>
+  > {
+    this.validateFoundryState();
+
+    return game.journal.map((journal: any) => ({
+      id: journal.id || '',
+      name: journal.name || '',
+      type: 'JournalEntry',
+      pageCount: journal.pages?.size || 0,
+      pages:
+        journal.pages?.map((page: any) => ({
+          id: page.id || '',
+          name: page.name || '',
+          type: page.type || 'text',
+        })) || [],
+    }));
+  }
+
+  /**
+   * Get journal entry content (first text page + page manifest)
+   */
+  async getJournalContent(journalId: string): Promise<{
+    content: string;
+    currentPage?: { id: string; name: string } | undefined;
+    allPages: Array<{ id: string; name: string; type: string }>;
+    pageCount: number;
+    note?: string | undefined;
+  } | null> {
+    this.validateFoundryState();
+
+    const journal = game.journal.get(journalId);
+    if (!journal) {
+      return null;
+    }
+
+    const allPages =
+      journal.pages?.map((page: any) => ({
+        id: page.id || '',
+        name: page.name || '',
+        type: page.type || 'text',
+      })) || [];
+    const pageCount = allPages.length;
+
+    // Get first text page content
+    const firstPage = journal.pages.find((page: any) => page.type === 'text');
+    if (!firstPage) {
+      return { content: '', allPages, pageCount };
+    }
+
+    return {
+      content: firstPage.text?.content || '',
+      currentPage: { id: firstPage.id || '', name: firstPage.name || '' },
+      allPages,
+      pageCount,
+      note:
+        pageCount > 1
+          ? `This journal has ${pageCount} pages. Use list-journals with journalId and pageId to read other pages: ${allPages.map((p: any) => `"${p.name}" (${p.id})`).join(', ')}`
+          : undefined,
+    };
+  }
+
+  /**
+   * Get a specific journal page's content by ID
+   */
+  async getJournalPageContent(
+    journalId: string,
+    pageId: string
+  ): Promise<{ id: string; name: string; type: string; content: string } | null> {
+    this.validateFoundryState();
+
+    const journal = game.journal.get(journalId);
+    if (!journal) {
+      return null;
+    }
+
+    const page = journal.pages.get(pageId);
+    if (!page) {
+      return null;
+    }
+
+    return {
+      id: page.id || '',
+      name: page.name || '',
+      type: page.type || 'text',
+      content: page.type === 'text' ? page.text?.content || '' : page.src || '',
+    };
+  }
+
+  /**
+   * Update journal entry content
+   * - No pageId/newPageName: update first text page (backward compat)
+   * - With pageId: update that specific page
+   * - With newPageName (no pageId): create a new page
+   */
+  async updateJournalContent(request: {
+    journalId: string;
+    content: string;
+    pageId?: string | undefined;
+    newPageName?: string | undefined;
+  }): Promise<{ success: boolean; pageId?: string | undefined; pageName?: string | undefined }> {
+    this.validateFoundryState();
+
+    // Use permission system for journal updates - treating as createActor permission level
+    const permissionCheck = permissionManager.checkWritePermission('createActor', {
+      quantity: 1, // Treat journal updates similar to actor creation for permissions
+    });
+
+    if (!permissionCheck.allowed) {
+      throw new Error(`Journal update denied: ${permissionCheck.reason}`);
+    }
+
+    try {
+      const journal = game.journal.get(request.journalId);
+      if (!journal) {
+        throw new Error('Journal entry not found');
+      }
+
+      // Mode 1: Create a new page
+      if (request.newPageName) {
+        const created = await journal.createEmbeddedDocuments('JournalEntryPage', [
+          {
+            type: 'text',
+            name: request.newPageName,
+            text: {
+              content: request.content,
+            },
+          },
+        ]);
+        const newPage = created?.[0];
+        this.auditLog('updateJournalContent', request, 'success');
+        return { success: true, pageId: newPage?.id || '', pageName: request.newPageName };
+      }
+
+      // Mode 2: Update a specific page by ID
+      if (request.pageId) {
+        const page = journal.pages.get(request.pageId);
+        if (!page) {
+          throw new Error(`Page not found: ${request.pageId}`);
+        }
+        await page.update({
+          'text.content': request.content,
+        });
+        this.auditLog('updateJournalContent', request, 'success');
+        return { success: true, pageId: page.id, pageName: page.name };
+      }
+
+      // Mode 3: Update first text page or create one if none exists (backward compat)
+      const firstPage = journal.pages.find((page: any) => page.type === 'text');
+
+      if (firstPage) {
+        // Update existing page
+        await firstPage.update({
+          'text.content': request.content,
+        });
+        this.auditLog('updateJournalContent', request, 'success');
+        return { success: true, pageId: firstPage.id, pageName: firstPage.name };
+      } else {
+        // Create new text page
+        const created = await journal.createEmbeddedDocuments('JournalEntryPage', [
+          {
+            type: 'text',
+            name: 'Quest Details',
+            text: {
+              content: request.content,
+            },
+          },
+        ]);
+        const newPage = created?.[0];
+        this.auditLog('updateJournalContent', request, 'success');
+        return { success: true, pageId: newPage?.id || '', pageName: 'Quest Details' };
+      }
+    } catch (error) {
+      this.auditLog(
+        'updateJournalContent',
+        request,
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Create actors from compendium entries with custom names
+   */
+  async createActorFromCompendium(request: ActorCreationRequest): Promise<ActorCreationResult> {
+    this.validateFoundryState();
+
+    // Use new permission system
+    const permissionCheck = permissionManager.checkWritePermission('createActor', {
+      quantity: request.quantity || 1,
+    });
+
+    if (!permissionCheck.allowed) {
+      throw new Error(`${ERROR_MESSAGES.ACCESS_DENIED}: ${permissionCheck.reason}`);
+    }
+
+    // Audit the permission check
+    permissionManager.auditPermissionCheck('createActor', permissionCheck, request);
+
+    const maxActors = game.settings.get(this.moduleId, 'maxActorsPerRequest') as number;
+    const quantity = Math.min(request.quantity || 1, maxActors);
+
+    // Start transaction for rollback capability
+    const transactionId = transactionManager.startTransaction(
+      `Create ${quantity} actor(s) from compendium: ${request.creatureType}`
+    );
+
+    try {
+      // Find matching compendium entry
+      const compendiumEntry = await this.findBestCompendiumMatch(
+        request.creatureType,
+        request.packPreference
+      );
+      if (!compendiumEntry) {
+        throw new Error(`No compendium entry found for "${request.creatureType}"`);
+      }
+
+      // Get full compendium document
+      const sourceDoc = await this.getCompendiumDocumentFull(
+        compendiumEntry.pack,
+        compendiumEntry.id
+      );
+
+      const createdActors: CreatedActorInfo[] = [];
+      const errors: string[] = [];
+
+      // Create actors with custom names
+      for (let i = 0; i < quantity; i++) {
+        try {
+          const customName =
+            request.customNames?.[i] ||
+            (quantity > 1 ? `${sourceDoc.name} ${i + 1}` : sourceDoc.name);
+
+          const newActor = await this.createActorFromSource(sourceDoc, customName);
+
+          // Track actor creation for rollback
+          transactionManager.addAction(
+            transactionId,
+            transactionManager.createActorCreationAction(newActor.id)
+          );
+
+          createdActors.push({
+            id: newActor.id,
+            name: newActor.name,
+            originalName: sourceDoc.name,
+            type: newActor.type,
+            sourcePackId: compendiumEntry.pack,
+            sourcePackLabel: compendiumEntry.packLabel,
+            img: newActor.img,
+          });
+        } catch (error) {
+          errors.push(
+            `Failed to create actor ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+
+      let tokensPlaced = 0;
+
+      // Add to scene if requested and permission allows
+      if (request.addToScene && createdActors.length > 0) {
+        try {
+          const scenePermissionCheck = permissionManager.checkWritePermission('modifyScene', {
+            targetIds: createdActors.map(a => a.id),
+          });
+
+          if (!scenePermissionCheck.allowed) {
+            errors.push(`Cannot add to scene: ${scenePermissionCheck.reason}`);
+          } else {
+            const tokenResult = await this.addActorsToScene(
+              {
+                actorIds: createdActors.map(a => a.id),
+                placement: 'random',
+                hidden: false,
+              },
+              transactionId
+            );
+            tokensPlaced = tokenResult.tokensCreated;
+          }
+        } catch (error) {
+          errors.push(
+            `Failed to add actors to scene: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+
+      // If we had partial failure, decide whether to rollback
+      if (errors.length > 0 && createdActors.length < quantity) {
+        // Rollback if we failed to create more than half the requested actors
+        if (createdActors.length < quantity / 2) {
+          console.warn(
+            `[${this.moduleId}] Rolling back due to significant failures (${createdActors.length}/${quantity} created)`
+          );
+          await transactionManager.rollbackTransaction(transactionId);
+          throw new Error(`Actor creation failed: ${errors.join(', ')}`);
+        }
+      }
+
+      // Commit transaction
+      transactionManager.commitTransaction(transactionId);
+
+      const result: ActorCreationResult = {
+        success: createdActors.length > 0,
+        actors: createdActors,
+        ...(errors.length > 0 ? { errors } : {}),
+        tokensPlaced,
+        totalRequested: quantity,
+        totalCreated: createdActors.length,
+      };
+
+      this.auditLog('createActorFromCompendium', request, 'success');
+      return result;
+    } catch (error) {
+      // Rollback on complete failure
+      try {
+        await transactionManager.rollbackTransaction(transactionId);
+      } catch (rollbackError) {
+        console.error(`[${this.moduleId}] Failed to rollback transaction:`, rollbackError);
+      }
+
+      this.auditLog(
+        'createActorFromCompendium',
+        request,
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Create actor from specific compendium entry using pack/item IDs
+   */
+  async createActorFromCompendiumEntry(request: {
+    packId: string;
+    itemId: string;
+    customNames: string[];
+    quantity?: number;
+    addToScene?: boolean;
+    placement?: {
+      type: 'random' | 'grid' | 'center' | 'coordinates';
+      coordinates?: { x: number; y: number }[];
+    };
+  }): Promise<ActorCreationResult> {
+    this.validateFoundryState();
+
+    try {
+      const { packId, itemId, customNames, quantity = 1, addToScene = false, placement } = request;
+
+      // Validate inputs
+      if (!packId || !itemId) {
+        throw new Error('Both packId and itemId are required');
+      }
+
+      // Get the pack
+      const pack = game.packs.get(packId);
+      if (!pack) {
+        throw new Error(`Compendium pack "${packId}" not found`);
+      }
+
+      // Get the specific document
+      const sourceDocument = await pack.getDocument(itemId);
+      if (!sourceDocument) {
+        throw new Error(`Document "${itemId}" not found in pack "${packId}"`);
+      }
+
+      // Validate that the document is an Actor (supports character, npc, creature, etc.)
+      if (sourceDocument.documentName !== 'Actor') {
+        throw new Error(
+          `Document "${itemId}" is not an Actor (documentName: ${sourceDocument.documentName}, type: ${sourceDocument.type})`
+        );
+      }
+
+      // Validate actor type - support all common actor types including DSA5 creatures
+      // and Cosmere RPG adversaries.
+      const validActorTypes = ['character', 'npc', 'creature', 'adversary'];
+      if (!validActorTypes.includes(sourceDocument.type)) {
+        throw new Error(
+          `Document "${itemId}" has unsupported actor type: ${sourceDocument.type}. Supported types: ${validActorTypes.join(', ')}`
+        );
+      }
+
+      const sourceActor = sourceDocument as Actor;
+
+      // Prepare custom names
+      const names = customNames.length > 0 ? customNames : [`${sourceActor.name} Copy`];
+      const finalQuantity = Math.min(quantity, names.length);
+
+      const createdActors: any[] = [];
+      const errors: string[] = [];
+
+      // Create actors
+      for (let i = 0; i < finalQuantity; i++) {
+        try {
+          const customName = names[i] || `${sourceActor.name} ${i + 1}`;
+
+          // Create actor data with full system, items, and effects
+          const sourceData = sourceActor.toObject() as any;
+          const actorData = {
+            name: customName,
+            type: sourceData.type,
+            img: sourceData.img,
+            system: sourceData.system || sourceData.data || {},
+            items: sourceData.items || [],
+            effects: sourceData.effects || [],
+            folder: null, // Don't inherit folder
+            prototypeToken: sourceData.prototypeToken, // Include prototype token
+          };
+
+          // Fix remote image URLs - normalize to local paths
+          if (actorData.prototypeToken?.texture?.src?.startsWith('http')) {
+            actorData.prototypeToken.texture.src = null; // Clear remote URL
+          }
+
+          // Organize created actors in a folder - use "Foundry MCP Creatures" for generic monsters
+          const folderId = await this.getOrCreateFolder('Foundry MCP Creatures', 'Actor');
+          if (folderId) {
+            (actorData as any).folder = folderId;
+          }
+
+          // Create the actor
+          const newActor = await Actor.create(actorData);
+          if (!newActor) {
+            throw new Error(`Failed to create actor "${customName}"`);
+          }
+
+          createdActors.push({
+            id: newActor.id,
+            name: newActor.name,
+            originalName: sourceActor.name,
+            sourcePackLabel: pack.metadata.label,
+          });
+        } catch (error) {
+          const errorMsg = `Failed to create actor ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          errors.push(errorMsg);
+          console.error(`[${MODULE_ID}] ${errorMsg}`, error);
+        }
+      }
+
+      // Add to scene if requested
+      let tokensPlaced = 0;
+      if (addToScene && createdActors.length > 0) {
+        try {
+          const sceneResult = await this.addActorsToScene({
+            actorIds: createdActors.map(a => a.id),
+            placement: placement?.type || 'grid',
+            hidden: false,
+            ...(placement?.coordinates && { coordinates: placement.coordinates }),
+          });
+          tokensPlaced = sceneResult.success ? sceneResult.tokensCreated : 0;
+        } catch (error) {
+          errors.push(
+            `Failed to add actors to scene: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+
+      const result: ActorCreationResult = {
+        success: createdActors.length > 0,
+        totalCreated: createdActors.length,
+        totalRequested: finalQuantity,
+        actors: createdActors,
+        tokensPlaced,
+        errors: errors.length > 0 ? errors : undefined,
+      };
+
+      this.auditLog('createActorFromCompendiumEntry', request, 'success');
+      return result;
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Failed to create actor from compendium entry`, error);
+      this.auditLog(
+        'createActorFromCompendiumEntry',
+        request,
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Add one or more freshly-authored Item documents to an existing Actor.
+   *
+   * Unlike `createActorFromCompendium*`, the items here are constructed from
+   * caller-supplied data — no compendium lookup. This is the path used to
+   * push planner-authored content (talents, actions, powers, custom gear)
+   * onto a PC or NPC sheet.
+   *
+   * Validation is intentionally light: name + type are required, and the
+   * type is checked against the active system's declared Item document
+   * types when available. Everything else (system schema validation,
+   * required sub-fields) is delegated to Foundry's DataModel layer, which
+   * will fill defaults or throw a meaningful error.
+   */
+  async addActorItems(params: {
+    actorIdentifier: string;
+    items: Array<{
+      name: string;
+      type: string;
+      img?: string;
+      system?: Record<string, any>;
+    }>;
+  }): Promise<{
+    actorId: string;
+    actorName: string;
+    created: Array<{ id: string; name: string; type: string }>;
+  }> {
+    this.validateFoundryState();
+
+    const { actorIdentifier, items } = params;
+
+    if (!actorIdentifier) {
+      throw new Error('actorIdentifier is required');
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('items array is required and must contain at least one entry');
+    }
+
+    const actor = this.findActorByIdentifier(actorIdentifier);
+    if (!actor) {
+      throw new Error(`Actor not found: ${actorIdentifier}`);
+    }
+
+    // Discover the active system's declared Item types so we can give a
+    // useful error before sending the doc to Foundry's DataModel layer.
+    const itemDocTypes = (game as any).system?.documentTypes?.Item;
+    const validTypes: string[] | null =
+      itemDocTypes && typeof itemDocTypes === 'object' ? Object.keys(itemDocTypes) : null;
+
+    const payload = items.map((it, idx) => {
+      if (!it || typeof it.name !== 'string' || it.name.trim().length === 0) {
+        throw new Error(`items[${idx}]: "name" is required and must be a non-empty string`);
+      }
+      if (typeof it.type !== 'string' || it.type.trim().length === 0) {
+        throw new Error(`items[${idx}] ("${it.name}"): "type" is required`);
+      }
+      if (validTypes && !validTypes.includes(it.type)) {
+        throw new Error(
+          `items[${idx}] ("${it.name}"): unknown type "${it.type}" for system "${(game.system as any)?.id}". ` +
+            `Valid Item types: ${validTypes.join(', ')}`
+        );
+      }
+
+      const doc: Record<string, any> = { name: it.name, type: it.type };
+      if (it.img) doc.img = it.img;
+      if (it.system && typeof it.system === 'object') doc.system = it.system;
+      return doc;
+    });
+
+    try {
+      const created = await actor.createEmbeddedDocuments('Item', payload);
+
+      const result = {
+        actorId: actor.id,
+        actorName: actor.name,
+        created: (created || []).map((doc: any) => ({
+          id: doc.id,
+          name: doc.name,
+          type: doc.type,
+        })),
+      };
+
+      this.auditLog(
+        'addActorItems',
+        { actorIdentifier, actorId: actor.id, count: payload.length },
+        'success'
+      );
+      return result;
+    } catch (error) {
+      this.auditLog(
+        'addActorItems',
+        { actorIdentifier, actorId: actor.id, count: payload.length },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Remove embedded Items from an existing Actor.
+   *
+   * Items can be named by id (exact, reliable) and/or by name (case-insensitive,
+   * optionally constrained to a `type` to disambiguate). Names that match nothing
+   * are reported back rather than silently ignored. This is the counterpart to
+   * `addActorItems` — useful for clearing stray items added with the wrong type.
+   */
+  async removeActorItems(params: {
+    actorIdentifier: string;
+    itemIds?: string[];
+    itemNames?: string[];
+    type?: string;
+  }): Promise<{
+    actorId: string;
+    actorName: string;
+    removed: Array<{ id: string; name: string; type: string }>;
+    notFound: string[];
+  }> {
+    this.validateFoundryState();
+
+    const { actorIdentifier, itemIds, itemNames, type } = params;
+
+    if (!actorIdentifier) {
+      throw new Error('actorIdentifier is required');
+    }
+    const hasIds = Array.isArray(itemIds) && itemIds.length > 0;
+    const hasNames = Array.isArray(itemNames) && itemNames.length > 0;
+    if (!hasIds && !hasNames) {
+      throw new Error('Provide itemIds and/or itemNames identifying the items to remove');
+    }
+
+    const actor = this.findActorByIdentifier(actorIdentifier);
+    if (!actor) {
+      throw new Error(`Actor not found: ${actorIdentifier}`);
+    }
+
+    const typeLower = type?.toLowerCase();
+    const toDelete = new Map<string, any>(); // id -> item (dedupes overlap)
+    const notFound: string[] = [];
+
+    if (hasIds) {
+      for (const id of itemIds) {
+        const item = actor.items.get(id);
+        if (item) toDelete.set(item.id, item);
+        else notFound.push(id);
+      }
+    }
+    if (hasNames) {
+      for (const name of itemNames) {
+        const nameLower = name.toLowerCase();
+        const item = actor.items.find(
+          (i: any) => i.name?.toLowerCase() === nameLower && (!typeLower || i.type === typeLower)
+        );
+        if (item) toDelete.set(item.id, item);
+        else notFound.push(name);
+      }
+    }
+
+    if (toDelete.size === 0) {
+      return { actorId: actor.id, actorName: actor.name, removed: [], notFound };
+    }
+
+    const removed = Array.from(toDelete.values()).map((i: any) => ({
+      id: i.id,
+      name: i.name,
+      type: i.type,
+    }));
+
+    try {
+      await actor.deleteEmbeddedDocuments(
+        'Item',
+        removed.map(r => r.id)
+      );
+      this.auditLog(
+        'removeActorItems',
+        { actorIdentifier, actorId: actor.id, count: removed.length },
+        'success'
+      );
+      return { actorId: actor.id, actorName: actor.name, removed, notFound };
+    } catch (error) {
+      this.auditLog(
+        'removeActorItems',
+        { actorIdentifier, actorId: actor.id, count: removed.length },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * List world-level Item documents from the Items sidebar.
+   * Optionally filters by type, folder (name or id), or a case-insensitive name substring.
+   */
+  async listWorldItems(params: { type?: string; folder?: string; nameFilter?: string }): Promise<
+    Array<{
+      id: string;
+      name: string;
+      type: string;
+      img?: string;
+      folderId: string | null;
+      folderName: string | null;
+    }>
+  > {
+    this.validateFoundryState();
+
+    const { type, folder, nameFilter } = params;
+    const nameLower = nameFilter ? nameFilter.toLowerCase() : null;
+
+    // Resolve folder filter to an id if a name/id was provided
+    let folderId: string | null = null;
+    if (folder && folder.trim().length > 0) {
+      const folderTrimmed = folder.trim();
+      const folderDoc =
+        (game as any).folders?.find(
+          (f: any) => f.type === 'Item' && (f.name === folderTrimmed || f.id === folderTrimmed)
+        ) ?? null;
+      if (!folderDoc) {
+        return [];
+      }
+      folderId = folderDoc.id;
+    }
+
+    const result: Array<{
+      id: string;
+      name: string;
+      type: string;
+      img?: string;
+      folderId: string | null;
+      folderName: string | null;
+    }> = [];
+
+    for (const item of (game as any).items) {
+      if (type && item.type !== type) continue;
+      if (folderId && item.folder?.id !== folderId) continue;
+      if (nameLower && !(item.name ?? '').toLowerCase().includes(nameLower)) continue;
+
+      result.push({
+        id: item.id ?? '',
+        name: item.name ?? '',
+        type: item.type,
+        ...(item.img ? { img: item.img } : {}),
+        folderId: item.folder?.id ?? null,
+        folderName: item.folder?.name ?? null,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Update one or more existing world-level Item documents.
+   *
+   * Each entry must supply an `id` plus at least one field to change (name,
+   * img, system, folder). Uses Item.updateDocuments() for a single batched
+   * write. Folder may be supplied as a name or id; if a name is given that
+   * does not exist, it is created automatically (same behaviour as
+   * createWorldItems).
+   */
+  async updateWorldItems(params: {
+    updates: Array<{
+      id: string;
+      name?: string;
+      img?: string;
+      system?: Record<string, any>;
+      folder?: string;
+    }>;
+  }): Promise<{
+    updated: Array<{ id: string; name: string; type: string }>;
+  }> {
+    this.validateFoundryState();
+
+    const { updates } = params;
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      throw new Error('updates array is required and must contain at least one entry');
+    }
+
+    // Cache folder resolutions so we only look up / create each folder once
+    const folderCache = new Map<string, string>(); // folder param → folder id
+
+    const resolveFolderId = async (folder: string): Promise<string> => {
+      if (folderCache.has(folder)) return folderCache.get(folder)!;
+      const folderTrimmed = folder.trim();
+      let folderDoc =
+        (game as any).folders?.find(
+          (f: any) => f.type === 'Item' && (f.name === folderTrimmed || f.id === folderTrimmed)
+        ) ?? null;
+      if (!folderDoc) {
+        folderDoc = await (Folder as any).create({
+          name: folderTrimmed,
+          type: 'Item',
+          parent: null,
+        });
+      }
+      folderCache.set(folder, folderDoc.id);
+      return folderDoc.id;
+    };
+
+    const payload: Array<Record<string, any>> = [];
+
+    for (let idx = 0; idx < updates.length; idx++) {
+      const upd = updates[idx];
+      if (!upd || typeof upd.id !== 'string' || upd.id.trim().length === 0) {
+        throw new Error(`updates[${idx}]: "id" is required and must be a non-empty string`);
+      }
+
+      const item = (game as any).items?.get(upd.id);
+      if (!item) {
+        throw new Error(`updates[${idx}]: Item "${upd.id}" not found in world`);
+      }
+
+      const patch: Record<string, any> = { _id: upd.id };
+      if (upd.name !== undefined) patch.name = upd.name;
+      if (upd.img !== undefined) patch.img = upd.img;
+      if (upd.system !== undefined) patch.system = upd.system;
+      if (upd.folder !== undefined && upd.folder.trim().length > 0) {
+        patch.folder = await resolveFolderId(upd.folder.trim());
+      }
+
+      payload.push(patch);
+    }
+
+    try {
+      const updated = await (Item as any).updateDocuments(payload);
+
+      const result = {
+        updated: (updated || []).map((doc: any) => ({
+          id: doc.id,
+          name: doc.name,
+          type: doc.type,
+        })),
+      };
+
+      this.auditLog('updateWorldItems', { count: payload.length }, 'success');
+      return result;
+    } catch (error) {
+      this.auditLog(
+        'updateWorldItems',
+        { count: payload.length },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Create one or more world-level Item documents (Items sidebar, not embedded on an actor).
+   *
+   * Uses Item.createDocuments() with no parent so items appear in the Foundry
+   * Items sidebar and can be dragged onto any actor sheet. Optionally places
+   * items inside a named/id-resolved folder, creating the folder if necessary.
+   */
+  async createWorldItems(params: {
+    items: Array<{
+      name: string;
+      type: string;
+      img?: string;
+      system?: Record<string, any>;
+    }>;
+    folder?: string;
+  }): Promise<{
+    folderId: string | null;
+    folderName: string | null;
+    created: Array<{ id: string; name: string; type: string }>;
+  }> {
+    this.validateFoundryState();
+
+    const { items, folder } = params;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('items array is required and must contain at least one entry');
+    }
+
+    const itemDocTypes = (game as any).system?.documentTypes?.Item;
+    const validTypes: string[] | null =
+      itemDocTypes && typeof itemDocTypes === 'object' ? Object.keys(itemDocTypes) : null;
+
+    const payload = items.map((it, idx) => {
+      if (!it || typeof it.name !== 'string' || it.name.trim().length === 0) {
+        throw new Error(`items[${idx}]: "name" is required and must be a non-empty string`);
+      }
+      if (typeof it.type !== 'string' || it.type.trim().length === 0) {
+        throw new Error(`items[${idx}] ("${it.name}"): "type" is required`);
+      }
+      if (validTypes && !validTypes.includes(it.type)) {
+        throw new Error(
+          `items[${idx}] ("${it.name}"): unknown type "${it.type}" for system "${(game.system as any)?.id}". ` +
+            `Valid Item types: ${validTypes.join(', ')}`
+        );
+      }
+
+      const doc: Record<string, any> = { name: it.name, type: it.type };
+      if (it.img) doc.img = it.img;
+      if (it.system && typeof it.system === 'object') doc.system = it.system;
+      if (Array.isArray((it as any).effects)) doc.effects = (it as any).effects;
+      if ((it as any).flags && typeof (it as any).flags === 'object') doc.flags = (it as any).flags;
+      return doc;
+    });
+
+    // Resolve or create the target folder
+    let folderDoc: any = null;
+    if (folder && folder.trim().length > 0) {
+      const folderTrimmed = folder.trim();
+      folderDoc =
+        (game as any).folders?.find(
+          (f: any) => f.type === 'Item' && (f.name === folderTrimmed || f.id === folderTrimmed)
+        ) ?? null;
+
+      if (!folderDoc) {
+        folderDoc = await (Folder as any).create({
+          name: folderTrimmed,
+          type: 'Item',
+          parent: null,
+        });
+      }
+
+      for (const doc of payload) {
+        doc.folder = folderDoc.id;
+      }
+    }
+
+    try {
+      const created = await (Item as any).createDocuments(payload);
+
+      const result = {
+        folderId: folderDoc ? folderDoc.id : null,
+        folderName: folderDoc ? folderDoc.name : null,
+        created: (created || []).map((doc: any) => ({
+          id: doc.id,
+          name: doc.name,
+          type: doc.type,
+        })),
+      };
+
+      this.auditLog(
+        'createWorldItems',
+        { folder: folder ?? null, count: payload.length },
+        'success'
+      );
+      return result;
+    } catch (error) {
+      this.auditLog(
+        'createWorldItems',
+        { folder: folder ?? null, count: payload.length },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get system-specific enum/schema information for the current game system.
+   * Returns valid values for enumerated fields so the LLM can use correct keys
+   * when creating or updating items/actors (e.g. weapon.traits in mgt2e).
+   */
+  getSystemSchema(): Record<string, any> {
+    const systemId = (game as any).system?.id ?? 'unknown';
+
+    if (systemId !== 'mgt2e') {
+      return {
+        system: systemId,
+        message: 'No enum schema available for this system',
+      };
+    }
+
+    const mgt2Config = (CONFIG as any).MGT2;
+    if (!mgt2Config) {
+      return { system: 'mgt2e', message: 'CONFIG.MGT2 not found — system may not be fully loaded' };
+    }
+
+    // ── Weapon traits from live CONFIG.MGT2.WEAPONS.traits ───────────────────
+    const weaponTraitsRaw = mgt2Config.WEAPONS?.traits ?? {};
+    const traitsPersonal: string[] = [];
+    const traitsSpacecraft: string[] = [];
+    const traitsAny: string[] = [];
+    const traitsWithValue: string[] = [];
+
+    for (const [key, val] of Object.entries(weaponTraitsRaw)) {
+      const v = val as any;
+      const scale: string = v.scale ?? 'any';
+      if (scale === 'traveller' || scale === 'vehicle') traitsPersonal.push(key);
+      else if (scale === 'spacecraft') traitsSpacecraft.push(key);
+      else traitsAny.push(key); // no scale restriction
+      if (v.value !== undefined) traitsWithValue.push(key);
+    }
+
+    return {
+      system: 'mgt2e',
+      description:
+        'Enum reference for mgt2e item and actor fields. Use these exact keys — wrong values are silently ignored by the system.',
+      items: {
+        weapon: {
+          'weapon.traits': {
+            description:
+              'Comma-separated string of trait keys. Traits with numeric values use "key N" (e.g. "ap 5, auto 3, stun"). Conflicts: bulky/veryBulky, dangerous/veryDangerous, ap/loPen.',
+            traits_personal_scale: traitsPersonal.sort(),
+            traits_spacecraft_scale: traitsSpacecraft.sort(),
+            traits_any_scale: traitsAny.sort(),
+            traits_requiring_numeric_value: traitsWithValue.sort(),
+            example: 'ap 5, auto 3, scope, stun',
+          },
+          'weapon.scale': ['traveller', 'vehicle', 'spacecraft'],
+          'weapon.characteristic': ['STR', 'DEX', 'END', 'INT', 'EDU', 'SOC'],
+          'weapon.damageType': [
+            'standard',
+            'fire',
+            'cutting',
+            'energy',
+            'laser',
+            'plasma',
+            'meson',
+            'nuclear',
+          ],
+          'weapon.skill':
+            'Format: "skillKey.specialityKey" (e.g. "guncombat.slug", "melee.blade", "heavyweapons.portable")',
+        },
+        armour: {
+          'armour.form': ['standard', 'layered', 'stackable', 'natural'],
+          note: 'stackable: stacks with other stackable armour. layered: can layer under others. natural: creature skin, always worn.',
+        },
+        hardware: {
+          'hardware.system': [
+            'general',
+            'power',
+            'armour',
+            'fuel',
+            'drive',
+            'bridge',
+            'sensor',
+            'computer',
+            'weapon',
+            'defence',
+            'stateroom',
+            'common',
+            'cargo',
+          ],
+          spacecraft_sheet_sections: {
+            'Componentes (coreItems)': ['power', 'armour', 'fuel', 'drive'],
+            'Puente (bridgeItems)': ['bridge', 'sensor', 'computer'],
+            'Armas (weaponItems)': ['weapon', 'defence'],
+            'Habitabilidad (livingItems)': ['stateroom', 'common'],
+            'Carga (cargoItems)': ['cargo'],
+            'General (generalItems)': ['general'],
+          },
+        },
+        software: {
+          'software.class': ['personal', 'ship'],
+          'software.type': ['generic', 'interface', 'bonus'],
+          note: 'class determines which SOFTWARE_EFFECTS apply. type=bonus enables skill/char bonuses.',
+        },
+        associate: {
+          'associate.relationship': ['contact', 'ally', 'rival', 'enemy'],
+        },
+        base: {
+          status: ['equipped', 'carried'],
+          note: 'status is set from MgT2Item.EQUIPPED / MgT2Item.CARRIED constants.',
+        },
+        actor: {
+          'weapon.scale_hint':
+            'When adding a weapon to a spacecraft actor, set weapon.scale="spacecraft" to show in the ship weapons section.',
+        },
+      },
+    };
+  }
+
+  /**
+   * Get full compendium document with all embedded data
+   */
+  async getCompendiumDocumentFull(
+    packId: string,
+    documentId: string
+  ): Promise<CompendiumEntryFull> {
+    const pack = game.packs.get(packId);
+    if (!pack) {
+      throw new Error(`Compendium pack ${packId} not found`);
+    }
+
+    const document = await pack.getDocument(documentId);
+    if (!document) {
+      throw new Error(`Document ${documentId} not found in pack ${packId}`);
+    }
+
+    // Build comprehensive data structure
+    const fullEntry: CompendiumEntryFull = {
+      id: document.id || '',
+      name: document.name || '',
+      type: (document as any).type || 'unknown',
+      img: (document as any).img || undefined,
+      pack: packId,
+      packLabel: pack.metadata.label,
+      system: this.sanitizeData((document as any).system || {}),
+      fullData: this.sanitizeData(document.toObject()),
+    };
+
+    // Add items if the actor has them
+    if ((document as any).items) {
+      fullEntry.items = (document as any).items.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        img: item.img || undefined,
+        system: this.sanitizeData(item.system || {}),
+      }));
+    }
+
+    // Add effects if the actor has them
+    if ((document as any).effects) {
+      fullEntry.effects = (document as any).effects.map((effect: any) => ({
+        id: effect.id,
+        name: effect.name || effect.label || 'Unknown Effect',
+        icon: effect.icon || undefined,
+        disabled: effect.disabled || false,
+        duration: this.sanitizeData(effect.duration || {}),
+      }));
+    }
+
+    return fullEntry;
+  }
+
+  /**
+   * Add actors to the current scene as tokens
+   */
+  async addActorsToScene(
+    placement: SceneTokenPlacement,
+    transactionId?: string
+  ): Promise<TokenPlacementResult> {
+    this.validateFoundryState();
+
+    // Use new permission system
+    const permissionCheck = permissionManager.checkWritePermission('modifyScene', {
+      targetIds: placement.actorIds,
+    });
+
+    if (!permissionCheck.allowed) {
+      throw new Error(`${ERROR_MESSAGES.ACCESS_DENIED}: ${permissionCheck.reason}`);
+    }
+
+    // Audit the permission check
+    permissionManager.auditPermissionCheck('modifyScene', permissionCheck, placement);
+
+    const scene = (game.scenes as any).current;
+    if (!scene) {
+      throw new Error('No active scene found');
+    }
+
+    this.auditLog('addActorsToScene', placement, 'success');
+
+    try {
+      const tokenData: any[] = [];
+      const errors: string[] = [];
+
+      for (const actorId of placement.actorIds) {
+        try {
+          const actor = game.actors.get(actorId);
+          if (!actor) {
+            errors.push(`Actor ${actorId} not found`);
+            continue;
+          }
+
+          const tokenDoc = (actor as any).prototypeToken.toObject();
+          const position = this.calculateTokenPosition(
+            placement.placement,
+            scene,
+            tokenData.length,
+            placement.coordinates
+          );
+
+          // Fix token texture if it's still a remote URL (Foundry may have overridden our actor creation fix)
+          if (tokenDoc.texture?.src?.startsWith('http')) {
+            console.error(
+              `[${this.moduleId}] Token texture still has remote URL, clearing: ${tokenDoc.texture.src}`
+            );
+            tokenDoc.texture.src = null; // Use Foundry's fallback
+          } else {
+          }
+
+          tokenData.push({
+            ...tokenDoc,
+            x: position.x,
+            y: position.y,
+            actorId,
+            hidden: placement.hidden,
+          });
+        } catch (error) {
+          errors.push(
+            `Failed to prepare token for actor ${actorId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+
+      const createdTokens = await scene.createEmbeddedDocuments('Token', tokenData);
+
+      // Track token creation for rollback if transaction is active
+      if (transactionId && createdTokens.length > 0) {
+        for (const token of createdTokens) {
+          transactionManager.addAction(
+            transactionId,
+            transactionManager.createTokenCreationAction(token.id)
+          );
+        }
+      }
+
+      const result: TokenPlacementResult = {
+        success: createdTokens.length > 0,
+        tokensCreated: createdTokens.length,
+        tokenIds: createdTokens.map((token: any) => token.id),
+        ...(errors.length > 0 ? { errors } : {}),
+      };
+
+      this.auditLog('addActorsToScene', placement, 'success');
+      return result;
+    } catch (error) {
+      this.auditLog(
+        'addActorsToScene',
+        placement,
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Find best matching compendium entry for creature type
+   */
+  private async findBestCompendiumMatch(
+    creatureType: string,
+    packPreference?: string
+  ): Promise<CompendiumSearchResult | null> {
+    // First try exact search
+    const exactResults = await this.searchCompendium(creatureType, 'Actor');
+
+    // Look for exact name match first
+    const exactMatch = exactResults.find(
+      result => result.name.toLowerCase() === creatureType.toLowerCase()
+    );
+    if (exactMatch) return exactMatch;
+
+    // Look for partial matches, preferring specified pack
+    if (packPreference) {
+      const packMatch = exactResults.find(result => result.pack === packPreference);
+      if (packMatch) return packMatch;
+    }
+
+    // Return best fuzzy match
+    return exactResults.length > 0 ? exactResults[0] : null;
+  }
+
+  /**
+   * Create actor from source document with custom name
+   */
+  private async createActorFromSource(
+    sourceDoc: CompendiumEntryFull,
+    customName: string
+  ): Promise<any> {
+    try {
+      // Clone the source data
+      const actorData = foundry.utils.deepClone(sourceDoc.fullData) as any;
+
+      // Apply customizations
+      actorData.name = customName;
+
+      // Fix only token texture - leave portrait (actor.img) alone
+      if (actorData.prototypeToken?.texture?.src?.startsWith('http')) {
+        console.error(
+          `[${this.moduleId}] Removing remote token texture URL: ${actorData.prototypeToken.texture.src}`
+        );
+        actorData.prototypeToken.texture.src = null; // Let Foundry use fallback
+      }
+
+      // Remove source-specific identifiers
+      delete actorData._id;
+      delete actorData.folder;
+      delete actorData.sort;
+
+      // Ensure required fields are present
+      if (!actorData.name) actorData.name = customName;
+      if (!actorData.type) actorData.type = sourceDoc.type || 'npc';
+
+      // Organize created actors in a folder - use "Foundry MCP Creatures" for generic monsters
+      const folderId = await this.getOrCreateFolder('Foundry MCP Creatures', 'Actor');
+      if (folderId) {
+        actorData.folder = folderId;
+      }
+
+      // Create the new actor
+      const createdDocs = await Actor.createDocuments([actorData]);
+      if (!createdDocs || createdDocs.length === 0) {
+        throw new Error('Failed to create actor document');
+      }
+
+      return createdDocs[0];
+    } catch (error) {
+      console.error(`[${this.moduleId}] Actor creation failed:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate token position based on placement strategy
+   */
+  private calculateTokenPosition(
+    placement: 'random' | 'grid' | 'center' | 'coordinates',
+    scene: any,
+    index: number,
+    coordinates?: { x: number; y: number }[]
+  ): { x: number; y: number } {
+    const gridSize = scene.grid?.size || 100;
+
+    switch (placement) {
+      case 'coordinates':
+        if (coordinates?.[index]) {
+          return coordinates[index];
+        }
+        // Fallback to grid if coordinates not provided or insufficient
+        const fallbackCols = Math.ceil(Math.sqrt(index + 1));
+        const fallbackRow = Math.floor(index / fallbackCols);
+        const fallbackCol = index % fallbackCols;
+        return {
+          x: gridSize + fallbackCol * gridSize * 2,
+          y: gridSize + fallbackRow * gridSize * 2,
+        };
+
+      case 'center':
+        return {
+          x: scene.width / 2 + index * gridSize,
+          y: scene.height / 2,
+        };
+
+      case 'grid':
+        const cols = Math.ceil(Math.sqrt(index + 1));
+        const row = Math.floor(index / cols);
+        const col = index % cols;
+        return {
+          x: gridSize + col * gridSize * 2,
+          y: gridSize + row * gridSize * 2,
+        };
+
+      case 'random':
+      default:
+        return {
+          x: Math.random() * (scene.width - gridSize),
+          y: Math.random() * (scene.height - gridSize),
+        };
+    }
+  }
+
+  /**
+   * Validate write operation permissions
+   */
+  async validateWritePermissions(operation: 'createActor' | 'modifyScene'): Promise<{
+    allowed: boolean;
+    reason?: string;
+    requiresConfirmation?: boolean;
+    warnings?: string[];
+  }> {
+    this.validateFoundryState();
+
+    const permissionCheck = permissionManager.checkWritePermission(operation);
+
+    // Audit the permission check
+    permissionManager.auditPermissionCheck(operation, permissionCheck);
+
+    return {
+      allowed: permissionCheck.allowed,
+      ...(permissionCheck.reason ? { reason: permissionCheck.reason } : {}),
+      ...(permissionCheck.requiresConfirmation
+        ? { requiresConfirmation: permissionCheck.requiresConfirmation }
+        : {}),
+      ...(permissionCheck.warnings ? { warnings: permissionCheck.warnings } : {}),
+    };
+  }
+
+  /**
+   * Request player rolls - creates interactive roll buttons in chat
+   */
+  async requestPlayerRolls(data: {
+    rollType: string;
+    rollTarget: string;
+    targetPlayer: string;
+    isPublic: boolean;
+    rollModifier: string;
+    flavor: string;
+  }): Promise<{ success: boolean; message: string; error?: string }> {
+    this.validateFoundryState();
+
+    try {
+      // Resolve target player from character name or player name with enhanced error handling
+      const playerInfo = this.resolveTargetPlayer(data.targetPlayer);
+      if (!playerInfo.found) {
+        // Provide structured error message for MCP that Claude Desktop can understand
+        const errorMessage =
+          playerInfo.errorMessage || `Could not find player or character: ${data.targetPlayer}`;
+
+        return {
+          success: false,
+          message: '',
+          error: errorMessage,
+        };
+      }
+
+      // Build roll formula based on type and target
+      const rollFormula = this.buildRollFormula(
+        data.rollType,
+        data.rollTarget,
+        data.rollModifier,
+        playerInfo.character
+      );
+
+      // Generate roll button HTML
+      const buttonId = foundry.utils.randomID();
+      const buttonLabel = this.buildRollButtonLabel(data.rollType, data.rollTarget, data.isPublic);
+
+      // Check if this type of roll was already performed (optional: could check for duplicate recent rolls)
+      // For now, we'll just create the button and let the rendering logic handle the state restoration
+
+      const rollButtonHtml = `
+        <div class="mcp-roll-request" style="margin: 12px 0; padding: 12px; border: 1px solid #ccc; border-radius: 8px; background: #f9f9f9;">
+          <p><strong>Roll Request:</strong> ${buttonLabel}</p>
+          <p><strong>Target:</strong> ${playerInfo.targetName} ${playerInfo.character ? `(${playerInfo.character.name})` : ''}</p>
+          ${data.flavor ? `<p><strong>Context:</strong> ${data.flavor}</p>` : ''}
+          
+          <div style="text-align: center; margin-top: 8px;">
+            <!-- Single Roll Button (clickable by both character owner and GM) -->
+            <button class="mcp-roll-button mcp-button-active" 
+                    data-button-id="${buttonId}"
+                    data-roll-formula="${rollFormula}"
+                    data-roll-label="${buttonLabel}"
+                    data-is-public="${data.isPublic}"
+                    data-character-id="${playerInfo.character?.id || ''}"
+                    data-target-user-id="${playerInfo.user?.id || ''}">
+              🎲 ${buttonLabel}
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Create chat message with roll button
+      // For PUBLIC rolls: both roll request and results visible to all players
+      // For PRIVATE rolls: both roll request and results visible to target player + GM only
+      const whisperTargets: string[] = [];
+
+      if (!data.isPublic) {
+        // Private roll request: whisper to target player + GM only
+
+        // Always whisper to the character owner if they exist
+        if (playerInfo.user?.id) {
+          whisperTargets.push(playerInfo.user.id);
+        }
+
+        // Also send to GM (GMs can see all whispered messages anyway, but this ensures they see it)
+        const gmUsers = game.users?.filter((u: User) => u.isGM && u.active);
+        if (gmUsers) {
+          for (const gm of gmUsers) {
+            if (gm.id && !whisperTargets.includes(gm.id)) {
+              whisperTargets.push(gm.id);
+            }
+          }
+        }
+      } else {
+        // Public roll request: visible to all players (empty whisperTargets array)
+      }
+
+      const messageData = {
+        content: rollButtonHtml,
+        speaker: ChatMessage.getSpeaker({ actor: game.user }),
+        style: (CONST as any).CHAT_MESSAGE_STYLES?.OTHER || 0, // Use style instead of deprecated type
+        whisper: whisperTargets,
+        flags: {
+          [MODULE_ID]: {
+            rollButtons: {
+              [buttonId]: {
+                rolled: false,
+                rollFormula,
+                rollLabel: buttonLabel,
+                isPublic: data.isPublic,
+                characterId: playerInfo.character?.id || '',
+                targetUserId: playerInfo.user?.id || '',
+              },
+            },
+          },
+        },
+      };
+
+      const chatMessage = await ChatMessage.create(messageData);
+
+      // Store message ID for later updates
+      this.saveRollButtonMessageId(buttonId, chatMessage.id);
+
+      // Note: Click handlers are attached globally via renderChatMessageHTML hook in main.ts
+      // This ensures all users get the handlers when they see the message
+
+      return {
+        success: true,
+        message: `Roll request sent to ${playerInfo.targetName}. ${data.isPublic ? 'Public roll' : 'Private roll'} button created in chat.`,
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error creating roll request:`, error);
+      return {
+        success: false,
+        message: '',
+        error: error instanceof Error ? error.message : 'Unknown error creating roll request',
+      };
+    }
+  }
+
+  /**
+   * Enhanced player resolution with offline/non-existent player detection
+   * Supports partial matching and provides structured error messages for MCP
+   */
+  private resolveTargetPlayer(targetPlayer: string): {
+    found: boolean;
+    user?: User;
+    character?: Actor;
+    targetName: string;
+    errorType?: 'PLAYER_OFFLINE' | 'PLAYER_NOT_FOUND' | 'CHARACTER_NOT_FOUND';
+    errorMessage?: string;
+  } {
+    const searchTerm = targetPlayer.toLowerCase().trim();
+
+    // FIRST: Check all registered users (both active and inactive) for player name match
+    const allUsers = Array.from(game.users?.values() || []);
+
+    // Try exact player name match first (active and inactive users)
+    let user = allUsers.find((u: User) => u.name?.toLowerCase() === searchTerm);
+
+    if (user) {
+      const isActive = user.active;
+
+      if (!isActive) {
+        // Player exists but is offline
+        return {
+          found: false,
+          user,
+          targetName: user.name || 'Unknown Player',
+          errorType: 'PLAYER_OFFLINE',
+          errorMessage: `Player "${user.name}" is registered but not currently logged in. They need to be online to receive roll requests.`,
+        };
+      }
+
+      // Find the player's character for roll calculations
+      const playerCharacter = game.actors?.find((actor: Actor) => {
+        if (!user) return false;
+        return actor.testUserPermission(user, 'OWNER') && !user.isGM;
+      });
+
+      return {
+        found: true,
+        user,
+        ...(playerCharacter && { character: playerCharacter }), // Include character only if found
+        targetName: user.name || 'Unknown Player',
+      };
+    }
+
+    // Try partial player name match (active and inactive users)
+    if (!user) {
+      user = allUsers.find((u: User) => {
+        return Boolean(u.name?.toLowerCase().includes(searchTerm));
+      });
+
+      if (user) {
+        const isActive = user.active;
+
+        if (!isActive) {
+          // Player exists but is offline
+          return {
+            found: false,
+            user,
+            targetName: user.name || 'Unknown Player',
+            errorType: 'PLAYER_OFFLINE',
+            errorMessage: `Player "${user.name}" is registered but not currently logged in. They need to be online to receive roll requests.`,
+          };
+        }
+
+        // Find the player's character for roll calculations
+        const playerCharacter = game.actors?.find((actor: Actor) => {
+          if (!user) return false;
+          return actor.testUserPermission(user, 'OWNER') && !user.isGM;
+        });
+
+        return {
+          found: true,
+          user,
+          ...(playerCharacter && { character: playerCharacter }), // Include character only if found
+          targetName: user.name || 'Unknown Player',
+        };
+      }
+    }
+
+    // SECOND: Try to find by character name (exact match, then partial match)
+    let character = game.actors?.find(
+      (actor: Actor) => actor.name?.toLowerCase() === searchTerm && actor.hasPlayerOwner
+    );
+
+    if (character) {
+    }
+
+    // If no exact character match, try partial match
+    if (!character) {
+      character = game.actors?.find((actor: Actor) => {
+        return Boolean(actor.name?.toLowerCase().includes(searchTerm) && actor.hasPlayerOwner);
+      });
+
+      if (character) {
+      }
+    }
+
+    if (character) {
+      // Find the actual player owner (not GM) of this character
+      const ownerUser = allUsers.find(
+        (u: User) => character.testUserPermission(u, 'OWNER') && !u.isGM
+      );
+
+      if (ownerUser) {
+        const isOwnerActive = ownerUser.active;
+
+        if (!isOwnerActive) {
+          // Character owner exists but is offline
+          return {
+            found: false,
+            user: ownerUser,
+            character,
+            targetName: ownerUser.name || 'Unknown Player',
+            errorType: 'PLAYER_OFFLINE',
+            errorMessage: `Player "${ownerUser.name}" (owner of character "${character.name}") is registered but not currently logged in. They need to be online to receive roll requests.`,
+          };
+        }
+
+        return {
+          found: true,
+          user: ownerUser,
+          character,
+          targetName: ownerUser.name || 'Unknown Player',
+        };
+      } else {
+        // No player owner found - character is GM-only controlled
+        // Still return found=true but without user, GM can still roll for it
+        return {
+          found: true,
+          character,
+          targetName: character.name || 'Unknown Character',
+          // user is omitted (undefined) for GM-only characters
+        };
+      }
+    }
+
+    // THIRD: Check if the search term might be a character that exists but has no player owner
+    const anyCharacter = game.actors?.find((actor: Actor) => {
+      if (!actor.name) return false;
+      return (
+        actor.name.toLowerCase() === searchTerm || actor.name.toLowerCase().includes(searchTerm)
+      );
+    });
+
+    if (anyCharacter && !anyCharacter.hasPlayerOwner) {
+      return {
+        found: true,
+        character: anyCharacter,
+        targetName: anyCharacter.name || 'Unknown Character',
+        // No user for GM-controlled characters
+      };
+    }
+
+    // No player or character found at all
+
+    return {
+      found: false,
+      targetName: targetPlayer,
+      errorType: 'PLAYER_NOT_FOUND',
+      errorMessage: `No player or character named "${targetPlayer}" found. Available players: ${
+        allUsers
+          .filter(u => !u.isGM)
+          .map(u => u.name)
+          .join(', ') || 'none'
+      }`,
+    };
+  }
+
+  /**
+   * Build roll formula based on roll type and target using Foundry's roll data system
+   */
+  private buildRollFormula(
+    rollType: string,
+    rollTarget: string,
+    rollModifier: string,
+    character?: Actor
+  ): string {
+    let baseFormula = '1d20';
+
+    if (character) {
+      // Use Foundry's getRollData() to get calculated modifiers including active effects
+      const rollData = character.getRollData() as any; // Type assertion for Foundry's dynamic roll data
+
+      switch (rollType) {
+        case 'ability':
+          // Use calculated ability modifier from roll data
+          const abilityMod = rollData.abilities?.[rollTarget]?.mod ?? 0;
+          baseFormula = `1d20+${abilityMod}`;
+          break;
+
+        case 'skill':
+          // Map skill name to skill code (D&D 5e uses 3-letter codes)
+          const skillCode = this.getSkillCode(rollTarget);
+          // Use calculated skill total from roll data (includes ability mod + proficiency + bonuses)
+          const skillMod = rollData.skills?.[skillCode]?.total ?? 0;
+          baseFormula = `1d20+${skillMod}`;
+          break;
+
+        case 'save':
+          // Use saving throw modifier from roll data
+          const saveMod =
+            rollData.abilities?.[rollTarget]?.save ?? rollData.abilities?.[rollTarget]?.mod ?? 0;
+          baseFormula = `1d20+${saveMod}`;
+          break;
+
+        case 'initiative':
+          // Use initiative modifier from attributes or dex mod
+          const initMod = rollData.attributes?.init?.mod ?? rollData.abilities?.dex?.mod ?? 0;
+          baseFormula = `1d20+${initMod}`;
+          break;
+
+        case 'custom':
+          baseFormula = rollTarget; // Use rollTarget as the formula directly
+          break;
+
+        default:
+          baseFormula = '1d20';
+      }
+    } else {
+      console.warn(`[${MODULE_ID}] No character provided for roll formula, using base 1d20`);
+    }
+
+    // Add modifier if provided
+    if (rollModifier && rollModifier.trim()) {
+      const modifier =
+        rollModifier.startsWith('+') || rollModifier.startsWith('-')
+          ? rollModifier
+          : `+${rollModifier}`;
+      baseFormula += modifier;
+    }
+
+    return baseFormula;
+  }
+
+  /**
+   * Map skill names to D&D 5e skill codes
+   */
+  private getSkillCode(skillName: string): string {
+    const skillMap: { [key: string]: string } = {
+      acrobatics: 'acr',
+      'animal handling': 'ani',
+      animalhandling: 'ani',
+      arcana: 'arc',
+      athletics: 'ath',
+      deception: 'dec',
+      history: 'his',
+      insight: 'ins',
+      intimidation: 'itm',
+      investigation: 'inv',
+      medicine: 'med',
+      nature: 'nat',
+      perception: 'prc',
+      performance: 'prf',
+      persuasion: 'per',
+      religion: 'rel',
+      'sleight of hand': 'slt',
+      sleightofhand: 'slt',
+      stealth: 'ste',
+      survival: 'sur',
+    };
+
+    const normalizedName = skillName.toLowerCase().replace(/\s+/g, '');
+    const skillCode =
+      skillMap[normalizedName] || skillMap[skillName.toLowerCase()] || skillName.toLowerCase();
+
+    return skillCode;
+  }
+
+  /**
+   * Build roll button label
+   */
+  private buildRollButtonLabel(rollType: string, rollTarget: string, isPublic: boolean): string {
+    const visibility = isPublic ? 'Public' : 'Private';
+
+    switch (rollType) {
+      case 'ability':
+        return `${rollTarget.toUpperCase()} Ability Check (${visibility})`;
+      case 'skill':
+        return `${rollTarget.charAt(0).toUpperCase() + rollTarget.slice(1)} Skill Check (${visibility})`;
+      case 'save':
+        return `${rollTarget.toUpperCase()} Saving Throw (${visibility})`;
+      case 'attack':
+        return `${rollTarget} Attack (${visibility})`;
+      case 'initiative':
+        return `Initiative Roll (${visibility})`;
+      case 'custom':
+        return `Custom Roll (${visibility})`;
+      default:
+        return `Roll (${visibility})`;
+    }
+  }
+
+  /**
+   * Restore roll button states from persistent storage
+   * Called when chat messages are rendered to maintain state across sessions
+   */
+
+  /**
+   * Attach click handlers to roll buttons and handle visibility
+   * Called by global renderChatMessageHTML hook in main.ts
+   */
+  public attachRollButtonHandlers(html: JQuery): void {
+    const currentUserId = game.user?.id;
+    const isGM = game.user?.isGM;
+
+    // Note: Roll state restoration now handled by ChatMessage content, not DOM manipulation
+
+    // Handle button visibility and styling based on permissions and public/private status
+    // IMPORTANT: Skip styling for buttons that are already in rolled state
+    html.find('.mcp-roll-button').each((_index, element) => {
+      const button = $(element);
+      const targetUserId = button.data('target-user-id');
+      const isPublicRollRaw = button.data('is-public');
+      const isPublicRoll = isPublicRollRaw === true || isPublicRollRaw === 'true';
+
+      // Note: No need to check for rolled state - ChatMessage.update() replaces buttons with completion status
+
+      // Determine if user can interact with this button
+      const canClickButton = isGM || (targetUserId && targetUserId === currentUserId);
+
+      if (isPublicRoll) {
+        // Public roll: show to all players, but style differently for non-clickable users
+        if (canClickButton) {
+          // Can click: normal active button
+          button.css({
+            background: '#4CAF50',
+            cursor: 'pointer',
+            opacity: '1',
+          });
+        } else {
+          // Cannot click: disabled/informational style
+          button.css({
+            background: '#9E9E9E',
+            cursor: 'not-allowed',
+            opacity: '0.7',
+          });
+          button.prop('disabled', true);
+        }
+      } else {
+        // Private roll: only show to target user and GM
+        if (canClickButton) {
+          button.show();
+        } else {
+          button.hide();
+        }
+      }
+    });
+
+    // Attach click handlers to roll buttons
+    html.find('.mcp-roll-button').on('click', async event => {
+      const button = $(event.currentTarget);
+
+      // Ignore clicks on disabled buttons
+      if (button.prop('disabled')) {
+        return;
+      }
+
+      // Prevent double-clicks by immediately disabling the button
+      button.prop('disabled', true);
+      const originalText = button.text();
+      button.text('🎲 Rolling...');
+
+      // Check if this button is already being processed by another user
+      const buttonId = button.data('button-id');
+      if (buttonId && this.isRollButtonProcessing(buttonId)) {
+        button.text('🎲 Processing...');
+        return;
+      }
+
+      // Mark this button as being processed
+      if (buttonId) {
+        this.setRollButtonProcessing(buttonId, true);
+      }
+
+      // Validate button has required data
+      if (!buttonId) {
+        console.warn(`[${MODULE_ID}] Button missing button-id data attribute`);
+        button.prop('disabled', false);
+        button.text(originalText);
+        return;
+      }
+
+      const rollFormula = button.data('roll-formula');
+      const rollLabel = button.data('roll-label');
+      const isPublicRaw = button.data('is-public');
+      const isPublic = isPublicRaw === true || isPublicRaw === 'true'; // Convert to proper boolean
+      const characterId = button.data('character-id');
+      const targetUserId = button.data('target-user-id');
+      const isGmRoll = game.user?.isGM || false; // Determine if this is a GM executing the roll
+
+      // Check if user has permission to execute this roll
+      // Allow GM to roll for any character, or allow character owner to roll for their character
+      const canExecuteRoll = game.user?.isGM || (targetUserId && targetUserId === game.user?.id);
+
+      if (!canExecuteRoll) {
+        console.warn(`[${MODULE_ID}] Permission denied for roll execution`);
+        ui.notifications?.warn('You do not have permission to execute this roll');
+        return;
+      }
+
+      try {
+        // Create and evaluate the roll
+        const roll = new Roll(rollFormula);
+        await roll.evaluate();
+
+        // Get the character for speaker info
+        const character = characterId ? game.actors?.get(characterId) : null;
+
+        // Use the modern Foundry v13 approach with roll.toMessage()
+        const rollMode = isPublic ? 'publicroll' : 'whisper';
+        const whisperTargets: string[] = [];
+
+        if (!isPublic) {
+          // For private rolls: whisper to target + GM
+          if (targetUserId) {
+            whisperTargets.push(targetUserId);
+          }
+          // Add all active GMs
+          const gmUsers = game.users?.filter((u: User) => u.isGM && u.active);
+          if (gmUsers) {
+            for (const gm of gmUsers) {
+              if (gm.id && !whisperTargets.includes(gm.id)) {
+                whisperTargets.push(gm.id);
+              }
+            }
+          }
+        }
+
+        const messageData: any = {
+          speaker: ChatMessage.getSpeaker({ actor: character }),
+          flavor: `${rollLabel} ${isGmRoll ? '(GM Override)' : ''}`,
+          ...(whisperTargets.length > 0 ? { whisper: whisperTargets } : {}),
+        };
+
+        // Use roll.toMessage() with proper rollMode
+        await roll.toMessage(messageData, {
+          create: true,
+          rollMode,
+        });
+
+        // Update the ChatMessage to reflect rolled state
+        const buttonId = button.data('button-id');
+        if (buttonId && game.user?.id) {
+          try {
+            await this.updateRollButtonMessage(buttonId, game.user.id, rollLabel);
+          } catch (updateError) {
+            console.error(`[${MODULE_ID}] Failed to update chat message:`, updateError);
+            console.error(
+              `[${MODULE_ID}] Error details:`,
+              updateError instanceof Error ? updateError.stack : updateError
+            );
+            // Fall back to DOM manipulation if message update fails
+            button.prop('disabled', true).text('✓ Rolled');
+          }
+        } else {
+          console.warn(`[${MODULE_ID}] Cannot update ChatMessage - missing buttonId or userId:`, {
+            buttonId,
+            userId: game.user?.id,
+          });
+        }
+      } catch (error) {
+        console.error(`[${MODULE_ID}] Error executing roll:`, error);
+        ui.notifications?.error('Failed to execute roll');
+
+        // Re-enable button on error so user can try again
+        button.prop('disabled', false);
+        button.text(originalText);
+      } finally {
+        // Clear processing state
+        if (buttonId) {
+          this.setRollButtonProcessing(buttonId, false);
+        }
+      }
+    });
+  }
+
+  /**
+   * Get enhanced creature index for campaign analysis
+   */
+  async getEnhancedCreatureIndex(): Promise<any[]> {
+    this.validateFoundryState();
+
+    // Get the enhanced creature index (builds if needed)
+    const enhancedCreatures = await this.persistentIndex.getEnhancedIndex();
+
+    return enhancedCreatures || [];
+  }
+
+  /**
+   * Save roll button state to persistent storage
+   */
+  async saveRollState(buttonId: string, userId: string): Promise<void> {
+    // LEGACY METHOD - Redirecting to new ChatMessage.update() system
+
+    try {
+      // Use the new ChatMessage.update() approach instead
+      const rollLabel = 'Legacy Roll'; // We don't have the label here, use generic
+      await this.updateRollButtonMessage(buttonId, userId, rollLabel);
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Legacy saveRollState redirect failed:`, error);
+      // Don't throw - we don't want to break the old system completely
+    }
+  }
+
+  /**
+   * Get roll button state from persistent storage
+   */
+  getRollState(
+    buttonId: string
+  ): { rolled: boolean; rolledBy?: string; rolledByName?: string; timestamp?: number } | null {
+    this.validateFoundryState();
+
+    try {
+      const rollStates = game.settings.get(MODULE_ID, 'rollStates') || {};
+      return rollStates[buttonId] || null;
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error getting roll state:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Save button ID to message ID mapping for ChatMessage updates
+   */
+  saveRollButtonMessageId(buttonId: string, messageId: string): void {
+    try {
+      const buttonMessageMap = game.settings.get(MODULE_ID, 'buttonMessageMap') || {};
+      buttonMessageMap[buttonId] = messageId;
+      game.settings.set(MODULE_ID, 'buttonMessageMap', buttonMessageMap);
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error saving button-message mapping:`, error);
+    }
+  }
+
+  /**
+   * Get message ID for a roll button
+   */
+  getRollButtonMessageId(buttonId: string): string | null {
+    try {
+      const buttonMessageMap = game.settings.get(MODULE_ID, 'buttonMessageMap') || {};
+      return buttonMessageMap[buttonId] || null;
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error getting button-message mapping:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get roll button state from ChatMessage flags
+   */
+  getRollStateFromMessage(chatMessage: any, buttonId: string): any {
+    try {
+      const rollButtons = chatMessage.getFlag(MODULE_ID, 'rollButtons');
+      return rollButtons?.[buttonId] || null;
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error getting roll state from message:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Update the ChatMessage to replace button with rolled state
+   */
+  async updateRollButtonMessage(
+    buttonId: string,
+    userId: string,
+    rollLabel: string
+  ): Promise<void> {
+    try {
+      // Get the message ID for this button
+      const messageId = this.getRollButtonMessageId(buttonId);
+
+      if (!messageId) {
+        throw new Error(`No message ID found for button ${buttonId}`);
+      }
+
+      // Get the chat message
+      const chatMessage = game.messages?.get(messageId);
+
+      if (!chatMessage) {
+        throw new Error(`ChatMessage ${messageId} not found`);
+      }
+
+      const rolledByName = game.users?.get(userId)?.name || 'Unknown';
+      const timestamp = new Date().toLocaleString();
+
+      // Check permissions before attempting update
+      const canUpdate = chatMessage.canUserModify(game.user, 'update');
+
+      if (!canUpdate && !game.user?.isGM) {
+        // Non-GM user cannot update message - request GM to do it via socket
+
+        // Find online GM
+        const onlineGM = game.users?.find(u => u.isGM && u.active);
+        if (!onlineGM) {
+          throw new Error('No Game Master is online to update the chat message');
+        }
+
+        // Send socket request to GM
+        if (game.socket) {
+          game.socket.emit('module.foundry-mcp-bridge', {
+            type: 'requestMessageUpdate',
+            buttonId,
+            userId,
+            rollLabel,
+            messageId,
+            fromUserId: game.user.id,
+            targetGM: onlineGM.id,
+          });
+          return; // Exit early - GM will handle the update
+        } else {
+          throw new Error('Socket not available for GM communication');
+        }
+      }
+
+      // Update the message flags to mark button as rolled
+      const currentFlags = chatMessage.flags || {};
+      const moduleFlags = currentFlags[MODULE_ID] || {};
+      const rollButtons = moduleFlags.rollButtons || {};
+
+      rollButtons[buttonId] = {
+        ...rollButtons[buttonId],
+        rolled: true,
+        rolledBy: userId,
+        rolledByName,
+        timestamp: Date.now(),
+      };
+
+      // Create the rolled state HTML
+      const rolledHtml = `
+        <div class="mcp-roll-request" style="margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9;">
+          <p><strong>Roll Request:</strong> ${rollLabel}</p>
+          <p><strong>Status:</strong> ✅ <strong>Completed by ${rolledByName}</strong> at ${timestamp}</p>
+        </div>
+      `;
+
+      // Update the message content and flags
+      await chatMessage.update({
+        content: rolledHtml,
+        flags: {
+          ...currentFlags,
+          [MODULE_ID]: {
+            ...moduleFlags,
+            rollButtons,
+          },
+        },
+      });
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error updating roll button message:`, error);
+      console.error(`[${MODULE_ID}] Error stack:`, error instanceof Error ? error.stack : error);
+      throw error;
+    }
+  }
+
+  /**
+   * Request GM to save roll state (for non-GM users who can't write to world settings)
+   */
+  requestRollStateSave(buttonId: string, userId: string): void {
+    // LEGACY METHOD - Redirecting to new ChatMessage.update() system
+
+    try {
+      // Use the new ChatMessage.update() approach instead
+      const rollLabel = 'Legacy Roll'; // We don't have the label here, use generic
+      this.updateRollButtonMessage(buttonId, userId, rollLabel)
+        .then(() => {})
+        .catch(error => {
+          console.error(`[${MODULE_ID}] Legacy requestRollStateSave redirect failed:`, error);
+          // If the new system fails, just log it - don't use the old socket system
+        });
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error in legacy requestRollStateSave redirect:`, error);
+    }
+  }
+
+  /**
+   * Broadcast roll state change to all connected users for real-time sync
+   */
+  broadcastRollState(_buttonId: string, _rollState: any): void {
+    // LEGACY METHOD - No longer needed with ChatMessage.update() system
+    // ChatMessage.update() automatically broadcasts to all clients, so this method is no longer needed
+  }
+
+  /**
+   * Clean up old roll states (optional maintenance)
+   * Removes roll states older than 30 days to prevent storage bloat
+   */
+  async cleanOldRollStates(): Promise<number> {
+    this.validateFoundryState();
+
+    try {
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const rollStates = game.settings.get(MODULE_ID, 'rollStates') || {};
+      let cleanedCount = 0;
+
+      // Remove old roll states
+      for (const [buttonId, rollState] of Object.entries(rollStates)) {
+        if (rollState && typeof rollState === 'object' && 'timestamp' in rollState) {
+          const timestamp = (rollState as any).timestamp;
+          if (typeof timestamp === 'number' && timestamp < thirtyDaysAgo) {
+            delete rollStates[buttonId];
+            cleanedCount++;
+          }
+        }
+      }
+
+      if (cleanedCount > 0) {
+        await game.settings.set(MODULE_ID, 'rollStates', rollStates);
+      }
+
+      return cleanedCount;
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error cleaning old roll states:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Set actor ownership permission for a user
+   */
+  async setActorOwnership(data: {
+    actorId: string;
+    userId: string;
+    permission: number;
+  }): Promise<{ success: boolean; message: string; error?: string }> {
+    this.validateFoundryState();
+
+    try {
+      const actor = game.actors?.get(data.actorId);
+      if (!actor) {
+        return { success: false, error: `Actor not found: ${data.actorId}`, message: '' };
+      }
+
+      const user = game.users?.get(data.userId);
+      if (!user) {
+        return { success: false, error: `User not found: ${data.userId}`, message: '' };
+      }
+
+      // Get current ownership
+      const currentOwnership = (actor as any).ownership || {};
+      const newOwnership = { ...currentOwnership };
+
+      // Set the new permission level
+      newOwnership[data.userId] = data.permission;
+
+      // Update the actor
+      await actor.update({ ownership: newOwnership });
+
+      const permissionNames = { 0: 'NONE', 1: 'LIMITED', 2: 'OBSERVER', 3: 'OWNER' };
+      const permissionName =
+        permissionNames[data.permission as keyof typeof permissionNames] ||
+        data.permission.toString();
+
+      return {
+        success: true,
+        message: `Set ${actor.name} ownership to ${permissionName} for ${user.name}`,
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error setting actor ownership:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: '',
+      };
+    }
+  }
+
+  /**
+   * Update a WFRP4e actor's stat block (characteristics and/or wounds).
+   * Writes initial/advances/modifier and wounds value/max; WFRP4e recomputes
+   * the derived characteristic value/bonus on update.
+   */
+  async updateWfrp4eActor(data: {
+    actor: string;
+    characteristics?: Record<string, { initial?: number; advances?: number; modifier?: number }>;
+    wounds?: { value?: number; max?: number };
+    skills?: Array<{ name: string; advances: number }>;
+    career?: string;
+    movement?: number;
+    biography?: string;
+  }): Promise<any> {
+    this.validateFoundryState();
+
+    const systemId = (game.system as any).id;
+    if (systemId !== 'wfrp4e') {
+      return {
+        success: false,
+        error: `wfrp4e-update-actor requires the WFRP4e system (current: "${systemId}")`,
+      };
+    }
+
+    // Resolve a world actor by id/name, or a scene token by id (an unlinked
+    // token resolves to its own synthetic actor — see findActorByIdentifier).
+    const actor = this.findActorByIdentifier(data.actor);
+    if (!actor) {
+      return { success: false, error: `Actor not found: ${data.actor}` };
+    }
+
+    const CHAR_KEYS = ['ws', 'bs', 's', 't', 'i', 'ag', 'dex', 'int', 'wp', 'fel'];
+    const FIELDS = ['initial', 'advances', 'modifier'] as const;
+    const sys = actor.system || {};
+    const update: Record<string, any> = {};
+    const itemUpdates: Array<Record<string, any>> = [];
+    const applied: {
+      characteristics: Record<string, any>;
+      wounds: Record<string, any>;
+      skills: Record<string, any>;
+      career?: string;
+      details?: Record<string, any>;
+    } = {
+      characteristics: {},
+      wounds: {},
+      skills: {},
+    };
+    const warnings: string[] = [];
+
+    if (data.characteristics) {
+      for (const [rawKey, fields] of Object.entries(data.characteristics)) {
+        const key = rawKey.toLowerCase();
+        if (!CHAR_KEYS.includes(key)) {
+          warnings.push(`Unknown characteristic "${rawKey}" — skipped`);
+          continue;
+        }
+        const current = sys.characteristics?.[key] || {};
+        const record: Record<string, any> = {};
+        for (const field of FIELDS) {
+          const val = (fields as any)[field];
+          if (val !== undefined) {
+            update[`system.characteristics.${key}.${field}`] = val;
+            record[field] = { from: current[field], to: val };
+          }
+        }
+        if (Object.keys(record).length > 0) {
+          applied.characteristics[key.toUpperCase()] = record;
+        }
+      }
+    }
+
+    if (data.wounds) {
+      const current = sys.status?.wounds || {};
+      if (data.wounds.value !== undefined) {
+        update['system.status.wounds.value'] = data.wounds.value;
+        applied.wounds.value = { from: current.value, to: data.wounds.value };
+      }
+      if (data.wounds.max !== undefined) {
+        update['system.status.wounds.max'] = data.wounds.max;
+        applied.wounds.max = { from: current.max, to: data.wounds.max };
+      }
+    }
+
+    // Detail fields: base movement and the biography/notes text.
+    if (data.movement !== undefined) {
+      update['system.details.move.value'] = data.movement;
+      applied.details = applied.details || {};
+      applied.details.movement = { from: sys.details?.move?.value, to: data.movement };
+    }
+    if (data.biography !== undefined) {
+      update['system.details.biography.value'] = data.biography;
+      applied.details = applied.details || {};
+      applied.details.biography = { chars: data.biography.length };
+    }
+
+    // Existing embedded-item edits: bump advances on skills the actor already
+    // has, and/or switch which career item is current. (Adding new skills or
+    // careers is wfrp4e-add-items' job.)
+    if (Array.isArray(data.skills)) {
+      for (const s of data.skills) {
+        const item = actor.items.find(
+          (i: any) => i.type === 'skill' && i.name?.toLowerCase() === s.name.toLowerCase()
+        );
+        if (!item) {
+          warnings.push(`Skill "${s.name}" not on ${actor.name} — use wfrp4e-add-items to add it.`);
+          continue;
+        }
+        itemUpdates.push({ _id: item.id, 'system.advances.value': s.advances });
+        applied.skills[item.name] = {
+          advances: { from: item.system?.advances?.value, to: s.advances },
+        };
+      }
+    }
+
+    if (data.career) {
+      const target = actor.items.find(
+        (i: any) => i.type === 'career' && i.name?.toLowerCase() === data.career?.toLowerCase()
+      );
+      if (!target) {
+        warnings.push(
+          `Career "${data.career}" not on ${actor.name} — use wfrp4e-add-items to add it.`
+        );
+      } else {
+        // Exactly one career is current; flip the target on and the rest off.
+        for (const it of actor.items) {
+          if (it.type === 'career') {
+            itemUpdates.push({ _id: it.id, 'system.current.value': it.id === target.id });
+          }
+        }
+        applied.career = target.name;
+      }
+    }
+
+    if (Object.keys(update).length === 0 && itemUpdates.length === 0) {
+      return {
+        success: false,
+        error: 'No valid fields to update.',
+        ...(warnings.length ? { warnings } : {}),
+      };
+    }
+
+    try {
+      if (Object.keys(update).length > 0) {
+        await actor.update(update);
+      }
+      if (itemUpdates.length > 0) {
+        await actor.updateEmbeddedDocuments('Item', itemUpdates);
+      }
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error updating WFRP4e actor:`, error);
+      this.auditLog(
+        'updateWfrp4eActor',
+        { actor: data.actor },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+
+    // Read back recomputed characteristic totals as confirmation.
+    const after = actor.system || {};
+    const newTotals: Record<string, any> = {};
+    for (const key of CHAR_KEYS) {
+      if (applied.characteristics[key.toUpperCase()]) {
+        const c = after.characteristics?.[key];
+        if (c) newTotals[key.toUpperCase()] = { total: c.value, bonus: c.bonus };
+      }
+    }
+
+    this.auditLog('updateWfrp4eActor', { actor: data.actor }, 'success');
+
+    return {
+      success: true,
+      actor: actor.name,
+      id: actor.id,
+      applied,
+      newCharacteristicTotals: newTotals,
+      ...(warnings.length ? { warnings } : {}),
+    };
+  }
+
+  /**
+   * Add items (skills, talents, traits, trappings, careers, weapons, spells, …)
+   * to an existing WFRP4e actor. Each requested item is matched by name against
+   * the installed WFRP4e compendiums and copied in full, so a skill keeps its
+   * linked characteristic, a talent its tests/max, a career its progression.
+   * Names with no compendium match are added as a blank item of the requested
+   * (or default) type so homebrew still works.
+   *
+   * Per-item extras: `advances` sets a skill's advances; `quantity` sets a
+   * gear count; `setCurrent` makes a career the active one (flipping the others
+   * off). Resolution prefers the Core Rulebook pack, then the rest; pass `type`
+   * and/or `pack` to disambiguate a name that exists in several places.
+   */
+  async addWfrp4eItems(data: {
+    actor: string;
+    items: Array<{
+      name: string;
+      type?: string;
+      pack?: string;
+      advances?: number;
+      quantity?: number;
+      setCurrent?: boolean;
+    }>;
+  }): Promise<any> {
+    this.validateFoundryState();
+
+    const systemId = (game.system as any).id;
+    if (systemId !== 'wfrp4e') {
+      return {
+        success: false,
+        error: `wfrp4e-add-items requires the WFRP4e system (current: "${systemId}")`,
+      };
+    }
+
+    if (!Array.isArray(data.items) || data.items.length === 0) {
+      return {
+        success: false,
+        error: 'items array is required and must contain at least one entry',
+      };
+    }
+
+    const actor = this.findActorByIdentifier(data.actor);
+    if (!actor) {
+      return { success: false, error: `Actor not found: ${data.actor}` };
+    }
+
+    // Candidate Item packs, Core Rulebook first so a name shared across books
+    // resolves to the canonical entry.
+    const itemPacks: any[] = Array.from((game.packs as any) || []).filter(
+      (p: any) => (p.metadata?.type ?? p.documentName) === 'Item'
+    );
+    itemPacks.sort((a: any, b: any) => {
+      const rank = (p: any) => (String(p.metadata?.id || '').startsWith('wfrp4e-core') ? 0 : 1);
+      return rank(a) - rank(b);
+    });
+
+    // Per-call index cache — each pack's index is loaded at most once.
+    const indexCache = new Map<string, any>();
+    const getIndex = async (pack: any) => {
+      const id = pack.metadata.id;
+      if (!indexCache.has(id)) indexCache.set(id, await pack.getIndex());
+      return indexCache.get(id);
+    };
+
+    const warnings: string[] = [];
+    const notFound: string[] = [];
+    const ambiguous: Array<{ name: string; candidates: Array<{ pack: string; type: string }> }> =
+      [];
+
+    // Skill advances and gear quantity are baked into each item's creation data
+    // (below) rather than patched afterwards, because createEmbeddedDocuments
+    // does not guarantee it returns documents in the order we send them — so
+    // positional alignment between the created docs and our requests is unsafe.
+    const GEAR_TYPES = new Set([
+      'weapon',
+      'armour',
+      'trapping',
+      'ammunition',
+      'container',
+      'money',
+      'cargo',
+    ]);
+    const applyExtras = (obj: Record<string, any>, type: string, req: any): void => {
+      obj.system = obj.system || {};
+      if (req.advances !== undefined && type === 'skill') {
+        obj.system.advances = { ...(obj.system.advances || {}), value: req.advances };
+      }
+      if (req.quantity !== undefined && GEAR_TYPES.has(type)) {
+        obj.system.quantity = { ...(obj.system.quantity || {}), value: req.quantity };
+      }
+    };
+
+    const toCreate: Array<Record<string, any>> = [];
+    // Keyed by `${type}::${name}` (the created doc's own name/type) so we can
+    // match created documents back to their request without relying on order.
+    const plan: Array<{
+      nameLower: string;
+      type: string;
+      setCurrent: boolean | undefined;
+      source: string;
+    }> = [];
+
+    // Find every compendium entry whose name (and optional type) matches, across
+    // the candidate packs (their core-first order is preserved in the result).
+    const findMatches = async (
+      packs: any[],
+      searchName: string,
+      typeConstraint: string | undefined
+    ): Promise<Array<{ packId: string; packLabel: string; entryId: string; type: string }>> => {
+      const found: Array<{ packId: string; packLabel: string; entryId: string; type: string }> = [];
+      for (const pack of packs) {
+        const index = await getIndex(pack);
+        for (const entry of index) {
+          if (
+            entry.name?.toLowerCase() === searchName &&
+            (!typeConstraint || entry.type === typeConstraint)
+          ) {
+            found.push({
+              packId: pack.metadata.id,
+              packLabel: pack.metadata.label,
+              entryId: entry._id,
+              type: entry.type,
+            });
+          }
+        }
+      }
+      return found;
+    };
+
+    for (const req of data.items) {
+      const nameLower = req.name.toLowerCase();
+      const typeWanted = req.type?.toLowerCase();
+      const searchPacks = req.pack
+        ? itemPacks.filter(
+            (p: any) => p.metadata.id === req.pack || p.metadata.id.includes(req.pack as string)
+          )
+        : itemPacks;
+
+      let matches = await findMatches(searchPacks, nameLower, typeWanted);
+
+      // Grouped-skill fallback: a specialisation like "Entertain (Taunt)" often
+      // has no dedicated entry, but the group's generic template "Entertain ()"
+      // does — copy that (it carries the correct characteristic and grouping)
+      // and rename the copy to the requested specialisation.
+      let nameOverride: string | undefined;
+      let templated = false;
+      if (matches.length === 0 && (typeWanted === undefined || typeWanted === 'skill')) {
+        const grouped = /^\s*(.+?)\s*\([^)]+\)\s*$/.exec(req.name);
+        if (grouped) {
+          const templateName = `${grouped[1]} ()`.toLowerCase();
+          const templateMatches = await findMatches(searchPacks, templateName, 'skill');
+          if (templateMatches.length > 0) {
+            matches = templateMatches;
+            nameOverride = req.name.trim();
+            templated = true;
+          }
+        }
+      }
+
+      if (matches.length === 0) {
+        const fallbackType = typeWanted || 'trapping';
+        const obj: Record<string, any> = { name: req.name, type: fallbackType, system: {} };
+        applyExtras(obj, fallbackType, req);
+        toCreate.push(obj);
+        plan.push({
+          nameLower,
+          type: fallbackType,
+          setCurrent: req.setCurrent,
+          source: 'custom (not in compendium)',
+        });
+        notFound.push(req.name);
+        warnings.push(
+          `"${req.name}" not found in any WFRP4e compendium — added as a blank ${fallbackType}.`
+        );
+        continue;
+      }
+
+      // Several distinct item types share this name and the caller didn't pick
+      // one — don't guess.
+      const distinctTypes = [...new Set(matches.map(m => m.type))];
+      if (!typeWanted && distinctTypes.length > 1) {
+        ambiguous.push({
+          name: req.name,
+          candidates: matches.map(m => ({ pack: m.packId, type: m.type })),
+        });
+        warnings.push(
+          `"${req.name}" matches multiple item types (${distinctTypes.join(', ')}); pass "type" to choose — skipped.`
+        );
+        continue;
+      }
+
+      // matches preserves the core-first pack order, so [0] is the best source.
+      const chosen = matches[0];
+      const pack = (game.packs as any).get(chosen.packId);
+      const sourceDoc = await pack.getDocument(chosen.entryId);
+      const obj = sourceDoc.toObject();
+      const finalName = nameOverride ?? obj.name;
+      const clean: Record<string, any> = {
+        name: finalName,
+        type: obj.type,
+        img: obj.img,
+        system: obj.system || {},
+        effects: obj.effects || [],
+        flags: obj.flags || {},
+      };
+      applyExtras(clean, obj.type, req);
+      toCreate.push(clean);
+      plan.push({
+        nameLower: String(finalName).toLowerCase(),
+        type: obj.type,
+        setCurrent: req.setCurrent,
+        source: templated ? `${chosen.packLabel} (grouped template)` : chosen.packLabel,
+      });
+    }
+
+    if (toCreate.length === 0) {
+      return {
+        success: false,
+        error: 'No items could be added.',
+        ...(notFound.length ? { notFound } : {}),
+        ...(ambiguous.length ? { ambiguous } : {}),
+        ...(warnings.length ? { warnings } : {}),
+      };
+    }
+
+    let created: any[] = [];
+    try {
+      created = (await actor.createEmbeddedDocuments('Item', toCreate)) || [];
+
+      // Make a career current if requested. Match the created career by NAME,
+      // not by position (see the ordering note above). Exactly one career is
+      // current, so flip the target on and every other career off.
+      const setCurrentNames = new Set(
+        plan.filter(p => p.setCurrent && p.type === 'career').map(p => p.nameLower)
+      );
+      if (setCurrentNames.size > 0) {
+        let targetId: string | undefined;
+        for (const doc of created) {
+          if (doc.type === 'career' && setCurrentNames.has(String(doc.name).toLowerCase())) {
+            targetId = doc.id;
+          }
+        }
+        if (targetId) {
+          const careerUpdates: Array<Record<string, any>> = [];
+          for (const it of actor.items) {
+            if (it.type === 'career') {
+              careerUpdates.push({ _id: it.id, 'system.current.value': it.id === targetId });
+            }
+          }
+          if (careerUpdates.length > 0) {
+            await actor.updateEmbeddedDocuments('Item', careerUpdates);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error adding WFRP4e items:`, error);
+      this.auditLog(
+        'addWfrp4eItems',
+        { actor: data.actor, count: toCreate.length },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+
+    // Summarise, reading back derived skill totals / career state as confirmation.
+    // Source is looked up by name+type (order-independent).
+    const sourceByKey = new Map<string, string>();
+    for (const p of plan) sourceByKey.set(`${p.type}::${p.nameLower}`, p.source);
+
+    const createdSummary = created.map((doc: any) => {
+      const after = actor.items.get(doc.id);
+      const entry: Record<string, any> = {
+        id: doc.id,
+        name: doc.name,
+        type: doc.type,
+        source: sourceByKey.get(`${doc.type}::${String(doc.name).toLowerCase()}`) ?? 'unknown',
+      };
+      if (after?.type === 'skill') {
+        entry.advances = after.system?.advances?.value;
+        entry.total = after.system?.total?.value;
+        entry.characteristic = after.system?.characteristic?.value;
+      }
+      if (after?.type === 'career') entry.current = after.system?.current?.value ?? false;
+      return entry;
+    });
+
+    this.auditLog('addWfrp4eItems', { actor: data.actor, count: created.length }, 'success');
+
+    return {
+      success: true,
+      actor: actor.name,
+      id: actor.id,
+      created: createdSummary,
+      ...(notFound.length ? { notFound } : {}),
+      ...(ambiguous.length ? { ambiguous } : {}),
+      ...(warnings.length ? { warnings } : {}),
+    };
+  }
+
+  /**
+   * Get actor ownership information
+   */
+  async getActorOwnership(data: {
+    actorIdentifier?: string;
+    playerIdentifier?: string;
+  }): Promise<any> {
+    this.validateFoundryState();
+
+    try {
+      const actors = data.actorIdentifier
+        ? data.actorIdentifier === 'all'
+          ? Array.from(game.actors || [])
+          : [this.findActorByIdentifier(data.actorIdentifier)].filter(Boolean)
+        : Array.from(game.actors || []);
+
+      const users = data.playerIdentifier
+        ? [
+            game.users?.getName(data.playerIdentifier) || game.users?.get(data.playerIdentifier),
+          ].filter(Boolean)
+        : Array.from(game.users || []);
+
+      const ownershipInfo = [];
+      const permissionNames = { 0: 'NONE', 1: 'LIMITED', 2: 'OBSERVER', 3: 'OWNER' };
+
+      for (const actor of actors) {
+        const actorInfo: any = {
+          id: actor.id,
+          name: actor.name,
+          type: actor.type,
+          ownership: [],
+        };
+
+        for (const user of users.filter(u => u && !u.isGM)) {
+          const permission = actor.testUserPermission(user, 'OWNER')
+            ? 3
+            : actor.testUserPermission(user, 'OBSERVER')
+              ? 2
+              : actor.testUserPermission(user, 'LIMITED')
+                ? 1
+                : 0;
+
+          actorInfo.ownership.push({
+            userId: user!.id,
+            userName: user!.name,
+            permission: permissionNames[permission as keyof typeof permissionNames],
+            numericPermission: permission,
+          });
+        }
+
+        ownershipInfo.push(actorInfo);
+      }
+
+      return ownershipInfo;
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error getting actor ownership:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Find actor by name or ID
+   */
+  private findActorByIdentifier(identifier: string): any {
+    const worldActor =
+      game.actors?.get(identifier) ||
+      game.actors?.getName(identifier) ||
+      Array.from(game.actors || []).find(a =>
+        a.name?.toLowerCase().includes(identifier.toLowerCase())
+      );
+    if (worldActor) return worldActor;
+
+    // Fallback: a scene Token id. For an unlinked token this returns the token's
+    // own synthetic (delta-backed) actor, so edits persist to that token alone —
+    // the way to tweak one copy on a map without touching the prototype or its
+    // siblings. (For a linked token this is the world actor, same as above.)
+    for (const scene of (game.scenes as any) || []) {
+      const token = scene.tokens?.get(identifier);
+      if (token?.actor) return token.actor;
+    }
+    return undefined;
+  }
+
+  /**
+   * Get friendly NPCs from current scene
+   */
+  async getFriendlyNPCs(): Promise<Array<{ id: string; name: string }>> {
+    this.validateFoundryState();
+
+    try {
+      const scene = game.scenes?.find(s => s.active);
+      if (!scene) {
+        return [];
+      }
+
+      const friendlyTokens = scene.tokens.filter(
+        (token: any) => token.disposition === 1 // FRIENDLY disposition
+      );
+
+      return friendlyTokens
+        .map((token: any) => ({
+          id: token.actor?.id || token.id || '',
+          name: token.name || token.actor?.name || 'Unknown',
+        }))
+        .filter(t => t.id);
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error getting friendly NPCs:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get party characters (player-owned actors)
+   */
+  async getPartyCharacters(): Promise<Array<{ id: string; name: string }>> {
+    this.validateFoundryState();
+
+    try {
+      const partyCharacters = Array.from(game.actors || []).filter(
+        actor => actor.hasPlayerOwner && actor.type === 'character'
+      );
+
+      return partyCharacters
+        .map(actor => ({
+          id: actor.id || '',
+          name: actor.name || 'Unknown',
+        }))
+        .filter(c => c.id);
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error getting party characters:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get connected players (excluding GM)
+   */
+  async getConnectedPlayers(): Promise<Array<{ id: string; name: string }>> {
+    this.validateFoundryState();
+
+    try {
+      const connectedPlayers = Array.from(game.users || []).filter(
+        user => user.active && !user.isGM
+      );
+
+      return connectedPlayers
+        .map(user => ({
+          id: user.id || '',
+          name: user.name || 'Unknown',
+        }))
+        .filter(u => u.id);
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error getting connected players:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Find players by identifier with partial matching
+   */
+  async findPlayers(data: {
+    identifier: string;
+    allowPartialMatch?: boolean;
+    includeCharacterOwners?: boolean;
+  }): Promise<Array<{ id: string; name: string }>> {
+    this.validateFoundryState();
+
+    try {
+      const { identifier, allowPartialMatch = true, includeCharacterOwners = true } = data;
+      const searchTerm = identifier.toLowerCase();
+      const players = [];
+
+      // Direct user name matching
+      for (const user of game.users || []) {
+        if (user.isGM) continue;
+
+        const userName = user.name?.toLowerCase() || '';
+        if (userName === searchTerm || (allowPartialMatch && userName.includes(searchTerm))) {
+          players.push({ id: user.id || '', name: user.name || 'Unknown' });
+        }
+      }
+
+      // Character name matching (find owner of character)
+      if (includeCharacterOwners && players.length === 0) {
+        for (const actor of game.actors || []) {
+          if (actor.type !== 'character') continue;
+
+          const actorName = actor.name?.toLowerCase() || '';
+          if (actorName === searchTerm || (allowPartialMatch && actorName.includes(searchTerm))) {
+            // Find the player owner of this character
+            const owner = game.users?.find(
+              user => actor.testUserPermission(user, 'OWNER') && !user.isGM
+            );
+
+            if (owner && !players.some(p => p.id === owner.id)) {
+              players.push({ id: owner.id || '', name: owner.name || 'Unknown' });
+            }
+          }
+        }
+      }
+
+      return players.filter(p => p.id);
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error finding players:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Find single actor by identifier
+   */
+  async findActor(data: { identifier: string }): Promise<{ id: string; name: string } | null> {
+    this.validateFoundryState();
+
+    try {
+      const actor = this.findActorByIdentifier(data.identifier);
+      return actor ? { id: actor.id, name: actor.name } : null;
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Error finding actor:`, error);
+      return null;
+    }
+  }
+
+  // Private storage for tracking roll button processing states
+  private rollButtonProcessingStates: Map<string, boolean> = new Map();
+
+  /**
+   * Check if a roll button is currently being processed
+   */
+  private isRollButtonProcessing(buttonId: string): boolean {
+    return this.rollButtonProcessingStates.get(buttonId) || false;
+  }
+
+  /**
+   * Set roll button processing state
+   */
+  private setRollButtonProcessing(buttonId: string, processing: boolean): void {
+    if (processing) {
+      this.rollButtonProcessingStates.set(buttonId, true);
+    } else {
+      this.rollButtonProcessingStates.delete(buttonId);
+    }
+  }
+
+  /**
+   * Get or create a folder for organizing MCP-generated content
+   */
+  private async getOrCreateFolder(
+    folderName: string,
+    type: 'Actor' | 'JournalEntry'
+  ): Promise<string | null> {
+    try {
+      // Look for existing folder
+      const existingFolder = game.folders?.find(
+        (f: any) => f.name === folderName && f.type === type
+      );
+
+      if (existingFolder) {
+        return existingFolder.id;
+      }
+
+      // Create appropriate descriptions
+      let description = '';
+      if (type === 'Actor') {
+        if (folderName === 'Foundry MCP Creatures') {
+          description = 'Creatures and monsters created via Foundry MCP Bridge';
+        } else {
+          description = `NPCs and creatures related to: ${folderName}`;
+        }
+      } else {
+        description = `Quest and content for: ${folderName}`;
+      }
+
+      // Create new folder
+      const folderData = {
+        name: folderName,
+        type,
+        description,
+        color: type === 'Actor' ? '#4a90e2' : '#f39c12', // Blue for actors, orange for journals
+        sort: 0,
+        parent: null,
+        flags: {
+          'foundry-mcp-bridge': {
+            mcpGenerated: true,
+            createdAt: new Date().toISOString(),
+            questContext: type === 'JournalEntry' ? folderName : undefined,
+          },
+        },
+      };
+
+      const folder = await Folder.create(folderData);
+      return folder?.id || null;
+    } catch (error) {
+      console.warn(`[${this.moduleId}] Failed to create folder "${folderName}":`, error);
+      // Return null so items are created without folders rather than failing
+      return null;
+    }
+  }
+
+  /**
+   * List all scenes with filtering options
+   */
+  async listScenes(
+    options: { filter?: string; include_active_only?: boolean } = {}
+  ): Promise<any[]> {
+    this.validateFoundryState();
+
+    try {
+      let scenes = game.scenes?.contents || [];
+
+      // Filter by active only if requested
+      if (options.include_active_only) {
+        scenes = scenes.filter((scene: any) => scene.active);
+      }
+
+      // Filter by name if provided
+      if (options.filter) {
+        const filterLower = options.filter.toLowerCase();
+        scenes = scenes.filter((scene: any) => scene.name.toLowerCase().includes(filterLower));
+      }
+
+      // Map to consistent format
+      return scenes.map((scene: any) => ({
+        id: scene.id,
+        name: scene.name,
+        active: scene.active,
+        dimensions: {
+          width: scene.dimensions?.width || scene.width || 0,
+          height: scene.dimensions?.height || scene.height || 0,
+        },
+        gridSize: scene.grid?.size || 100,
+        background: scene._source?.background?.src || scene.img || '',
+        walls: scene.walls?.size || 0,
+        tokens: scene.tokens?.size || 0,
+        lighting: scene.lights?.size || 0,
+        sounds: scene.sounds?.size || 0,
+        navigation: scene.navigation || false,
+      }));
+    } catch (error) {
+      throw new Error(
+        `Failed to list scenes: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Switch to a different scene
+   */
+  async switchScene(options: { scene_identifier: string; optimize_view?: boolean }): Promise<any> {
+    this.validateFoundryState();
+
+    try {
+      // Find the target scene by ID or name
+      const scenes = game.scenes?.contents || [];
+      const targetScene = scenes.find(
+        (scene: any) =>
+          scene.id === options.scene_identifier ||
+          scene.name.toLowerCase() === options.scene_identifier.toLowerCase()
+      );
+
+      if (!targetScene) {
+        throw new Error(`Scene not found: "${options.scene_identifier}"`);
+      }
+
+      // Activate the scene
+      await targetScene.activate();
+
+      // Optimize view if requested (default true)
+      if (options.optimize_view !== false && typeof canvas !== 'undefined' && canvas?.scene) {
+        const dimensions = targetScene.dimensions || {
+          width: (targetScene as any).width || 0,
+          height: (targetScene as any).height || 0,
+        };
+        const width = (dimensions as any).width || 0;
+        const height = (dimensions as any).height || 0;
+
+        if (width && height) {
+          // Center the view on the scene
+          await canvas.pan({
+            x: width / 2,
+            y: height / 2,
+            scale: Math.min(
+              (canvas as any).screenDimensions?.[0] / width || 1,
+              (canvas as any).screenDimensions?.[1] / height || 1,
+              1
+            ),
+          });
+        }
+      }
+
+      return {
+        success: true,
+        sceneId: targetScene.id,
+        sceneName: targetScene.name,
+        dimensions: {
+          width: (targetScene.dimensions as any)?.width || (targetScene as any).width || 0,
+          height: (targetScene.dimensions as any)?.height || (targetScene as any).height || 0,
+        },
+      };
+    } catch (error) {
+      throw new Error(
+        `Failed to switch scene: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  // ===== PHASE 7: CHARACTER ENTITY AND TOKEN MANIPULATION METHODS =====
+
+  /**
+   * Get detailed information about a specific entity within a character (item, action, or effect)
+   */
+  async getCharacterEntity(data: {
+    characterIdentifier: string;
+    entityIdentifier: string;
+  }): Promise<any> {
+    this.validateFoundryState();
+
+    try {
+      // Find the character first
+      const actors = game.actors?.contents || [];
+      const character = actors.find(
+        (actor: any) =>
+          actor.id === data.characterIdentifier ||
+          actor.name.toLowerCase() === data.characterIdentifier.toLowerCase()
+      );
+
+      if (!character) {
+        throw new Error(`Character not found: "${data.characterIdentifier}"`);
+      }
+
+      // Search in items first (by ID or name)
+      const items = character.items?.contents || [];
+      let entity = items.find(
+        (item: any) =>
+          item.id === data.entityIdentifier ||
+          item.name.toLowerCase() === data.entityIdentifier.toLowerCase()
+      );
+
+      if (entity) {
+        return {
+          success: true,
+          entityType: 'item',
+          entity: {
+            id: entity.id,
+            name: entity.name,
+            type: entity.type,
+            img: entity.img,
+            description: entity.system?.description?.value || entity.system?.description || '',
+            system: entity.system,
+          },
+        };
+      }
+
+      // Search in actions (for systems that have actions as separate entities)
+      if ((character as any).system?.actions) {
+        const actions = Array.isArray((character as any).system.actions)
+          ? (character as any).system.actions
+          : Object.values((character as any).system.actions || {});
+
+        entity = actions.find(
+          (action: any) =>
+            action.id === data.entityIdentifier ||
+            action.name?.toLowerCase() === data.entityIdentifier.toLowerCase()
+        );
+
+        if (entity) {
+          return {
+            success: true,
+            entityType: 'action',
+            entity,
+          };
+        }
+      }
+
+      // Search in effects
+      const effects = character.effects?.contents || [];
+      entity = effects.find(
+        (effect: any) =>
+          effect.id === data.entityIdentifier ||
+          effect.name?.toLowerCase() === data.entityIdentifier.toLowerCase()
+      );
+
+      if (entity) {
+        return {
+          success: true,
+          entityType: 'effect',
+          entity: {
+            id: entity.id,
+            name: entity.name || entity.label,
+            icon: entity.icon,
+            disabled: entity.disabled,
+            duration: entity.duration,
+            changes: entity.changes,
+          },
+        };
+      }
+
+      throw new Error(
+        `Entity not found: "${data.entityIdentifier}" in character "${character.name}"`
+      );
+    } catch (error) {
+      throw new Error(
+        `Failed to get character entity: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Move a token to a new position on the scene
+   */
+  async moveToken(data: {
+    tokenId: string;
+    x: number;
+    y: number;
+    animate?: boolean;
+  }): Promise<any> {
+    this.validateFoundryState();
+
+    // Use permission system
+    const permissionCheck = permissionManager.checkWritePermission('modifyScene', {
+      targetIds: [data.tokenId],
+    });
+
+    if (!permissionCheck.allowed) {
+      throw new Error(`${ERROR_MESSAGES.ACCESS_DENIED}: ${permissionCheck.reason}`);
+    }
+
+    try {
+      const scene = (game.scenes as any).current;
+      if (!scene) {
+        throw new Error('No active scene found');
+      }
+
+      const token = scene.tokens.get(data.tokenId);
+      if (!token) {
+        throw new Error(`Token ${data.tokenId} not found in current scene`);
+      }
+
+      // Update token position
+      await token.update(
+        {
+          x: data.x,
+          y: data.y,
+        },
+        { animate: data.animate !== false }
+      );
+
+      this.auditLog('moveToken', data, 'success');
+
+      return {
+        success: true,
+        tokenId: token.id,
+        tokenName: token.name,
+        newPosition: { x: data.x, y: data.y },
+        animated: data.animate !== false,
+      };
+    } catch (error) {
+      this.auditLog(
+        'moveToken',
+        data,
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw new Error(
+        `Failed to move token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Update token properties
+   */
+  async updateToken(data: { tokenId: string; updates: Record<string, any> }): Promise<any> {
+    this.validateFoundryState();
+
+    // Use permission system
+    const permissionCheck = permissionManager.checkWritePermission('modifyScene', {
+      targetIds: [data.tokenId],
+    });
+
+    if (!permissionCheck.allowed) {
+      throw new Error(`${ERROR_MESSAGES.ACCESS_DENIED}: ${permissionCheck.reason}`);
+    }
+
+    try {
+      const scene = (game.scenes as any).current;
+      if (!scene) {
+        throw new Error('No active scene found');
+      }
+
+      const token = scene.tokens.get(data.tokenId);
+      if (!token) {
+        throw new Error(`Token ${data.tokenId} not found in current scene`);
+      }
+
+      // Filter out undefined values
+      const cleanUpdates = Object.fromEntries(
+        Object.entries(data.updates).filter(([_, v]) => v !== undefined)
+      );
+
+      // Apply updates
+      await token.update(cleanUpdates);
+
+      this.auditLog('updateToken', { tokenId: data.tokenId, updates: cleanUpdates }, 'success');
+
+      return {
+        success: true,
+        tokenId: token.id,
+        tokenName: token.name,
+        updatedProperties: Object.keys(cleanUpdates),
+      };
+    } catch (error) {
+      this.auditLog(
+        'updateToken',
+        data,
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw new Error(
+        `Failed to update token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Delete one or more tokens from the scene
+   */
+  async deleteTokens(data: { tokenIds: string[] }): Promise<any> {
+    this.validateFoundryState();
+
+    // Use permission system
+    const permissionCheck = permissionManager.checkWritePermission('modifyScene', {
+      targetIds: data.tokenIds,
+    });
+
+    if (!permissionCheck.allowed) {
+      throw new Error(`${ERROR_MESSAGES.ACCESS_DENIED}: ${permissionCheck.reason}`);
+    }
+
+    try {
+      const scene = (game.scenes as any).current;
+      if (!scene) {
+        throw new Error('No active scene found');
+      }
+
+      const deletedTokens: string[] = [];
+      const failedTokens: string[] = [];
+
+      for (const tokenId of data.tokenIds) {
+        try {
+          const token = scene.tokens.get(tokenId);
+          if (token) {
+            await token.delete();
+            deletedTokens.push(tokenId);
+          } else {
+            failedTokens.push(tokenId);
+          }
+        } catch (error) {
+          failedTokens.push(tokenId);
+        }
+      }
+
+      this.auditLog(
+        'deleteTokens',
+        { tokenIds: data.tokenIds, deletedCount: deletedTokens.length },
+        'success'
+      );
+
+      return {
+        success: true,
+        deletedCount: deletedTokens.length,
+        deletedTokens,
+        failedTokens: failedTokens.length > 0 ? failedTokens : undefined,
+      };
+    } catch (error) {
+      this.auditLog(
+        'deleteTokens',
+        data,
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw new Error(
+        `Failed to delete tokens: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Get detailed information about a token
+   */
+  async getTokenDetails(data: { tokenId: string }): Promise<any> {
+    this.validateFoundryState();
+
+    try {
+      const scene = (game.scenes as any).current;
+      if (!scene) {
+        throw new Error('No active scene found');
+      }
+
+      const token = scene.tokens.get(data.tokenId);
+      if (!token) {
+        throw new Error(`Token ${data.tokenId} not found in current scene`);
+      }
+
+      // Return flat structure that matches MCP server expectations
+      return {
+        success: true,
+        id: token.id,
+        name: token.name,
+        x: token.x,
+        y: token.y,
+        width: token.width,
+        height: token.height,
+        rotation: token.rotation,
+        scale: token.texture?.scaleX || 1,
+        alpha: token.alpha,
+        hidden: token.hidden,
+        disposition: token.disposition,
+        elevation: token.elevation,
+        lockRotation: token.lockRotation,
+        img: token.texture?.src,
+        actorId: token.actor?.id,
+        actorData: token.actor
+          ? {
+              name: token.actor.name,
+              type: token.actor.type,
+              img: token.actor.img,
+            }
+          : null,
+        actorLink: token.actorLink,
+      };
+    } catch (error) {
+      throw new Error(
+        `Failed to get token details: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Toggle a status condition on a token
+   */
+  async toggleTokenCondition(data: {
+    tokenId: string;
+    conditionId: string;
+    active: boolean;
+  }): Promise<any> {
+    this.validateFoundryState();
+
+    // Use permission system
+    const permissionCheck = permissionManager.checkWritePermission('modifyScene', {
+      targetIds: [data.tokenId],
+    });
+
+    if (!permissionCheck.allowed) {
+      throw new Error(`${ERROR_MESSAGES.ACCESS_DENIED}: ${permissionCheck.reason}`);
+    }
+
+    try {
+      const scene = (game.scenes as any).current;
+      if (!scene) {
+        throw new Error('No active scene found');
+      }
+
+      const token = scene.tokens.get(data.tokenId);
+      if (!token) {
+        throw new Error(`Token ${data.tokenId} not found in current scene`);
+      }
+
+      const actor = token.actor;
+      if (!actor) {
+        throw new Error(`Token ${data.tokenId} has no associated actor`);
+      }
+
+      // Get the condition configuration for the game system
+      const conditions = (CONFIG as any).statusEffects || [];
+      const condition = conditions.find(
+        (c: any) =>
+          c.id === data.conditionId || c.name?.toLowerCase() === data.conditionId.toLowerCase()
+      );
+
+      if (!condition) {
+        throw new Error(`Condition not found: ${data.conditionId}`);
+      }
+
+      if (data.active) {
+        // Add the condition - handle DSA5 and other systems
+        const effectData: any = {
+          name: condition.name || condition.label || condition.id,
+          icon: condition.icon || condition.img,
+        };
+
+        // Add statuses for systems that support it (D&D5e, PF2e)
+        if (condition.id) {
+          effectData.statuses = [condition.id];
+        }
+
+        // DSA5-specific: Copy all properties from the condition
+        // DSA5 conditions have different structure than D&D5e/PF2e
+        if ((game.system as any)?.id === 'dsa5') {
+          // For DSA5, use the condition's full data structure
+          Object.assign(effectData, {
+            flags: condition.flags || {},
+            changes: condition.changes || [],
+            duration: condition.duration || {},
+            origin: condition.origin,
+          });
+        }
+
+        await actor.createEmbeddedDocuments('ActiveEffect', [effectData]);
+      } else {
+        // Remove the condition
+        const effects = actor.effects?.contents || [];
+        const effectsToRemove = effects.filter((effect: any) => {
+          // Check by status (D&D5e, PF2e)
+          if (effect.statuses?.has(data.conditionId)) {
+            return true;
+          }
+          // Check by name (fallback for all systems including DSA5)
+          if (effect.name?.toLowerCase() === data.conditionId.toLowerCase()) {
+            return true;
+          }
+          // Check by label (some systems use label instead of name)
+          if (effect.label?.toLowerCase() === data.conditionId.toLowerCase()) {
+            return true;
+          }
+          return false;
+        });
+
+        if (effectsToRemove.length > 0) {
+          await actor.deleteEmbeddedDocuments(
+            'ActiveEffect',
+            effectsToRemove.map((e: any) => e.id)
+          );
+        }
+      }
+
+      this.auditLog('toggleTokenCondition', data, 'success');
+
+      return {
+        success: true,
+        tokenId: token.id,
+        tokenName: token.name,
+        conditionId: data.conditionId,
+        conditionName: condition.name || condition.label || condition.id,
+        isActive: data.active,
+        active: data.active,
+        message: data.active
+          ? `Applied ${data.conditionId} to ${token.name}`
+          : `Removed ${data.conditionId} from ${token.name}`,
+      };
+    } catch (error) {
+      this.auditLog(
+        'toggleTokenCondition',
+        data,
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw new Error(
+        `Failed to toggle token condition: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Get all available conditions for the current game system
+   */
+  async getAvailableConditions(): Promise<any> {
+    this.validateFoundryState();
+
+    try {
+      const conditions = (CONFIG as any).statusEffects || [];
+
+      return {
+        success: true,
+        gameSystem: game.system?.id,
+        conditions: conditions.map((condition: any) => ({
+          id: condition.id,
+          name: condition.name || condition.label || condition.id,
+          icon: condition.icon || condition.img,
+          description: condition.description || '',
+        })),
+      };
+    } catch (error) {
+      throw new Error(
+        `Failed to get available conditions: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Move a token to a new position
+   */
+
+  /**
+   * Use an item on a character (cast spell, use ability, consume item, etc.)
+   * This triggers the item's default use behavior in Foundry VTT
+   */
+  async useItem(params: {
+    actorIdentifier: string;
+    itemIdentifier: string;
+    targets?: string[] | undefined; // Target character/token names or IDs. "self" targets the caster.
+    options?:
+      | {
+          consume?: boolean | undefined; // Whether to consume charges/uses
+          configureDialog?: boolean | undefined; // Whether to show configuration dialog
+          skipDialog?: boolean | undefined; // Skip confirmation dialogs (default: true for MCP)
+          spellLevel?: number | undefined; // For spells: cast at higher level
+          versatile?: boolean | undefined; // For versatile weapons: use versatile damage
+        }
+      | undefined;
+  }): Promise<{
+    success: boolean;
+    status?: string;
+    message: string;
+    itemName?: string;
+    actorName?: string;
+    targets?: string[];
+    requiresGMInteraction?: boolean;
+  }> {
+    this.validateFoundryState();
+
+    const { actorIdentifier, itemIdentifier, targets, options = {} } = params;
+
+    // Find the actor
+    const actor = this.findActorByIdentifier(actorIdentifier);
+    if (!actor) {
+      throw new Error(`Actor not found: ${actorIdentifier}`);
+    }
+
+    // Find the item on the actor
+    const item = actor.items.find(
+      (i: any) => i.id === itemIdentifier || i.name.toLowerCase() === itemIdentifier.toLowerCase()
+    );
+
+    if (!item) {
+      throw new Error(`Item "${itemIdentifier}" not found on actor "${actor.name}"`);
+    }
+
+    const itemAny = item;
+    const systemId = (game.system as any).id;
+
+    // Handle targeting if targets are specified
+    const resolvedTargetNames: string[] = [];
+    if (targets && targets.length > 0) {
+      // Get all tokens on the current scene
+      const scene = (game.scenes as any)?.active;
+      if (!scene) {
+        throw new Error('No active scene to find targets on');
+      }
+
+      const sceneTokens = scene.tokens;
+      const tokenIds: string[] = [];
+
+      for (const targetIdentifier of targets) {
+        // Handle "self" - target the caster's token
+        if (targetIdentifier.toLowerCase() === 'self') {
+          // Find token for the caster actor
+          const selfToken = sceneTokens.find(
+            (t: any) => t.actor?.id === actor.id || t.actorId === actor.id
+          );
+          if (selfToken) {
+            tokenIds.push(selfToken.id);
+            resolvedTargetNames.push(actor.name);
+          } else {
+            console.warn(
+              `[foundry-mcp-bridge] No token found on scene for actor "${actor.name}" (self)`
+            );
+          }
+          continue;
+        }
+
+        // Find token by name or ID
+        const targetToken = sceneTokens.find(
+          (t: any) =>
+            t.id === targetIdentifier ||
+            t.name?.toLowerCase() === targetIdentifier.toLowerCase() ||
+            t.actor?.name?.toLowerCase() === targetIdentifier.toLowerCase()
+        );
+
+        if (targetToken) {
+          tokenIds.push(targetToken.id);
+          resolvedTargetNames.push(targetToken.name || targetToken.actor?.name || targetIdentifier);
+        } else {
+          console.warn(`[foundry-mcp-bridge] Target not found: "${targetIdentifier}"`);
+        }
+      }
+
+      // Set targets using Foundry's targeting system
+      if (tokenIds.length > 0 && game.user) {
+        await (game.user as any).updateTokenTargets(tokenIds);
+        console.log(`[foundry-mcp-bridge] Set targets: ${resolvedTargetNames.join(', ')}`);
+      }
+    }
+
+    try {
+      // For items that may show dialogs (spells with choices, etc.),
+      // we fire-and-forget to avoid timeout issues. The GM will interact
+      // with the dialog in Foundry, and the result appears in chat.
+
+      // Check if item has a use() method (common in D&D 5e, PF2e)
+      if (typeof itemAny.use === 'function') {
+        // D&D 5e and similar systems
+        // Only pass options that D&D 5e's item.use() expects
+        const useOptions: Record<string, any> = {
+          createMessage: true,
+        };
+
+        // D&D 5e specific options
+        if (systemId === 'dnd5e') {
+          useOptions.consumeResource = options.consume ?? true;
+          useOptions.consumeSpellSlot = options.consume ?? true;
+          useOptions.consumeUsage = options.consume ?? true;
+          // Always show dialog so GM can make choices
+          useOptions.configureDialog = true;
+        }
+
+        // Spell level for upcasting
+        if (options.spellLevel !== undefined) {
+          useOptions.slotLevel = options.spellLevel; // D&D 5e
+          useOptions.level = options.spellLevel; // generic
+        }
+
+        // Fire and forget - don't await, as dialogs block the promise
+        itemAny.use(useOptions).catch((err: Error) => {
+          console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+        });
+      } else if (typeof itemAny.toChat === 'function') {
+        // PF2e and some other systems use toChat
+        if (typeof itemAny.toMessage === 'function') {
+          itemAny.toMessage(undefined, { create: true }).catch((err: Error) => {
+            console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+          });
+        } else {
+          itemAny.toChat().catch((err: Error) => {
+            console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+          });
+        }
+      } else if (typeof itemAny.roll === 'function') {
+        // Some items have a roll method
+        itemAny.roll().catch((err: Error) => {
+          console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+        });
+      } else if (systemId === 'dsa5') {
+        // DSA5 specific handling
+        if (
+          item.type === 'spell' ||
+          item.type === 'liturgy' ||
+          item.type === 'ceremony' ||
+          item.type === 'ritual'
+        ) {
+          if (typeof itemAny.postItem === 'function') {
+            itemAny.postItem().catch((err: Error) => {
+              console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+            });
+          } else if (typeof itemAny.setupEffect === 'function') {
+            itemAny.setupEffect().catch((err: Error) => {
+              console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+            });
+          } else {
+            // Fallback: create a chat message describing the item
+            const chatData = {
+              user: game.user?.id,
+              speaker: ChatMessage.getSpeaker({ actor }),
+              content: `<h3>${item.name}</h3><p>${actor.name} uses ${item.name}.</p>`,
+            };
+            ChatMessage.create(chatData);
+          }
+        } else {
+          if (typeof itemAny.postItem === 'function') {
+            itemAny.postItem().catch((err: Error) => {
+              console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+            });
+          }
+        }
+      } else {
+        // Generic fallback: create a chat message
+        const chatData = {
+          user: game.user?.id,
+          speaker: ChatMessage.getSpeaker({ actor }),
+          content: `<h3>${item.name}</h3><p>${actor.name} uses ${item.name}.</p>`,
+        };
+        ChatMessage.create(chatData);
+      }
+
+      this.auditLog(
+        'useItem',
+        {
+          actorId: actor.id,
+          itemId: item.id,
+          itemName: item.name,
+          targets: resolvedTargetNames,
+        },
+        'success'
+      );
+
+      const targetInfo =
+        resolvedTargetNames.length > 0 ? ` targeting ${resolvedTargetNames.join(', ')}` : '';
+
+      const result: {
+        success: boolean;
+        status?: string;
+        message: string;
+        itemName?: string;
+        actorName?: string;
+        targets?: string[];
+        requiresGMInteraction?: boolean;
+      } = {
+        success: true,
+        status: 'initiated',
+        message: `Item use initiated for ${actor.name} using ${item.name}${targetInfo}. If a dialog appeared in Foundry VTT, the GM should select options and confirm. The result will appear in chat.`,
+        itemName: item.name,
+        actorName: actor.name,
+        requiresGMInteraction: true,
+      };
+
+      if (resolvedTargetNames.length > 0) {
+        result.targets = resolvedTargetNames;
+      }
+
+      return result;
+    } catch (error) {
+      this.auditLog(
+        'useItem',
+        {
+          actorId: actor.id,
+          itemId: item.id,
+        },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+
+      throw new Error(
+        `Failed to use item "${item.name}": ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  // ===== D&D 5E FEATURE CREATION =====
+
+  /**
+   * Add a save-attack feature (feat) to an existing D&D 5e actor.
+   * Creates a single save Activity with damage and an optional area template.
+   */
+  async addSaveFeatureToActor(data: {
+    actorIdentifier: string;
+    featureName: string;
+    description: string;
+    activationType: string;
+    saveAbility: string;
+    saveDC: number;
+    damageParts: Array<{ number: number; denomination: number; type: string }>;
+    halfOnSave: boolean;
+    areaType: string;
+    areaSize?: number;
+    areaUnits: string;
+    affectsType: string;
+  }): Promise<any> {
+    this.validateFoundryState();
+
+    try {
+      // 1. Lookup actor
+      const actor = this.findActorByIdentifier(data.actorIdentifier);
+      if (!actor) {
+        throw new Error(`Actor not found: "${data.actorIdentifier}"`);
+      }
+
+      // 2. System guard
+      if ((game.system as any).id !== 'dnd5e') {
+        throw new Error(
+          `addSaveFeatureToActor requires D&D 5e. ` +
+            `Current system: "${(game.system as any).id}".`
+        );
+      }
+
+      // 3. Duplicate check (by name only, regardless of item type)
+      const existing = actor.items.find((i: any) => i.name === data.featureName);
+      if (existing) {
+        throw new Error(
+          `Feature "${data.featureName}" already exists on actor "${actor.name}" ` +
+            `(id: ${existing.id}). Use a different name or remove the existing feature first.`
+        );
+      }
+
+      // 4. Generate activity ID
+      const activityId: string = (foundry.utils as any).randomID(16);
+
+      // 5. Slug identifier
+      const identifier = slugify(data.featureName);
+
+      // 5a. Map emanation → radius (Foundry uses "radius" for radial emanations)
+      const mappedAreaType: string = data.areaType === 'emanation' ? 'radius' : data.areaType;
+
+      // 6. Build item data — schema verified against dnd5e 5.1.8 real output
+      const itemData = {
+        name: data.featureName,
+        type: 'feat',
+        img: 'systems/dnd5e/icons/svg/items/feature.svg',
+        system: {
+          description: { value: data.description, chat: '' },
+          identifier,
+          source: { revision: 1, rules: '2024' },
+          type: { value: 'monster', subtype: '' },
+          uses: { spent: 0, recovery: [], max: '' },
+          advancement: [],
+          crewed: false,
+          enchant: {},
+          prerequisites: { items: [], repeatable: false, level: null },
+          properties: [],
+          requirements: '',
+          activities: {
+            [activityId]: {
+              _id: activityId,
+              type: 'save',
+              sort: 0,
+              name: '',
+              activation: {
+                type: data.activationType,
+                override: false,
+              },
+              consumption: {
+                scaling: { allowed: false },
+                spellSlot: true,
+                targets: [],
+              },
+              description: {},
+              duration: { units: 'inst', concentration: false, override: false },
+              effects: [],
+              range: { units: 'self', override: false },
+              uses: { spent: 0, recovery: [] },
+              target: {
+                template: {
+                  contiguous: false,
+                  units: data.areaUnits,
+                  count: '',
+                  type: mappedAreaType,
+                  size: mappedAreaType ? String(data.areaSize) : '',
+                },
+                affects: {
+                  choice: false,
+                  count: '',
+                  type: data.affectsType,
+                  special: '',
+                },
+                override: false,
+                prompt: true,
+              },
+              damage: {
+                onSave: data.halfOnSave ? 'half' : 'none',
+                parts: data.damageParts.map(p => ({
+                  custom: { enabled: false, formula: '' },
+                  number: p.number,
+                  denomination: p.denomination,
+                  bonus: '',
+                  types: [p.type],
+                  scaling: { mode: '', number: 1 },
+                })),
+              },
+              save: {
+                ability: [data.saveAbility],
+                dc: {
+                  calculation: '',
+                  formula: String(data.saveDC),
+                },
+              },
+            },
+          },
+        },
+        effects: [],
+      };
+
+      // 7. Create embedded item
+      const [created] = (await actor.createEmbeddedDocuments('Item', [itemData])) as any[];
+
+      this.auditLog(
+        'addSaveFeatureToActor',
+        { actorId: actor.id, featureName: data.featureName },
+        'success'
+      );
+
+      // 8. Return structured result
+      return {
+        success: true,
+        item: { id: created.id, name: created.name },
+        actor: { id: actor.id, name: actor.name },
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Failed to add save feature to actor`, error);
+      this.auditLog(
+        'addSaveFeatureToActor',
+        { actorIdentifier: data.actorIdentifier, featureName: data.featureName },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  // ===== CREATE NPC ACTOR (D&D 5e) =====
+
+  async createNpcActor(data: {
+    name: string;
+    creatureType: string;
+    creatureSubtype: string;
+    size: string;
+    alignment: string;
+    cr: string | number;
+    hpAverage: number;
+    hpFormula: string;
+    acMode: string;
+    acValue?: number;
+    abilities: { str: number; dex: number; con: number; int: number; wis: number; cha: number };
+    savingThrows: string[];
+    walkSpeed: number;
+    flySpeed: number;
+    swimSpeed: number;
+    climbSpeed: number;
+    burrowSpeed: number;
+    hover: boolean;
+    darkvision: number;
+    blindsight: number;
+    tremorsense: number;
+    truesight: number;
+    specialSenses: string;
+    skills: Array<{ skill: string; proficiency: string }>;
+    damageImmunities: string[];
+    damageResistances: string[];
+    damageVulnerabilities: string[];
+    conditionImmunities: string[];
+    languages: string[];
+    languagesCustom: string;
+    biography: string;
+    sourceBook: string;
+    sourcePage: string;
+    sourceRules: string;
+  }): Promise<any> {
+    this.validateFoundryState();
+
+    try {
+      // 1. System guard
+      if ((game.system as any).id !== 'dnd5e') {
+        throw new Error(
+          `createNpcActor requires D&D 5e. ` + `Current system: "${(game.system as any).id}".`
+        );
+      }
+
+      // 2. Duplicate check by name — only against other NPCs, so a player
+      //    character sharing the name does not block NPC creation.
+      const existingActor = game.actors?.find((a: any) => a.name === data.name && a.type === 'npc');
+      if (existingActor) {
+        throw new Error(
+          `NPC "${data.name}" already exists (id: ${existingActor.id}). ` +
+            `Use a different name or remove the existing NPC first.`
+        );
+      }
+
+      // 3. Soft validation — collect warnings, do NOT block creation
+      const warnings: string[] = [];
+      const allDamageValues: Array<{ field: string; value: string }> = [
+        ...data.damageImmunities.map(v => ({ field: 'damageImmunities', value: v })),
+        ...data.damageResistances.map(v => ({ field: 'damageResistances', value: v })),
+        ...data.damageVulnerabilities.map(v => ({ field: 'damageVulnerabilities', value: v })),
+      ];
+      for (const { field, value } of allDamageValues) {
+        if (!NPC_DAMAGE_CANONICAL.has(value)) {
+          const msg = `Unknown damage type "${value}" in ${field} — verify it matches dnd5e system values`;
+          warnings.push(msg);
+          console.warn(`[${MODULE_ID}] ${msg}`);
+        }
+      }
+      for (const value of data.conditionImmunities) {
+        if (!NPC_CONDITION_CANONICAL.has(value)) {
+          const msg = `Unknown condition "${value}" in conditionImmunities — verify it matches dnd5e system values`;
+          warnings.push(msg);
+          console.warn(`[${MODULE_ID}] ${msg}`);
+        }
+      }
+
+      // 4. Normalize CR to float
+      const normalizedCR = npcNormalizeCR(data.cr);
+
+      // 5. Folder
+      const folderId = await this.getOrCreateFolder('Foundry MCP Creatures', 'Actor');
+
+      // 6. Ability scores with saving throw proficiency flags
+      const savingThrowSet = new Set(data.savingThrows);
+      const abilities = {
+        str: { value: data.abilities.str, proficient: savingThrowSet.has('str') ? 1 : 0 },
+        dex: { value: data.abilities.dex, proficient: savingThrowSet.has('dex') ? 1 : 0 },
+        con: { value: data.abilities.con, proficient: savingThrowSet.has('con') ? 1 : 0 },
+        int: { value: data.abilities.int, proficient: savingThrowSet.has('int') ? 1 : 0 },
+        wis: { value: data.abilities.wis, proficient: savingThrowSet.has('wis') ? 1 : 0 },
+        cha: { value: data.abilities.cha, proficient: savingThrowSet.has('cha') ? 1 : 0 },
+      };
+
+      // 7. AC block — omit flat when mode is "default"
+      const acBlock =
+        data.acMode === 'flat' ? { calc: 'flat', flat: data.acValue } : { calc: 'default' };
+
+      // 8. Build full actor data
+      const actorData: any = {
+        name: data.name,
+        type: 'npc',
+        system: {
+          abilities,
+          attributes: {
+            ac: acBlock,
+            hp: {
+              value: data.hpAverage,
+              max: data.hpAverage,
+              temp: 0,
+              tempmax: 0,
+              formula: data.hpFormula,
+            },
+            movement: {
+              walk: data.walkSpeed,
+              fly: data.flySpeed,
+              swim: data.swimSpeed,
+              climb: data.climbSpeed,
+              burrow: data.burrowSpeed,
+              units: 'ft',
+              hover: data.hover,
+              special: '',
+            },
+            senses: {
+              darkvision: data.darkvision,
+              blindsight: data.blindsight,
+              tremorsense: data.tremorsense,
+              truesight: data.truesight,
+              units: 'ft',
+              special: data.specialSenses,
+            },
+          },
+          details: {
+            cr: normalizedCR,
+            type: {
+              value: data.creatureType,
+              subtype: data.creatureSubtype,
+            },
+            alignment: data.alignment,
+            biography: {
+              value: data.biography,
+              public: '',
+            },
+            source: {
+              revision: 1,
+              rules: data.sourceRules,
+              book: data.sourceBook,
+              page: data.sourcePage,
+              custom: '',
+              license: '',
+            },
+          },
+          traits: {
+            size: NPC_SIZE_MAP[data.size] ?? 'med',
+            di: { value: data.damageImmunities, custom: '', bypasses: [] },
+            dr: { value: data.damageResistances, custom: '', bypasses: [] },
+            dv: { value: data.damageVulnerabilities, custom: '', bypasses: [] },
+            ci: { value: data.conditionImmunities, custom: '' },
+            languages: {
+              value: data.languages,
+              custom: data.languagesCustom,
+              communication: {},
+            },
+          },
+          skills: npcBuildSkillsBlock(data.skills),
+        },
+      };
+
+      // 9. Assign folder if available
+      if (folderId) {
+        actorData.folder = folderId;
+      }
+
+      // 10. Create actor
+      const actor = await Actor.create(actorData);
+      if (!actor) {
+        throw new Error(`Failed to create NPC actor "${data.name}"`);
+      }
+
+      this.auditLog('createNpcActor', { name: data.name, cr: normalizedCR }, 'success');
+
+      // 11. Return structured result
+      return {
+        success: true,
+        actor: {
+          id: actor.id,
+          name: actor.name,
+          cr: npcFormatCR(normalizedCR),
+          folder: folderId ?? null,
+        },
+        warnings,
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Failed to create NPC actor`, error);
+      this.auditLog(
+        'createNpcActor',
+        { name: data.name },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add weapon attack to an existing actor (dnd5e-add-attack-feature)
+  // ---------------------------------------------------------------------------
+
+  async addAttackToActor(data: any): Promise<any> {
+    this.validateFoundryState();
+
+    if ((game.system as any).id !== 'dnd5e') {
+      throw new Error('addAttackToActor requires the dnd5e game system');
+    }
+
+    try {
+      // 1. Resolve actor
+      const actor = await this.findActorByIdentifier(data.actorIdentifier);
+      if (!actor) {
+        throw new Error(`Actor not found: "${data.actorIdentifier}"`);
+      }
+
+      // 2. Duplicate check
+      const existing = actor.items.find(
+        (i: any) => i.name.toLowerCase() === data.featureName.toLowerCase()
+      );
+      if (existing) {
+        throw new Error(
+          `An item named "${data.featureName}" already exists on actor "${actor.name}". ` +
+            `Remove or rename it first.`
+        );
+      }
+
+      // 3. Soft validation — collect warnings, never block
+      const warnings: string[] = [];
+
+      for (const part of data.damageParts as Array<{
+        number: number;
+        denomination: number;
+        type: string;
+      }>) {
+        if (!ATTACK_DAMAGE_CANONICAL.has(part.type)) {
+          const msg = `Unknown damage type "${part.type}" — verify it matches dnd5e system values`;
+          warnings.push(msg);
+          console.warn(`[${MODULE_ID}] ${msg}`);
+        }
+      }
+      for (const prop of data.properties as string[]) {
+        if (!ATTACK_PROPERTY_CANONICAL.has(prop)) {
+          const msg = `Unknown weapon property "${prop}" — verify it matches dnd5e system values`;
+          warnings.push(msg);
+          console.warn(`[${MODULE_ID}] ${msg}`);
+        }
+      }
+
+      // 4. Generate activity ID
+      const activityId: string = (foundry.utils as any).randomID(16);
+
+      // 5. Damage parts for the activity (all except the first — which is system.damage.base)
+      const activityDamageParts = (
+        data.damageParts as Array<{ number: number; denomination: number; type: string }>
+      )
+        .slice(1)
+        .map(p => ({
+          types: [p.type],
+          number: p.number,
+          denomination: p.denomination,
+          bonus: '',
+          scaling: { mode: '', number: 1 },
+          custom: { enabled: false },
+        }));
+
+      // 6. Range object (system-level — holds the real range/reach)
+      const rangeObj =
+        data.attackType === 'melee'
+          ? { value: data.reachFt ?? 5, long: null, units: 'ft' }
+          : { value: data.rangeFt, long: data.longRangeFt ?? null, units: 'ft' };
+
+      // 7. Conditional 2024-only fields
+      const sourceRules: string = data.sourceRules ?? '2014';
+      const masteryField = sourceRules === '2024' ? { mastery: '' } : {};
+      const abilityField = sourceRules === '2024' ? { ability: data.effectiveAbility } : {};
+      const classification = sourceRules === '2014' ? 'weapon' : '';
+
+      // 8. Build item data
+      const itemData: Record<string, any> = {
+        name: data.featureName,
+        type: 'weapon',
+        system: {
+          description: {
+            value: data.description ?? '',
+            chat: '',
+            unidentified: '',
+          },
+          source: {
+            custom: '',
+            book: data.sourceBook ?? '',
+            page: data.sourcePage ?? '',
+            license: '',
+            rules: sourceRules,
+          },
+          quantity: 1,
+          weight: { value: 0, units: 'lb' },
+          price: { value: 0, denomination: 'gp' },
+          attunement: '',
+          equipped: data.equipped !== false,
+          rarity: '',
+          identified: true,
+          activation: {
+            type: data.activationType ?? 'action',
+            value: 1,
+            condition: '',
+            override: false,
+          },
+          duration: { value: '', units: '' },
+          cover: null,
+          target: {
+            template: {
+              count: '',
+              contiguous: false,
+              type: '',
+              size: '',
+              width: '',
+              height: '',
+              units: '',
+            },
+            affects: { count: '', type: '', choice: false, special: '' },
+            prompt: true,
+            override: false,
+          },
+          range: rangeObj,
+          uses: { value: null, max: '', recovery: [], prompt: true },
+          damage: {
+            base: {
+              types: [(data.damageParts as any[])[0].type],
+              number: (data.damageParts as any[])[0].number,
+              denomination: (data.damageParts as any[])[0].denomination,
+              bonus: '',
+              scaling: { mode: '', number: 1 },
+              custom: { enabled: false },
+            },
+          },
+          type: { value: data.weaponClass ?? 'natural', baseItem: '' },
+          properties: data.properties as string[],
+          proficient: 1,
+          magicalBonus: null,
+          ...masteryField,
+          activities: {
+            [activityId]: {
+              _id: activityId,
+              type: 'attack',
+              name: '',
+              img: '',
+              sort: 0,
+              description: {},
+              activation: {
+                type: data.activationType ?? 'action',
+                value: 1,
+                condition: '',
+                override: false,
+              },
+              duration: { units: '', value: '', override: false },
+              target: {
+                template: {
+                  count: '',
+                  contiguous: false,
+                  type: '',
+                  size: '',
+                  width: '',
+                  height: '',
+                  units: '',
+                },
+                affects: { count: '', type: '', choice: false, special: '' },
+                prompt: true,
+                override: false,
+              },
+              range: { units: 'self', override: false },
+              uses: { spent: 0, max: '', recovery: [] },
+              consumption: {
+                targets: [],
+                scaling: { allowed: false, max: '' },
+                spellSlot: true,
+              },
+              attack: {
+                ability: '',
+                bonus: data.attackBonus > 0 ? String(data.attackBonus) : '',
+                critical: { threshold: null },
+                flat: false,
+                type: {
+                  value: data.attackType ?? 'melee',
+                  classification: classification,
+                },
+                ...abilityField,
+              },
+              damage: {
+                critical: { bonus: '' },
+                includeBase: true,
+                parts: activityDamageParts,
+              },
+              effects: [],
+              save: { ability: '', dc: { formula: '', calculation: '' } },
+            },
+          },
+        },
+      };
+
+      // 9. Create the item on the actor
+      const created = (await actor.createEmbeddedDocuments('Item', [itemData]))[0];
+      if (!created) {
+        throw new Error(
+          `Failed to create attack item "${data.featureName}" on actor "${actor.name}"`
+        );
+      }
+
+      this.auditLog(
+        'addAttackToActor',
+        { actorId: actor.id, featureName: data.featureName },
+        'success'
+      );
+
+      return {
+        success: true,
+        actor: { id: actor.id, name: actor.name },
+        item: { id: created.id, name: created.name, type: 'weapon' },
+        warnings,
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Failed to add attack to actor`, error);
+      this.auditLog(
+        'addAttackToActor',
+        { actorIdentifier: data.actorIdentifier, featureName: data.featureName },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add automatic-damage aura/emanation feature to an existing actor
+  // (dnd5e-add-aura-feature)
+  // ---------------------------------------------------------------------------
+
+  async addAuraToActor(data: any): Promise<any> {
+    this.validateFoundryState();
+
+    if ((game.system as any).id !== 'dnd5e') {
+      throw new Error('addAuraToActor requires the dnd5e game system');
+    }
+
+    try {
+      // 1. Resolve actor
+      const actor = await this.findActorByIdentifier(data.actorIdentifier);
+      if (!actor) {
+        throw new Error(`Actor not found: "${data.actorIdentifier}"`);
+      }
+
+      // 2. Duplicate check (case-insensitive name match)
+      const existing = actor.items.find(
+        (i: any) => i.name.toLowerCase() === data.featureName.toLowerCase()
+      );
+      if (existing) {
+        throw new Error(
+          `An item named "${data.featureName}" already exists on actor "${actor.name}". ` +
+            `Remove or rename it first.`
+        );
+      }
+
+      // 3. Soft validation — collect warnings, never block
+      const warnings: string[] = [];
+
+      for (const part of data.damageParts as Array<{
+        number: number;
+        denomination: number;
+        type: string;
+      }>) {
+        if (!AURA_DAMAGE_CANONICAL.has(part.type)) {
+          const msg = `Unknown damage type "${part.type}" — verify it matches dnd5e system values`;
+          warnings.push(msg);
+          console.warn(`[${MODULE_ID}] ${msg}`);
+        }
+      }
+
+      // 4. Map areaType: Foundry uses "radius" internally for what 5e 2024 calls "emanation"
+      //    <option value="radius">Emanation</option> — no "emanation" value exists in the dropdown
+      const mappedAreaType: string = data.areaType === 'emanation' ? 'radius' : data.areaType;
+
+      // 5. Generate activity ID
+      const activityId: string = (foundry.utils as any).randomID(16);
+
+      // 6. Slug identifier
+      const identifier = slugify(data.featureName as string);
+
+      // 7. Build item data — schema verified against dnd5e 5.1.8 Banshee Wail
+      const itemData = {
+        name: data.featureName,
+        type: 'feat',
+        img: 'systems/dnd5e/icons/svg/items/feature.svg',
+        system: {
+          description: { value: data.description ?? '', chat: '' },
+          identifier,
+          source: {
+            revision: 1,
+            rules: data.sourceRules ?? '2014',
+            custom: '',
+            book: data.sourceBook ?? '',
+            page: data.sourcePage ?? '',
+            license: '',
+          },
+          type: { value: 'monster', subtype: '' },
+          uses: { spent: 0, recovery: [], max: '' },
+          advancement: [],
+          crewed: false,
+          enchant: {},
+          prerequisites: { items: [], repeatable: false, level: null },
+          properties: [],
+          requirements: '',
+          activities: {
+            [activityId]: {
+              _id: activityId,
+              type: 'damage', // activity type: damage — no attack roll, no save
+              name: '',
+              sort: 0,
+              activation: {
+                type: data.activationType ?? 'action',
+                value: 1,
+                override: false,
+                // NO condition — not present in real dnd5e 5.1.8 schema
+              },
+              consumption: {
+                scaling: { allowed: false },
+                spellSlot: true, // confirmed: true in real Banshee Wail schema
+                targets: [], // no uses management in V1
+              },
+              description: {}, // empty object — confirmed from real schema
+              duration: {
+                units: 'inst',
+                concentration: false,
+                override: false,
+              },
+              effects: [],
+              range: { units: 'self', override: false }, // NO value, NO special
+              uses: { spent: 0, recovery: [] }, // NO max field
+              target: {
+                template: {
+                  contiguous: false,
+                  units: data.areaUnits ?? 'ft',
+                  count: '',
+                  type: mappedAreaType,
+                  size: String(data.areaSize),
+                  width: '',
+                  height: '',
+                },
+                affects: {
+                  count: '',
+                  type: data.affectsType ?? 'creature',
+                  choice: false,
+                  special: '',
+                },
+                override: false,
+                prompt: true,
+              },
+              damage: {
+                critical: { allow: false }, // only this key — no bonus, no dice
+                parts: (
+                  data.damageParts as Array<{ number: number; denomination: number; type: string }>
+                ).map(p => ({
+                  types: [p.type],
+                  number: p.number,
+                  denomination: p.denomination,
+                  bonus: '',
+                  scaling: { mode: '', number: 1 }, // mode: '' required — from real schema
+                  custom: { enabled: false }, // NO formula field
+                })),
+                // NO onSave — damage activity has no save concept
+              },
+              // NO save block
+              // NO attack block
+            },
+          },
+        },
+        effects: [],
+      };
+
+      // 7. Create embedded item
+      const [created] = (await actor.createEmbeddedDocuments('Item', [itemData])) as any[];
+      if (!created) {
+        throw new Error(
+          `Failed to create aura item "${data.featureName}" on actor "${actor.name}"`
+        );
+      }
+
+      this.auditLog(
+        'addAuraToActor',
+        { actorId: actor.id, featureName: data.featureName },
+        'success'
+      );
+
+      return {
+        success: true,
+        actor: { id: actor.id, name: actor.name },
+        item: { id: created.id, name: created.name, type: 'feat' },
+        warnings,
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Failed to add aura to actor`, error);
+      this.auditLog(
+        'addAuraToActor',
+        { actorIdentifier: data.actorIdentifier, featureName: data.featureName },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add passive/descriptive feature to an existing actor (dnd5e-add-passive-feature)
+  // No activities, no mechanics — pure description displayed on the sheet.
+  // ---------------------------------------------------------------------------
+
+  async addPassiveFeatureToActor(data: any): Promise<any> {
+    this.validateFoundryState();
+
+    if ((game.system as any).id !== 'dnd5e') {
+      throw new Error('addPassiveFeatureToActor requires the dnd5e game system');
+    }
+
+    try {
+      // 1. Resolve actor
+      const actor = await this.findActorByIdentifier(data.actorIdentifier);
+      if (!actor) {
+        throw new Error(`Actor not found: "${data.actorIdentifier}"`);
+      }
+
+      // 2. Duplicate check (case-insensitive)
+      const existing = actor.items.find(
+        (i: any) => i.name.toLowerCase() === data.featureName.toLowerCase()
+      );
+      if (existing) {
+        throw new Error(
+          `An item named "${data.featureName}" already exists on actor "${actor.name}". ` +
+            `Remove or rename it first.`
+        );
+      }
+
+      // 3. Slug identifier
+      const identifier = slugify(data.featureName as string);
+
+      // 4. Build item data — no activities, no activityId needed
+      const itemData = {
+        name: data.featureName,
+        type: 'feat',
+        img: 'systems/dnd5e/icons/svg/items/feature.svg',
+        system: {
+          description: { value: data.description ?? '', chat: '' },
+          identifier,
+          source: {
+            revision: 1,
+            rules: data.sourceRules ?? '2014',
+            custom: '',
+            book: data.sourceBook ?? '',
+            page: data.sourcePage ?? '',
+            license: '',
+          },
+          type: { value: 'monster', subtype: '' },
+          uses: { spent: 0, recovery: [], max: '' },
+          advancement: [],
+          crewed: false,
+          enchant: {},
+          prerequisites: { items: [], repeatable: false, level: null },
+          properties: [],
+          requirements: '',
+          activities: {}, // empty — passive feature has no mechanical activity
+        },
+        effects: [],
+      };
+
+      // 5. Create embedded item
+      const [created] = (await actor.createEmbeddedDocuments('Item', [itemData])) as any[];
+      if (!created) {
+        throw new Error(
+          `Failed to create passive feature "${data.featureName}" on actor "${actor.name}"`
+        );
+      }
+
+      this.auditLog(
+        'addPassiveFeatureToActor',
+        { actorId: actor.id, featureName: data.featureName },
+        'success'
+      );
+
+      return {
+        success: true,
+        actor: { id: actor.id, name: actor.name },
+        item: { id: created.id, name: created.name, type: 'feat' },
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Failed to add passive feature to actor`, error);
+      this.auditLog(
+        'addPassiveFeatureToActor',
+        { actorIdentifier: data.actorIdentifier, featureName: data.featureName },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add weapon attack + save effect to an existing actor
+  // (dnd5e-add-attack-with-save) — Tipo B
+  // Two activities: attack (sort:0) + save (sort:1)
+  // ---------------------------------------------------------------------------
+
+  async addAttackWithSaveToActor(data: any): Promise<any> {
+    this.validateFoundryState();
+
+    if ((game.system as any).id !== 'dnd5e') {
+      throw new Error('addAttackWithSaveToActor requires the dnd5e game system');
+    }
+
+    try {
+      // 1. Resolve actor
+      const actor = await this.findActorByIdentifier(data.actorIdentifier);
+      if (!actor) {
+        throw new Error(`Actor not found: "${data.actorIdentifier}"`);
+      }
+
+      // 2. Duplicate check
+      const existing = actor.items.find(
+        (i: any) => i.name.toLowerCase() === data.featureName.toLowerCase()
+      );
+      if (existing) {
+        throw new Error(
+          `An item named "${data.featureName}" already exists on actor "${actor.name}". ` +
+            `Remove or rename it first.`
+        );
+      }
+
+      // 3. Soft validation — both damage groups unified
+      const warnings: string[] = [];
+      const allParts = [
+        ...(data.damageParts as Array<{ type: string }>),
+        ...(data.saveDamageParts as Array<{ type: string }>),
+      ];
+      for (const part of allParts) {
+        if (!ATTACK_WITH_SAVE_DAMAGE_CANONICAL.has(part.type)) {
+          const msg = `Unknown damage type "${part.type}" — verify it matches dnd5e system values`;
+          if (!warnings.includes(msg)) warnings.push(msg);
+          console.warn(`[${MODULE_ID}] ${msg}`);
+        }
+      }
+
+      // 4. Generate two distinct activity IDs
+      const attackActivityId: string = (foundry.utils as any).randomID(16);
+      const saveActivityId: string = (foundry.utils as any).randomID(16);
+
+      // 5. Attack activity damage parts: damageParts[1+] (base is in system.damage.base)
+      const activityDamageParts = (
+        data.damageParts as Array<{ number: number; denomination: number; type: string }>
+      )
+        .slice(1)
+        .map(p => ({
+          types: [p.type],
+          number: p.number,
+          denomination: p.denomination,
+          bonus: '',
+          scaling: { mode: '', number: 1 },
+          custom: { enabled: false },
+        }));
+
+      // 6. Save activity damage parts: ALL saveDamageParts (no base — independent)
+      const saveActivityDamageParts = (
+        data.saveDamageParts as Array<{ number: number; denomination: number; type: string }>
+      ).map(p => ({
+        types: [p.type],
+        number: p.number,
+        denomination: p.denomination,
+        bonus: '',
+        scaling: { mode: '', number: 1 },
+        custom: { enabled: false },
+      }));
+
+      // 7. System-level range (real reach/range — activity range is always 'self')
+      const rangeObj =
+        data.attackType === 'melee'
+          ? { value: data.reachFt ?? 5, long: null, units: 'ft' }
+          : { value: data.rangeFt, long: data.longRangeFt ?? null, units: 'ft' };
+
+      // 8. Conditional 2024-only fields (same rules as Tipo A)
+      const sourceRules: string = data.sourceRules ?? '2014';
+      const masteryField = sourceRules === '2024' ? { mastery: '' } : {};
+      const abilityField = sourceRules === '2024' ? { ability: data.effectiveAbility } : {};
+      const classification = sourceRules === '2014' ? 'weapon' : '';
+
+      // 9. Build item data
+      const itemData: Record<string, any> = {
+        name: data.featureName,
+        type: 'weapon',
+        system: {
+          description: {
+            value: data.description ?? '',
+            chat: '',
+            unidentified: '',
+          },
+          source: {
+            custom: '',
+            book: data.sourceBook ?? '',
+            page: data.sourcePage ?? '',
+            license: '',
+            rules: sourceRules,
+          },
+          quantity: 1,
+          weight: { value: 0, units: 'lb' },
+          price: { value: 0, denomination: 'gp' },
+          attunement: '',
+          equipped: data.equipped !== false,
+          rarity: '',
+          identified: true,
+          activation: {
+            type: data.activationType ?? 'action',
+            value: 1,
+            condition: '',
+            override: false,
+          },
+          duration: { value: '', units: '' },
+          cover: null,
+          target: {
+            template: {
+              count: '',
+              contiguous: false,
+              type: '',
+              size: '',
+              width: '',
+              height: '',
+              units: '',
+            },
+            affects: { count: '', type: '', choice: false, special: '' },
+            prompt: true,
+            override: false,
+          },
+          range: rangeObj,
+          uses: { value: null, max: '', recovery: [], prompt: true },
+          damage: {
+            base: {
+              types: [(data.damageParts as any[])[0].type],
+              number: (data.damageParts as any[])[0].number,
+              denomination: (data.damageParts as any[])[0].denomination,
+              bonus: '',
+              scaling: { mode: '', number: 1 },
+              custom: { enabled: false },
+            },
+          },
+          type: { value: data.weaponClass ?? 'natural', baseItem: '' },
+          properties: data.properties as string[],
+          proficient: 1,
+          magicalBonus: null,
+          ...masteryField,
+          activities: {
+            // ── Activity 1: attack (sort 0) ───────────────────────────────
+            [attackActivityId]: {
+              _id: attackActivityId,
+              type: 'attack',
+              name: '',
+              img: '',
+              sort: 0,
+              description: {},
+              activation: {
+                type: data.activationType ?? 'action',
+                value: 1,
+                condition: '',
+                override: false,
+              },
+              duration: { units: '', value: '', override: false },
+              target: {
+                template: {
+                  count: '',
+                  contiguous: false,
+                  type: '',
+                  size: '',
+                  width: '',
+                  height: '',
+                  units: '',
+                },
+                affects: { count: '', type: '', choice: false, special: '' },
+                prompt: true,
+                override: false,
+              },
+              range: { units: 'self', override: false },
+              uses: { spent: 0, max: '', recovery: [] },
+              consumption: { targets: [], scaling: { allowed: false, max: '' }, spellSlot: true },
+              attack: {
+                ability: '',
+                bonus: data.attackBonus > 0 ? String(data.attackBonus) : '',
+                critical: { threshold: null },
+                flat: false,
+                type: { value: data.attackType ?? 'melee', classification },
+                ...abilityField,
+              },
+              damage: {
+                critical: { bonus: '' },
+                includeBase: true,
+                parts: activityDamageParts,
+              },
+              effects: [],
+              save: { ability: '', dc: { formula: '', calculation: '' } },
+            },
+
+            // ── Activity 2: save (sort 1) ─────────────────────────────────
+            [saveActivityId]: {
+              _id: saveActivityId,
+              type: 'save',
+              name: '',
+              sort: 1,
+              description: {}, // {} — not { chatFlavor: '' } (real schema confirmed)
+              activation: {
+                type: data.activationType ?? 'action',
+                value: 1,
+                override: false,
+                // NO condition — per real schema
+              },
+              duration: { units: 'inst', concentration: false, override: false },
+              effects: [],
+              range: { units: 'self', override: false },
+              uses: { spent: 0, recovery: [] }, // NO max
+              consumption: { scaling: { allowed: false }, spellSlot: true, targets: [] },
+              target: {
+                template: {
+                  count: '',
+                  contiguous: false,
+                  type: '',
+                  size: '',
+                  width: '',
+                  height: '',
+                  units: '',
+                },
+                affects: { count: '1', type: 'creature', choice: false, special: '' },
+                override: false,
+                prompt: true,
+              },
+              damage: {
+                onSave: data.saveOnSave ?? 'none',
+                parts: saveActivityDamageParts,
+                // NO includeBase — save damage is independent from weapon base damage
+              },
+              save: {
+                ability: [data.saveAbility],
+                dc: { calculation: '', formula: String(data.saveDC) },
+              },
+            },
+          },
+        },
+      };
+
+      // 10. Create the item on the actor
+      const created = (await actor.createEmbeddedDocuments('Item', [itemData]))[0];
+      if (!created) {
+        throw new Error(
+          `Failed to create attack+save item "${data.featureName}" on actor "${actor.name}"`
+        );
+      }
+
+      this.auditLog(
+        'addAttackWithSaveToActor',
+        { actorId: actor.id, featureName: data.featureName },
+        'success'
+      );
+
+      return {
+        success: true,
+        actor: { id: actor.id, name: actor.name },
+        item: { id: created.id, name: created.name, type: 'weapon' },
+        warnings,
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Failed to add attack+save to actor`, error);
+      this.auditLog(
+        'addAttackWithSaveToActor',
+        { actorIdentifier: data.actorIdentifier, featureName: data.featureName },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Set actor spellcasting (ability + slot counts)
+  // ---------------------------------------------------------------------------
+
+  async setActorSpellcasting(data: any): Promise<any> {
+    this.validateFoundryState();
+
+    if ((game.system as any).id !== 'dnd5e') {
+      throw new Error('setActorSpellcasting requires the dnd5e game system');
+    }
+
+    try {
+      // 1. Resolve actor
+      const actor = this.findActorByIdentifier(data.actorIdentifier);
+      if (!actor) {
+        throw new Error(`Actor not found: "${data.actorIdentifier}"`);
+      }
+
+      const cls = data.spellcastingClass as string;
+      const lvl = data.spellcastingLevel as number;
+      const ability = data.effectiveAbility as string;
+      const idx = lvl - 1; // 0-based index into slot tables
+      const warnings: string[] = [];
+
+      // 2. Build flat updates object for a single actor.update() call
+      const updates: Record<string, unknown> = {};
+
+      // Spellcasting ability
+      updates['system.attributes.spellcasting'] = ability;
+
+      if (cls === 'warlock') {
+        // ── Pact Magic ────────────────────────────────────────────────────────
+        // All regular slots set to 0; pact slots from table
+        for (let i = 1; i <= 9; i++) {
+          updates[`system.spells.spell${i}.max`] = 0;
+          updates[`system.spells.spell${i}.value`] = 0;
+        }
+        const pact = WARLOCK_PACT_TABLE[idx];
+        updates['system.spells.pact.max'] = pact.max;
+        updates['system.spells.pact.value'] = pact.max;
+        updates['system.spells.pact.level'] = pact.level;
+      } else {
+        // ── Regular spell slots ───────────────────────────────────────────────
+        let slotRow: number[];
+
+        if (cls === 'artificer') {
+          slotRow = ARTIFICER_SLOTS[idx];
+        } else if (cls === 'paladin' || cls === 'ranger') {
+          slotRow = HALF_CASTER_SLOTS[idx];
+          if (lvl === 1) {
+            warnings.push(
+              `${cls} level 1 has no spell slots — use level 2+ to unlock spellcasting`
+            );
+          }
+        } else {
+          // Full casters: wizard, cleric, druid, sorcerer, bard
+          slotRow = FULL_CASTER_SLOTS[idx];
+        }
+
+        for (let i = 1; i <= 9; i++) {
+          const n = slotRow[i - 1];
+          updates[`system.spells.spell${i}.max`] = n;
+          updates[`system.spells.spell${i}.value`] = n;
+        }
+      }
+
+      // 3. Single update call
+      await actor.update(updates);
+
+      // 4. Build response
+      const slots: Record<string, unknown> = {};
+      if (cls === 'warlock') {
+        const pact = WARLOCK_PACT_TABLE[idx];
+        slots['pact'] = { max: pact.max, level: pact.level };
+      } else {
+        const slotRow =
+          cls === 'artificer'
+            ? ARTIFICER_SLOTS[idx]
+            : cls === 'paladin' || cls === 'ranger'
+              ? HALF_CASTER_SLOTS[idx]
+              : FULL_CASTER_SLOTS[idx];
+
+        for (let i = 1; i <= 9; i++) {
+          (slots as Record<string, number>)[`spell${i}`] = slotRow[i - 1];
+        }
+      }
+
+      this.auditLog('setActorSpellcasting', { actorId: actor.id, cls, lvl, ability }, 'success');
+
+      return {
+        actor: { id: actor.id, name: actor.name },
+        spellcasting: { ability, slots },
+        warnings,
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Failed to set actor spellcasting`, error);
+      this.auditLog(
+        'setActorSpellcasting',
+        { actorIdentifier: data.actorIdentifier, spellcastingClass: data.spellcastingClass },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add spells from compendium packs to an actor
+  // ---------------------------------------------------------------------------
+
+  async addSpellsToActor(data: any): Promise<any> {
+    this.validateFoundryState();
+
+    if ((game.system as any).id !== 'dnd5e') {
+      throw new Error('addSpellsToActor requires the dnd5e game system');
+    }
+
+    try {
+      // 1. Resolve actor
+      const actor = this.findActorByIdentifier(data.actorIdentifier);
+      if (!actor) {
+        throw new Error(`Actor not found: "${data.actorIdentifier}"`);
+      }
+
+      const spellNames: string[] = data.spellNames;
+      const compendiumPacks: string[] = data.compendiumPacks ?? ['dnd5e.spells'];
+      const warnings: string[] = [];
+
+      // ── Phase A: deduplicate input (case-insensitive) ─────────────────────
+      const seen = new Set<string>();
+      const unique: string[] = [];
+      const skipped: Array<{ name: string; reason: string }> = [];
+
+      for (const name of spellNames) {
+        const key = name.toLowerCase();
+        if (seen.has(key)) {
+          skipped.push({ name, reason: 'duplicate in input' });
+        } else {
+          seen.add(key);
+          unique.push(name);
+        }
+      }
+
+      // ── Phase B: build pack index maps (once per pack) ────────────────────
+      interface PackMap {
+        packId: string;
+        packLabel: string;
+        nameMap: Map<string, string>; // lowercase name → _id
+      }
+      const packMaps: PackMap[] = [];
+
+      for (const packId of compendiumPacks) {
+        const pack = game.packs.get(packId);
+        if (!pack) {
+          warnings.push(`Compendium pack "${packId}" not found — skipped`);
+          continue;
+        }
+
+        // Q6: type guard — Item packs only
+        if (pack.metadata.type !== 'Item') {
+          warnings.push(
+            `Pack "${packId}" has type "${pack.metadata.type}", expected "Item" — skipped`
+          );
+          continue;
+        }
+
+        if (!pack.indexed) {
+          await pack.getIndex({});
+        }
+
+        const nameMap = new Map<string, string>();
+        for (const entry of pack.index.values() as IterableIterator<any>) {
+          if (entry.name) {
+            nameMap.set((entry.name as string).toLowerCase(), entry._id as string);
+          }
+        }
+
+        packMaps.push({ packId, packLabel: pack.metadata.label as string, nameMap });
+      }
+
+      if (packMaps.length === 0) {
+        throw new Error(
+          'No valid compendium packs available — check the compendiumPacks parameter. ' +
+            'Valid pack IDs for D&D 5e: "dnd5e.spells" (2014) or "dnd5e.spells24" (2024).'
+        );
+      }
+
+      // ── Phase C: per-spell search + import ───────────────────────────────
+      const added: Array<{ name: string; packId: string; packLabel: string; itemId: string }> = [];
+      const notFound: string[] = [];
+      const failed: Array<{ name: string; error: string }> = [];
+
+      for (const name of unique) {
+        const normalizedName = name.toLowerCase();
+
+        // 1. Duplicate check on actor (only items of type 'spell')
+        const existing = (actor.items as any[]).find(
+          (i: any) => i.type === 'spell' && i.name?.toLowerCase() === normalizedName
+        );
+        if (existing) {
+          skipped.push({ name, reason: 'already on actor' });
+          continue;
+        }
+
+        // 2. Lookup across packs — first-pack-wins
+        let found: { packId: string; packLabel: string; entryId: string } | null = null;
+        for (const pm of packMaps) {
+          const entryId = pm.nameMap.get(normalizedName);
+          if (entryId) {
+            found = { packId: pm.packId, packLabel: pm.packLabel, entryId };
+            break;
+          }
+        }
+
+        if (!found) {
+          notFound.push(name);
+          continue;
+        }
+
+        // 3. Fetch full document from compendium
+        const pack = game.packs.get(found.packId);
+        const document = await (pack as any).getDocument(found.entryId);
+
+        if (!document) {
+          // Entry was in index but document is missing (shouldn't happen, defensive)
+          notFound.push(name);
+          warnings.push(
+            `"${name}" found in index but document missing in pack "${found.packId}" — skipped`
+          );
+          continue;
+        }
+
+        // 4. Prepare data for embedding
+        const spellData = (document as any).toObject() as Record<string, unknown>;
+        delete spellData._id; // Let Foundry assign a new local id; prevents id clash
+
+        // 5. Embed individually — per-spell error isolation
+        try {
+          const [created] = (await actor.createEmbeddedDocuments('Item', [spellData])) as any[];
+          added.push({
+            name,
+            packId: found.packId,
+            packLabel: found.packLabel,
+            itemId: created.id,
+          });
+        } catch (embedErr) {
+          failed.push({
+            name,
+            error: embedErr instanceof Error ? embedErr.message : 'Unknown error',
+          });
+        }
+      }
+
+      // ── Phase D: audit + return ───────────────────────────────────────────
+      this.auditLog(
+        'addSpellsToActor',
+        {
+          actorId: actor.id,
+          added: added.length,
+          skipped: skipped.length,
+          notFound: notFound.length,
+          failed: failed.length,
+        },
+        'success'
+      );
+
+      return {
+        actor: { id: actor.id, name: actor.name },
+        added,
+        skipped,
+        notFound,
+        failed,
+        warnings,
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Failed to add spells to actor`, error);
+      this.auditLog(
+        'addSpellsToActor',
+        { actorIdentifier: data.actorIdentifier },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add features from compendium packs to an actor
+  // ---------------------------------------------------------------------------
+
+  async addFeaturesFromCompendium(data: any): Promise<any> {
+    this.validateFoundryState();
+
+    if ((game.system as any).id !== 'dnd5e') {
+      throw new Error('addFeaturesFromCompendium requires the dnd5e game system');
+    }
+
+    try {
+      // 1. Resolve actor
+      const actor = this.findActorByIdentifier(data.actorIdentifier);
+      if (!actor) {
+        throw new Error(`Actor not found: "${data.actorIdentifier}"`);
+      }
+
+      const featureNames: string[] = data.featureNames;
+      const compendiumPacks: string[] = data.compendiumPacks ?? [
+        'dnd5e.monsterfeatures',
+        'dnd5e.classfeatures',
+      ];
+      const warnings: string[] = [];
+
+      // ── Phase A: deduplicate input (case-insensitive) ─────────────────────
+      const seen = new Set<string>();
+      const unique: string[] = [];
+      const skipped: Array<{ name: string; reason: string }> = [];
+
+      for (const name of featureNames) {
+        const key = name.toLowerCase();
+        if (seen.has(key)) {
+          skipped.push({ name, reason: 'duplicate in input' });
+        } else {
+          seen.add(key);
+          unique.push(name);
+        }
+      }
+
+      // ── Phase B: build pack index maps (once per pack) ────────────────────
+      interface PackMap {
+        packId: string;
+        packLabel: string;
+        nameMap: Map<string, string>; // lowercase name → _id
+      }
+      const packMaps: PackMap[] = [];
+
+      for (const packId of compendiumPacks) {
+        const pack = game.packs.get(packId);
+        if (!pack) {
+          warnings.push(`Compendium pack "${packId}" not found — skipped`);
+          continue;
+        }
+
+        // Type guard — Item packs only
+        if (pack.metadata.type !== 'Item') {
+          warnings.push(
+            `Pack "${packId}" has type "${pack.metadata.type}", expected "Item" — skipped`
+          );
+          continue;
+        }
+
+        if (!pack.indexed) {
+          await pack.getIndex({});
+        }
+
+        const nameMap = new Map<string, string>();
+        for (const entry of pack.index.values() as IterableIterator<any>) {
+          if (entry.name) {
+            nameMap.set((entry.name as string).toLowerCase(), entry._id as string);
+          }
+        }
+
+        packMaps.push({ packId, packLabel: pack.metadata.label as string, nameMap });
+      }
+
+      if (packMaps.length === 0) {
+        throw new Error(
+          'No valid compendium packs available — check the compendiumPacks parameter. ' +
+            'Valid pack IDs for D&D 5e: "dnd5e.monsterfeatures" or "dnd5e.classfeatures" (2014), ' +
+            '"dnd5e.monsterfeatures24" (2024 monster features). ' +
+            'Note: 2024 class features are embedded in class items and cannot be imported with this tool.'
+        );
+      }
+
+      // ── Phase C: per-feature search + import ─────────────────────────────
+      const added: Array<{ name: string; packId: string; packLabel: string; itemId: string }> = [];
+      const notFound: string[] = [];
+      const failed: Array<{ name: string; error: string }> = [];
+
+      for (const name of unique) {
+        const normalizedName = name.toLowerCase();
+
+        // 1. Duplicate check on actor — name-only, any item type
+        //    (feature names are semantically unique on an actor regardless of stored type)
+        const existing = (actor.items as any[]).find(
+          (i: any) => i.name?.toLowerCase() === normalizedName
+        );
+        if (existing) {
+          skipped.push({ name, reason: 'already on actor' });
+          continue;
+        }
+
+        // 2. Lookup across packs — first-pack-wins
+        let found: { packId: string; packLabel: string; entryId: string } | null = null;
+        for (const pm of packMaps) {
+          const entryId = pm.nameMap.get(normalizedName);
+          if (entryId) {
+            found = { packId: pm.packId, packLabel: pm.packLabel, entryId };
+            break;
+          }
+        }
+
+        if (!found) {
+          notFound.push(name);
+          continue;
+        }
+
+        // 3. Fetch full document from compendium
+        const pack = game.packs.get(found.packId);
+        const document = await (pack as any).getDocument(found.entryId);
+
+        if (!document) {
+          // Entry was in index but document is missing (shouldn't happen, defensive)
+          notFound.push(name);
+          warnings.push(
+            `"${name}" found in index but document missing in pack "${found.packId}" — skipped`
+          );
+          continue;
+        }
+
+        // 4. Prepare data for embedding
+        const featureData = (document as any).toObject() as Record<string, unknown>;
+        delete featureData._id; // Let Foundry assign a new local id; prevents id clash
+
+        // 5. Embed individually — per-feature error isolation
+        try {
+          const [created] = (await actor.createEmbeddedDocuments('Item', [featureData])) as any[];
+          added.push({
+            name,
+            packId: found.packId,
+            packLabel: found.packLabel,
+            itemId: created.id,
+          });
+        } catch (embedErr) {
+          failed.push({
+            name,
+            error: embedErr instanceof Error ? embedErr.message : 'Unknown error',
+          });
+        }
+      }
+
+      // ── Phase D: audit + return ───────────────────────────────────────────
+      this.auditLog(
+        'addFeaturesFromCompendium',
+        {
+          actorId: actor.id,
+          added: added.length,
+          skipped: skipped.length,
+          notFound: notFound.length,
+          failed: failed.length,
+        },
+        'success'
+      );
+
+      return {
+        actor: { id: actor.id, name: actor.name },
+        added,
+        skipped,
+        notFound,
+        failed,
+        warnings,
+      };
+    } catch (error) {
+      console.error(`[${MODULE_ID}] Failed to add features from compendium`, error);
+      this.auditLog(
+        'addFeaturesFromCompendium',
+        { actorIdentifier: data.actorIdentifier },
+        'failure',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  // ─── Generic actor CRUD ─────────────────────────────────────────────────────
+
+  /**
+   * Create one or more actors of any type with arbitrary system data.
+   * Works for any Foundry game system — types and system fields are not validated here.
+   */
+  async createActors(params: {
+    actors: Array<{
+      name: string;
+      type: string;
+      img?: string;
+      system?: Record<string, any>;
+    }>;
+    folder?: string;
+  }): Promise<{ created: Array<{ id: string; name: string; type: string }>; total: number }> {
+    const folderName = params.folder ?? 'Foundry MCP Actors';
+    const folderId = await this.getOrCreateFolder(folderName, 'Actor');
+
+    const gameSystemId = (game as any).system?.id ?? '';
+
+    const docs = params.actors.map(a => {
+      const doc: Record<string, any> = { name: a.name, type: a.type };
+      if (a.img) doc.img = a.img;
+
+      // Merge system data, adding safe defaults for systems that require certain
+      // fields to exist during data preparation (avoids non-fatal init errors).
+      let systemData: Record<string, any> = a.system ?? {};
+
+      if (gameSystemId === 'mgt2e') {
+        // mgt2e's _prepareCreatureData iterates skills.specialities —
+        // ensure skills is at least an empty object to prevent a TypeError.
+        if (!systemData.skills) {
+          systemData = { skills: {}, ...systemData };
+        }
+        // Normalize skill keys to canonical lowercase (e.g. gunCombat → guncombat)
+        // to prevent duplicate entries that the localization system cannot resolve.
+        systemData = this.normalizeMGT2eSkillKeys(systemData);
+
+        // ── mgt2e traveller/npc convenience handling ────────────────────────
+        // When creating a traveller or npc, accept the same shorthand inputs
+        // as the (now-removed) create-mgt2e-traveller tool:
+        //   • Skills shorthand: { pilot: 2 } → { pilot: { value:2, trained:true } }
+        //   • Skill full object: { pilot: { value:0, trained:true, specialities:{...} } }
+        //   • Characteristics: lowercase keys (str/dex/…) normalised to uppercase +
+        //     show:true so they appear on the sheet; hits auto-calculated if omitted
+        //   • Details → sophont: { details: { career, species, … } } remapped to
+        //     system.sophont (system.details does not exist in mgt2e)
+        if (a.type === 'traveller' || a.type === 'npc') {
+          // 1. Skills: add id, auto-populate specialities, set parent value.
+          //    normalizeMGT2eSkillKeys already normalised keys and expanded number shorthands
+          //    to {value, trained}; this step adds the createActors-only extras.
+          const MGT2E_SKILL_SPECS: Record<string, string[]> = {
+            animals: ['handling', 'veterinary', 'training'],
+            art: ['performer', 'holography', 'instrument', 'visualMedia', 'write'],
+            athletics: ['dexterity', 'endurance', 'strength'],
+            drive: ['hovercraft', 'mole', 'track', 'walker', 'wheel'],
+            electronics: ['comms', 'computers', 'remoteOps', 'sensors'],
+            engineer: ['mDrive', 'jDrive', 'lifeSupport', 'power'],
+            flyer: ['airship', 'grav', 'ornithopter', 'rotor', 'wing'],
+            gunner: ['turret', 'ortillery', 'screen', 'capital'],
+            guncombat: ['archaic', 'energy', 'slug'],
+            heavyweapons: ['artillery', 'portable', 'vehicle'],
+            melee: ['unarmed', 'blade', 'bludgeon', 'natural'],
+            pilot: ['smallCraft', 'spacecraft', 'capitalShips'],
+            seafarer: ['oceanShips', 'personal', 'sail', 'submarine'],
+            tactics: ['military', 'naval'],
+          };
+          if (systemData.skills && typeof systemData.skills === 'object') {
+            const normSkills: Record<string, any> = {};
+            for (const [sk, sv] of Object.entries(systemData.skills as Record<string, any>)) {
+              const s =
+                sv && typeof sv === 'object' ? (sv as any) : { value: sv ?? 0, trained: true };
+              normSkills[sk] = { id: sk, value: s.value ?? 0, trained: s.trained ?? true, ...s };
+              // Parent value = min of caller-provided active spec values (before auto-populate).
+              if (s.specialities && typeof s.specialities === 'object') {
+                const activeValues: number[] = [];
+                for (const sd of Object.values(s.specialities as Record<string, any>)) {
+                  const v = Number((sd as any)?.value ?? 0);
+                  if (v > 0) activeValues.push(v);
+                }
+                if (activeValues.length > 0) normSkills[sk].value = Math.min(...activeValues);
+              }
+              // Auto-populate missing specialities (additive only).
+              const defaultSpecs = MGT2E_SKILL_SPECS[sk];
+              if (defaultSpecs) {
+                const existing: Record<string, any> = normSkills[sk].specialities ?? {};
+                const merged: Record<string, any> = { ...existing };
+                for (const specKey of defaultSpecs) {
+                  if (!(specKey in merged)) merged[specKey] = { value: 0, trained: false };
+                }
+                normSkills[sk].specialities = merged;
+              }
+            }
+            systemData = { ...systemData, skills: normSkills };
+          }
+
+          // 2. Characteristics: accept lowercase or uppercase keys,
+          //    ensure show:true, calculate hits from STR+DEX+END if missing.
+          if (systemData.characteristics && typeof systemData.characteristics === 'object') {
+            const normChars: Record<string, any> = {};
+            let str = 7,
+              dex = 7,
+              end = 7;
+            for (const [k, v] of Object.entries(
+              systemData.characteristics as Record<string, any>
+            )) {
+              const uk = k.toUpperCase();
+              let charVal: number;
+              if (typeof v === 'number') {
+                charVal = v;
+                normChars[uk] = { value: charVal, damage: 0, show: true };
+              } else if (v && typeof v === 'object') {
+                charVal = (v as any).value ?? 7;
+                normChars[uk] = { show: true, ...(v as any) };
+                if (normChars[uk].damage === undefined) normChars[uk].damage = 0;
+              } else {
+                charVal = 7;
+                normChars[uk] = { value: charVal, damage: 0, show: true };
+              }
+              if (uk === 'STR') str = charVal;
+              if (uk === 'DEX') dex = charVal;
+              if (uk === 'END') end = charVal;
+            }
+            systemData = { ...systemData, characteristics: normChars };
+            if (!systemData.hits) {
+              const hitsMax = str + dex + end;
+              systemData = { ...systemData, hits: { value: hitsMax, max: hitsMax } };
+            }
+          }
+
+          // 3. Remap system.details → system.sophont (system.details does not exist in mgt2e)
+          if (systemData.details && !systemData.sophont) {
+            const d = systemData.details as any;
+            const sophont: Record<string, any> = {};
+            for (const [k, v] of Object.entries(d)) {
+              if (k === 'career') {
+                sophont.profession = v;
+              } else if (k === 'description') {
+                systemData = { ...systemData, description: v };
+              } else {
+                sophont[k] = v;
+              }
+            }
+            if (Object.keys(sophont).length > 0) systemData = { ...systemData, sophont };
+            const { details: _removed, ...rest } = systemData;
+            systemData = rest;
+          }
+        }
+      }
+
+      // mgt2e software items: the spacecraft sheet reads i.system.software.bandwidth
+      // unconditionally — if the software sub-object is missing the sheet crashes.
+      // Inject safe defaults when the caller didn't supply them.
+      if (a.type === 'software' && gameSystemId === 'mgt2e' && !systemData.software) {
+        systemData = {
+          software: { class: 'spacecraft', type: 'generic', interface: 'none', bandwidth: 0 },
+          ...systemData,
+        };
+      }
+
+      doc.system = systemData;
+      if (folderId) doc.folder = folderId;
+      return doc;
+    });
+
+    const created = await Actor.createDocuments(docs as any[]);
+    if (!created || created.length === 0) {
+      throw new Error('Foundry failed to create actor documents');
+    }
+
+    return {
+      created: (created as any[]).map(a => ({ id: a.id, name: a.name, type: a.type })),
+      total: created.length,
+    };
+  }
+
+  /** Lowercases mgt2e skill keys before createActors processes them. */
+  private normalizeMGT2eSkillKeys(system: Record<string, any>): Record<string, any> {
+    const result: Record<string, any> = {};
+    for (const [key, val] of Object.entries(system)) {
+      if (key === 'skills' && val && typeof val === 'object' && !Array.isArray(val)) {
+        const normalized: Record<string, any> = {};
+        for (const [sk, sv] of Object.entries(val as Record<string, any>)) {
+          normalized[sk.toLowerCase()] = sv;
+        }
+        result['skills'] = normalized;
+      } else if (key.startsWith('skills.-=')) {
+        result[`skills.-=${key.slice('skills.-='.length).toLowerCase()}`] = val;
+      } else if (key.startsWith('skills.')) {
+        const rest = key.slice('skills.'.length);
+        const dotIdx = rest.indexOf('.');
+        const lk =
+          dotIdx === -1
+            ? rest.toLowerCase()
+            : rest.substring(0, dotIdx).toLowerCase() + rest.substring(dotIdx);
+        result[`skills.${lk}`] = val;
+      } else {
+        result[key] = val;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Update one or more existing actors by ID.
+   * Merges supplied fields into the actor (top-level keys overwrite).
+   */
+  async updateActors(
+    updates: Array<{ id: string; name?: string; img?: string; system?: Record<string, any> }>
+  ): Promise<{ updated: Array<{ id: string; name: string }>; total: number }> {
+    const updatedActors: Array<{ id: string; name: string }> = [];
+
+    for (const u of updates) {
+      const actor = game.actors.get(u.id) as any;
+      if (!actor) throw new Error(`Actor not found: ${u.id}`);
+
+      const patch: Record<string, any> = {};
+      if (u.name !== undefined) patch.name = u.name;
+      if (u.img !== undefined) patch.img = u.img;
+      if (u.system !== undefined) {
+        // Build a single patch.system nested object so Foundry deep-merges everything
+        // in one pass without flat-key vs nested-key conflicts.
+        // Dot-notation keys (e.g. "crewed.passengers.-=actorId") are expanded to their
+        // nested equivalent — Foundry's mergeObject honours the "-=" deletion operator
+        // at any depth in a nested object, just as it does with top-level flat keys.
+        const systemPatch: Record<string, any> = {};
+        for (const [key, val] of Object.entries(u.system)) {
+          if (key.includes('.')) {
+            const parts = key.split('.');
+            let cur = systemPatch;
+            for (let i = 0; i < parts.length - 1; i++) {
+              if (!(parts[i] in cur)) cur[parts[i]] = {};
+              cur = cur[parts[i]];
+            }
+            cur[parts[parts.length - 1]] = val;
+          } else {
+            systemPatch[key] = val;
+          }
+        }
+        patch.system = systemPatch;
+      }
+
+      await actor.update(patch);
+      updatedActors.push({ id: actor.id, name: u.name ?? actor.name });
+    }
+
+    return { updated: updatedActors, total: updatedActors.length };
+  }
+
+  /**
+   * Update one or more items embedded in an actor.
+   */
+  async updateActorItems(
+    actorIdentifier: string,
+    itemUpdates: Array<{ id: string; name?: string; img?: string; system?: Record<string, any> }>
+  ): Promise<{ updated: Array<{ id: string; name: string }>; total: number }> {
+    const actor =
+      (game.actors.get(actorIdentifier) as any) ??
+      (game.actors.find(
+        (a: any) => a.name?.toLowerCase() === actorIdentifier.toLowerCase()
+      ) as any);
+    if (!actor) throw new Error(`Actor not found: ${actorIdentifier}`);
+
+    const updated: Array<{ id: string; name: string }> = [];
+
+    for (const u of itemUpdates) {
+      const item = actor.items.get(u.id) as any;
+      if (!item) throw new Error(`Item ${u.id} not found on actor "${actor.name}"`);
+
+      const patch: Record<string, any> = {};
+      if (u.name !== undefined) patch.name = u.name;
+      if (u.img !== undefined) patch.img = u.img;
+      if (u.system !== undefined) patch.system = u.system;
+
+      await item.update(patch);
+      updated.push({ id: item.id, name: u.name ?? item.name });
+    }
+
+    return { updated, total: updated.length };
+  }
+
+  /**
+   * Delete one or more items embedded in an actor.
+   */
+  async deleteActorItems(
+    actorIdentifier: string,
+    itemIds: string[]
+  ): Promise<{ deleted: string[]; total: number }> {
+    const actor =
+      (game.actors.get(actorIdentifier) as any) ??
+      (game.actors.find(
+        (a: any) => a.name?.toLowerCase() === actorIdentifier.toLowerCase()
+      ) as any);
+    if (!actor) throw new Error(`Actor not found: ${actorIdentifier}`);
+
+    const existing = itemIds.filter(id => actor.items.get(id));
+    if (existing.length === 0)
+      throw new Error('None of the provided item IDs were found on this actor');
+
+    await actor.deleteEmbeddedDocuments('Item', existing);
+    return { deleted: existing, total: existing.length };
+  }
+
+  /**
+   * Delete one or more actors by ID.
+   */
+  async deleteActors(ids: string[]): Promise<{ deleted: string[]; total: number }> {
+    const existing = ids.filter(id => game.actors.get(id));
+    if (existing.length === 0) throw new Error('None of the provided actor IDs were found');
+
+    await Actor.deleteDocuments(existing);
+    return { deleted: existing, total: existing.length };
+  }
+
+  // ─── mgt2e ──────────────────────────────────────────────────────────────────
+}
+
+// =============================================================================
+// Shared dnd5e helpers
+// =============================================================================
+
+function slugify(name: string, fallback = 'feature'): string {
+  return (
+    name
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '') || fallback
+  );
+}
+
+// =============================================================================
+// NPC creation helpers — module-level, used exclusively by createNpcActor
+// =============================================================================
+
+const NPC_DAMAGE_CANONICAL = new Set([
+  'acid',
+  'bludgeoning',
+  'cold',
+  'fire',
+  'force',
+  'lightning',
+  'necrotic',
+  'piercing',
+  'poison',
+  'psychic',
+  'radiant',
+  'slashing',
+  'thunder',
+]);
+
+const NPC_CONDITION_CANONICAL = new Set([
+  'blinded',
+  'charmed',
+  'deafened',
+  'exhaustion',
+  'frightened',
+  'grappled',
+  'incapacitated',
+  'invisible',
+  'paralyzed',
+  'petrified',
+  'poisoned',
+  'prone',
+  'restrained',
+  'stunned',
+  'unconscious',
+]);
+
+const NPC_SIZE_MAP: Record<string, string> = {
+  tiny: 'tiny',
+  small: 'sm',
+  medium: 'med',
+  large: 'lg',
+  huge: 'huge',
+  gargantuan: 'grg',
+};
+
+const NPC_SKILL_MAP: Record<string, string> = {
+  Acrobatics: 'acr',
+  'Animal Handling': 'ani',
+  Arcana: 'arc',
+  Athletics: 'ath',
+  Deception: 'dec',
+  History: 'his',
+  Insight: 'ins',
+  Intimidation: 'itm',
+  Investigation: 'inv',
+  Medicine: 'med',
+  Nature: 'nat',
+  Perception: 'prc',
+  Performance: 'prf',
+  Persuasion: 'per',
+  Religion: 'rel',
+  'Sleight of Hand': 'slt',
+  Stealth: 'ste',
+  Survival: 'sur',
+};
+
+function npcNormalizeCR(input: string | number): number {
+  if (typeof input === 'number') return input;
+  if (input.includes('/')) {
+    const [num, den] = input.split('/').map(Number);
+    return num / den;
+  }
+  return parseInt(input, 10);
+}
+
+function npcFormatCR(value: number): string {
+  if (value === 0) return '0';
+  if (value === 0.125) return '1/8';
+  if (value === 0.25) return '1/4';
+  if (value === 0.5) return '1/2';
+  return String(Math.round(value));
+}
+
+function npcBuildSkillsBlock(
+  skills: Array<{ skill: string; proficiency: string }>
+): Record<string, { value: number }> {
+  const result: Record<string, { value: number }> = {};
+  for (const { skill, proficiency } of skills) {
+    const key = NPC_SKILL_MAP[skill];
+    if (key) {
+      result[key] = { value: proficiency === 'expert' ? 2 : 1 };
+    }
+  }
+  return result;
+}
+
+// =============================================================================
+// Attack feature helpers — module-level, used exclusively by addAttackToActor
+// =============================================================================
+
+const ATTACK_DAMAGE_CANONICAL = new Set([
+  'acid',
+  'bludgeoning',
+  'cold',
+  'fire',
+  'force',
+  'lightning',
+  'necrotic',
+  'piercing',
+  'poison',
+  'psychic',
+  'radiant',
+  'slashing',
+  'thunder',
+]);
+
+const ATTACK_PROPERTY_CANONICAL = new Set([
+  'ada',
+  'amm',
+  'fin',
+  'fir',
+  'foc',
+  'hvy',
+  'lgt',
+  'lod',
+  'mgc',
+  'rch',
+  'ret',
+  'spc',
+  'thr',
+  'two',
+  'ver',
+]);
+
+// =============================================================================
+// Aura feature helpers — module-level, used exclusively by addAuraToActor
+// =============================================================================
+
+const AURA_DAMAGE_CANONICAL = new Set([
+  'acid',
+  'bludgeoning',
+  'cold',
+  'fire',
+  'force',
+  'lightning',
+  'necrotic',
+  'piercing',
+  'poison',
+  'psychic',
+  'radiant',
+  'slashing',
+  'thunder',
+]);
+
+// =============================================================================
+// Attack+save helpers — module-level, used exclusively by addAttackWithSaveToActor
+// =============================================================================
+
+const ATTACK_WITH_SAVE_DAMAGE_CANONICAL = new Set([
+  'acid',
+  'bludgeoning',
+  'cold',
+  'fire',
+  'force',
+  'lightning',
+  'necrotic',
+  'piercing',
+  'poison',
+  'psychic',
+  'radiant',
+  'slashing',
+  'thunder',
+]);
+
+// =============================================================================
+// Spellcasting slot tables — module-level, used by setActorSpellcasting
+//
+// Each array has 20 entries (index 0 = level 1 … index 19 = level 20).
+// Each entry is a 9-element tuple: [L1, L2, L3, L4, L5, L6, L7, L8, L9].
+// Source: SRD 5.1 spell slot tables.
+// =============================================================================
+
+// prettier-ignore
+const FULL_CASTER_SLOTS: number[][] = [
+  //  L1  L2  L3  L4  L5  L6  L7  L8  L9
+  [   2,   0,   0,   0,   0,   0,   0,   0,   0 ], // level  1
+  [   3,   0,   0,   0,   0,   0,   0,   0,   0 ], // level  2
+  [   4,   2,   0,   0,   0,   0,   0,   0,   0 ], // level  3
+  [   4,   3,   0,   0,   0,   0,   0,   0,   0 ], // level  4
+  [   4,   3,   2,   0,   0,   0,   0,   0,   0 ], // level  5
+  [   4,   3,   3,   0,   0,   0,   0,   0,   0 ], // level  6
+  [   4,   3,   3,   1,   0,   0,   0,   0,   0 ], // level  7
+  [   4,   3,   3,   2,   0,   0,   0,   0,   0 ], // level  8
+  [   4,   3,   3,   3,   1,   0,   0,   0,   0 ], // level  9
+  [   4,   3,   3,   3,   2,   0,   0,   0,   0 ], // level 10
+  [   4,   3,   3,   3,   2,   1,   0,   0,   0 ], // level 11
+  [   4,   3,   3,   3,   2,   1,   0,   0,   0 ], // level 12
+  [   4,   3,   3,   3,   2,   1,   1,   0,   0 ], // level 13
+  [   4,   3,   3,   3,   2,   1,   1,   0,   0 ], // level 14
+  [   4,   3,   3,   3,   2,   1,   1,   1,   0 ], // level 15
+  [   4,   3,   3,   3,   2,   1,   1,   1,   0 ], // level 16
+  [   4,   3,   3,   3,   2,   1,   1,   1,   1 ], // level 17
+  [   4,   3,   3,   3,   3,   1,   1,   1,   1 ], // level 18
+  [   4,   3,   3,   3,   3,   2,   1,   1,   1 ], // level 19
+  [   4,   3,   3,   3,   3,   2,   2,   1,   1 ], // level 20
+];
+
+// prettier-ignore
+/** Paladin / Ranger — half-caster (rounds down). Level 1 = no slots. */
+const HALF_CASTER_SLOTS: number[][] = [
+  //  L1  L2  L3  L4  L5  L6  L7  L8  L9
+  [   0,   0,   0,   0,   0,   0,   0,   0,   0 ], // level  1 — no slots
+  [   2,   0,   0,   0,   0,   0,   0,   0,   0 ], // level  2
+  [   3,   0,   0,   0,   0,   0,   0,   0,   0 ], // level  3
+  [   3,   0,   0,   0,   0,   0,   0,   0,   0 ], // level  4
+  [   4,   2,   0,   0,   0,   0,   0,   0,   0 ], // level  5
+  [   4,   2,   0,   0,   0,   0,   0,   0,   0 ], // level  6
+  [   4,   3,   0,   0,   0,   0,   0,   0,   0 ], // level  7
+  [   4,   3,   0,   0,   0,   0,   0,   0,   0 ], // level  8
+  [   4,   3,   2,   0,   0,   0,   0,   0,   0 ], // level  9
+  [   4,   3,   2,   0,   0,   0,   0,   0,   0 ], // level 10
+  [   4,   3,   3,   0,   0,   0,   0,   0,   0 ], // level 11
+  [   4,   3,   3,   0,   0,   0,   0,   0,   0 ], // level 12
+  [   4,   3,   3,   1,   0,   0,   0,   0,   0 ], // level 13
+  [   4,   3,   3,   1,   0,   0,   0,   0,   0 ], // level 14
+  [   4,   3,   3,   2,   0,   0,   0,   0,   0 ], // level 15
+  [   4,   3,   3,   2,   0,   0,   0,   0,   0 ], // level 16
+  [   4,   3,   3,   3,   1,   0,   0,   0,   0 ], // level 17
+  [   4,   3,   3,   3,   1,   0,   0,   0,   0 ], // level 18
+  [   4,   3,   3,   3,   2,   0,   0,   0,   0 ], // level 19
+  [   4,   3,   3,   3,   2,   0,   0,   0,   0 ], // level 20
+];
+
+// prettier-ignore
+/** Artificer — half-caster (rounds UP). Starts at level 1. Max 5th-level slots. */
+const ARTIFICER_SLOTS: number[][] = [
+  //  L1  L2  L3  L4  L5  L6  L7  L8  L9
+  [   2,   0,   0,   0,   0,   0,   0,   0,   0 ], // level  1
+  [   2,   0,   0,   0,   0,   0,   0,   0,   0 ], // level  2
+  [   3,   0,   0,   0,   0,   0,   0,   0,   0 ], // level  3
+  [   3,   0,   0,   0,   0,   0,   0,   0,   0 ], // level  4
+  [   4,   2,   0,   0,   0,   0,   0,   0,   0 ], // level  5
+  [   4,   2,   0,   0,   0,   0,   0,   0,   0 ], // level  6
+  [   4,   3,   0,   0,   0,   0,   0,   0,   0 ], // level  7
+  [   4,   3,   0,   0,   0,   0,   0,   0,   0 ], // level  8
+  [   4,   3,   2,   0,   0,   0,   0,   0,   0 ], // level  9
+  [   4,   3,   2,   0,   0,   0,   0,   0,   0 ], // level 10
+  [   4,   3,   3,   0,   0,   0,   0,   0,   0 ], // level 11
+  [   4,   3,   3,   0,   0,   0,   0,   0,   0 ], // level 12
+  [   4,   3,   3,   1,   0,   0,   0,   0,   0 ], // level 13
+  [   4,   3,   3,   1,   0,   0,   0,   0,   0 ], // level 14
+  [   4,   3,   3,   2,   0,   0,   0,   0,   0 ], // level 15
+  [   4,   3,   3,   2,   0,   0,   0,   0,   0 ], // level 16
+  [   4,   3,   3,   3,   1,   0,   0,   0,   0 ], // level 17
+  [   4,   3,   3,   3,   1,   0,   0,   0,   0 ], // level 18
+  [   4,   3,   3,   3,   2,   0,   0,   0,   0 ], // level 19
+  [   4,   3,   3,   3,   2,   0,   0,   0,   0 ], // level 20
+];
+
+// prettier-ignore
+/** Warlock Pact Magic — slot count and slot level per warlock level. */
+const WARLOCK_PACT_TABLE: Array<{ max: number; level: number }> = [
+  { max: 1, level: 1 }, // level  1
+  { max: 2, level: 1 }, // level  2
+  { max: 2, level: 2 }, // level  3
+  { max: 2, level: 2 }, // level  4
+  { max: 2, level: 3 }, // level  5
+  { max: 2, level: 3 }, // level  6
+  { max: 2, level: 4 }, // level  7
+  { max: 2, level: 4 }, // level  8
+  { max: 2, level: 5 }, // level  9
+  { max: 2, level: 5 }, // level 10
+  { max: 3, level: 5 }, // level 11
+  { max: 3, level: 5 }, // level 12
+  { max: 3, level: 5 }, // level 13
+  { max: 3, level: 5 }, // level 14
+  { max: 3, level: 5 }, // level 15
+  { max: 3, level: 5 }, // level 16
+  { max: 4, level: 5 }, // level 17
+  { max: 4, level: 5 }, // level 18
+  { max: 4, level: 5 }, // level 19
+  { max: 4, level: 5 }, // level 20
+];
