@@ -67,6 +67,10 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.createCleanJournal`] = this.handleCreateCleanJournal.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteJournalPage`] = this.handleDeleteJournalPage.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteJournalEntry`] = this.handleDeleteJournalEntry.bind(this);
+    CONFIG.queries[`${modulePrefix}.setActorToken`] = this.handleSetActorToken.bind(this);
+    CONFIG.queries[`${modulePrefix}.renameJournal`] = this.handleRenameJournal.bind(this);
+    CONFIG.queries[`${modulePrefix}.renameFolder`] = this.handleRenameFolder.bind(this);
+    CONFIG.queries[`${modulePrefix}.deleteFolder`] = this.handleDeleteFolder.bind(this);
 
     // Phase 4: Dice roll queries
     CONFIG.queries[`${modulePrefix}.request-player-rolls`] =
@@ -1451,6 +1455,78 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to delete journal: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private async handleSetActorToken(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      this.dataAccess.validateFoundryState();
+      if (!data.actorIdentifier || !data.tokenImg) {
+        throw new Error('actorIdentifier and tokenImg are required');
+      }
+      return await this.dataAccess.setActorToken(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to set actor token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private async handleRenameJournal(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      this.dataAccess.validateFoundryState();
+      if (!data.journalId || !data.newName) {
+        throw new Error('journalId and newName are required');
+      }
+      return await this.dataAccess.renameJournal(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to rename journal: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private async handleRenameFolder(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      this.dataAccess.validateFoundryState();
+      if (!data.folderName || !data.newName) {
+        throw new Error('folderName and newName are required');
+      }
+      return await this.dataAccess.renameFolder(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to rename folder: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private async handleDeleteFolder(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      this.dataAccess.validateFoundryState();
+      if (!data.folderName) {
+        throw new Error('folderName is required');
+      }
+      return await this.dataAccess.deleteFolder(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to delete folder: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

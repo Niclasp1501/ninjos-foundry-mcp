@@ -1780,6 +1780,26 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'journal-rename':
+                  result = await journalCleanTools.handleRenameJournal(args);
+
+                  break;
+
+                case 'actor-set-token':
+                  result = await journalCleanTools.handleSetActorToken(args);
+
+                  break;
+
+                case 'folder-rename':
+                  result = await journalCleanTools.handleRenameFolder(args);
+
+                  break;
+
+                case 'folder-delete':
+                  result = await journalCleanTools.handleDeleteFolder(args);
+
+                  break;
+
                 default:
                   throw new Error(`Unknown tool: ${name}`);
               }

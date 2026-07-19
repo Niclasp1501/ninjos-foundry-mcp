@@ -102,6 +102,69 @@ export class JournalCleanTools {
           required: ['journalId'],
         },
       },
+      {
+        name: 'journal-rename',
+        description: 'Rename a JournalEntry (change its display title).',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            journalId: { type: 'string' },
+            newName: { type: 'string', description: 'New journal title' },
+          },
+          required: ['journalId', 'newName'],
+        },
+      },
+      {
+        name: 'actor-set-token',
+        description:
+          "Set an actor's token image (prototype token) — fills the token for actors that have none. Optionally also set the portrait. Provide a fitting icon path (dnd5e/Foundry icon set, e.g. icons/creatures/...).",
+        inputSchema: {
+          type: 'object',
+          properties: {
+            actorIdentifier: { type: 'string', description: 'Actor name or ID' },
+            tokenImg: { type: 'string', description: 'Token image path (icon)' },
+            portraitImg: {
+              type: 'string',
+              description: 'Optional portrait image path (actor.img)',
+            },
+          },
+          required: ['actorIdentifier', 'tokenImg'],
+        },
+      },
+      {
+        name: 'folder-rename',
+        description:
+          'Rename a sidebar Folder (identified by its current name, optionally by document type). Contents are kept.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            folderName: { type: 'string', description: 'Current folder name' },
+            newName: { type: 'string', description: 'New folder name' },
+            type: {
+              type: 'string',
+              description: 'Optional document type to disambiguate (e.g. "JournalEntry", "Actor")',
+            },
+          },
+          required: ['folderName', 'newName'],
+        },
+      },
+      {
+        name: 'folder-delete',
+        description:
+          'Delete a sidebar Folder by name. By default keeps its contents (moves them up a level). Set deleteContents:true to delete contents too.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            folderName: { type: 'string' },
+            type: { type: 'string', description: 'Optional document type to disambiguate' },
+            deleteContents: {
+              type: 'boolean',
+              description: 'If true, also delete the folder contents (default false)',
+            },
+          },
+          required: ['folderName'],
+        },
+      },
     ];
   }
 
@@ -144,6 +207,49 @@ export class JournalCleanTools {
   async handleDelete(args: { journalId: string }): Promise<any> {
     return await this.foundryClient.query('foundry-mcp-bridge.deleteJournalEntry', {
       journalId: args.journalId,
+    });
+  }
+
+  async handleRenameJournal(args: { journalId: string; newName: string }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.renameJournal', {
+      journalId: args.journalId,
+      newName: args.newName,
+    });
+  }
+
+  async handleSetActorToken(args: {
+    actorIdentifier: string;
+    tokenImg: string;
+    portraitImg?: string;
+  }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.setActorToken', {
+      actorIdentifier: args.actorIdentifier,
+      tokenImg: args.tokenImg,
+      portraitImg: args.portraitImg,
+    });
+  }
+
+  async handleRenameFolder(args: {
+    folderName: string;
+    newName: string;
+    type?: string;
+  }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.renameFolder', {
+      folderName: args.folderName,
+      newName: args.newName,
+      type: args.type,
+    });
+  }
+
+  async handleDeleteFolder(args: {
+    folderName: string;
+    type?: string;
+    deleteContents?: boolean;
+  }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.deleteFolder', {
+      folderName: args.folderName,
+      type: args.type,
+      deleteContents: args.deleteContents,
     });
   }
 }

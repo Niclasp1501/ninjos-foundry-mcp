@@ -4204,6 +4204,106 @@ export class FoundryDataAccess {
   }
 
   /**
+   * Set an actor's token image (prototype token), optionally also the portrait.
+   * Fills the token for actors that have none.
+   */
+  async setActorToken(request: {
+    actorIdentifier: string;
+    tokenImg: string;
+    portraitImg?: string;
+  }): Promise<{ success: boolean; actorId: string; name: string }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Actor update denied: ${permissionCheck.reason}`);
+    }
+    const actor =
+      game.actors.get(request.actorIdentifier) || game.actors.getName(request.actorIdentifier);
+    if (!actor) {
+      throw new Error(`Actor not found: ${request.actorIdentifier}`);
+    }
+    const patch: any = { 'prototypeToken.texture.src': request.tokenImg };
+    if (request.portraitImg) patch.img = request.portraitImg;
+    await actor.update(patch);
+    this.auditLog('setActorToken', request, 'success');
+    return { success: true, actorId: actor.id ?? '', name: actor.name ?? '' };
+  }
+
+  /**
+   * Rename a JournalEntry.
+   */
+  async renameJournal(request: {
+    journalId: string;
+    newName: string;
+  }): Promise<{ success: boolean; journalId: string; name: string }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Journal rename denied: ${permissionCheck.reason}`);
+    }
+    const journal = game.journal.get(request.journalId);
+    if (!journal) {
+      throw new Error('Journal entry not found');
+    }
+    await journal.update({ name: request.newName });
+    this.auditLog('renameJournal', request, 'success');
+    return { success: true, journalId: journal.id, name: request.newName };
+  }
+
+  private findFolderByName(name: string, type?: string): any {
+    return game.folders.find((f: any) => f.name === name && (!type || f.type === type));
+  }
+
+  /**
+   * Rename a Folder (identified by its current name + optional document type).
+   */
+  async renameFolder(request: {
+    folderName: string;
+    newName: string;
+    type?: string;
+  }): Promise<{ success: boolean; folderId: string; name: string }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Folder rename denied: ${permissionCheck.reason}`);
+    }
+    const folder = this.findFolderByName(request.folderName, request.type);
+    if (!folder) {
+      throw new Error(
+        `Folder not found: ${request.folderName}${request.type ? ' (' + request.type + ')' : ''}`
+      );
+    }
+    await folder.update({ name: request.newName });
+    this.auditLog('renameFolder', request, 'success');
+    return { success: true, folderId: folder.id, name: request.newName };
+  }
+
+  /**
+   * Delete a Folder by name. Keeps its contents by default (moves them up a level).
+   */
+  async deleteFolder(request: {
+    folderName: string;
+    type?: string;
+    deleteContents?: boolean;
+  }): Promise<{ success: boolean; deletedFolder: string }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Folder delete denied: ${permissionCheck.reason}`);
+    }
+    const folder = this.findFolderByName(request.folderName, request.type);
+    if (!folder) {
+      throw new Error(`Folder not found: ${request.folderName}`);
+    }
+    await folder.delete({
+      deleteSubfolders: !!request.deleteContents,
+      deleteContents: !!request.deleteContents,
+    });
+    this.auditLog('deleteFolder', request, 'success');
+    return { success: true, deletedFolder: request.folderName };
+  }
+
+  /**
    * List all journal entries with page metadata
    */
   async listJournals(): Promise<
