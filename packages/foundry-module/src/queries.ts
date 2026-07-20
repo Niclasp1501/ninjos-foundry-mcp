@@ -615,7 +615,11 @@ export class QueryHandlers {
   /**
    * Handle get journal content request
    */
-  async handleGetJournalContent(data: { journalId: string }): Promise<any> {
+  async handleGetJournalContent(data: {
+    journalId: string;
+    offset?: number;
+    maxChars?: number;
+  }): Promise<any> {
     try {
       // SECURITY: Silent GM validation
       const gmCheck = this.validateGMAccess();
@@ -629,7 +633,10 @@ export class QueryHandlers {
         throw new Error('journalId is required');
       }
 
-      return await this.dataAccess.getJournalContent(data.journalId);
+      return await this.dataAccess.getJournalContent(data.journalId, {
+        offset: data.offset,
+        maxChars: data.maxChars,
+      });
     } catch (error) {
       throw new Error(
         `Failed to get journal content: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -640,7 +647,12 @@ export class QueryHandlers {
   /**
    * Handle get specific journal page content request
    */
-  async handleGetJournalPageContent(data: { journalId: string; pageId: string }): Promise<any> {
+  async handleGetJournalPageContent(data: {
+    journalId: string;
+    pageId: string;
+    offset?: number;
+    maxChars?: number;
+  }): Promise<any> {
     try {
       // SECURITY: Silent GM validation
       const gmCheck = this.validateGMAccess();
@@ -657,7 +669,10 @@ export class QueryHandlers {
         throw new Error('pageId is required');
       }
 
-      return await this.dataAccess.getJournalPageContent(data.journalId, data.pageId);
+      return await this.dataAccess.getJournalPageContent(data.journalId, data.pageId, {
+        offset: data.offset,
+        maxChars: data.maxChars,
+      });
     } catch (error) {
       throw new Error(
         `Failed to get journal page content: ${error instanceof Error ? error.message : 'Unknown error'}`

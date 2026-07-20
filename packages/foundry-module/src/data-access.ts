@@ -4332,10 +4332,63 @@ export class FoundryDataAccess {
   }
 
   /**
-   * Get journal entry content (first text page + page manifest)
+   * Slice long content so a single socket message never gets oversized.
+   *
+   * Foundry's socket drops the whole connection when a query response exceeds
+   * its payload limit -- it does not return an error. Imported adventure pages
+   * (e.g. a full Plutonium chapter) easily exceed it, which silently killed the
+   * bridge. Chunking here on the module side is what keeps it alive.
    */
-  async getJournalContent(journalId: string): Promise<{
+  private sliceContent(
+    content: string,
+    options?: { offset?: number | undefined; maxChars?: number | undefined }
+  ): {
     content: string;
+    contentLength: number;
+    offset: number;
+    returned: number;
+    hasMore: boolean;
+    nextOffset?: number;
+  } {
+    const DEFAULT_MAX_CHARS = 50000;
+    const HARD_MAX_CHARS = 200000;
+    const MIN_MAX_CHARS = 1000;
+
+    const total = content.length;
+    const offset = Math.max(0, Math.min(Math.floor(options?.offset ?? 0), total));
+    const maxChars = Math.max(
+      MIN_MAX_CHARS,
+      Math.min(Math.floor(options?.maxChars ?? DEFAULT_MAX_CHARS), HARD_MAX_CHARS)
+    );
+
+    const slice = content.slice(offset, offset + maxChars);
+    const end = offset + slice.length;
+    const hasMore = end < total;
+
+    return {
+      content: slice,
+      contentLength: total,
+      offset,
+      returned: slice.length,
+      hasMore,
+      ...(hasMore ? { nextOffset: end } : {}),
+    };
+  }
+
+  /**
+   * Get journal entry content (first text page + page manifest).
+   * Content is chunked -- see sliceContent() for why.
+   */
+  async getJournalContent(
+    journalId: string,
+    options?: { offset?: number | undefined; maxChars?: number | undefined }
+  ): Promise<{
+    content: string;
+    contentLength: number;
+    offset: number;
+    returned: number;
+    hasMore: boolean;
+    nextOffset?: number;
     currentPage?: { id: string; name: string } | undefined;
     allPages: Array<{ id: string; name: string; type: string }>;
     pageCount: number;
@@ -4359,18 +4412,29 @@ export class FoundryDataAccess {
     // Get first text page content
     const firstPage = journal.pages.find((page: any) => page.type === 'text');
     if (!firstPage) {
-      return { content: '', allPages, pageCount };
+      return { ...this.sliceContent('', options), allPages, pageCount };
+    }
+
+    const sliced = this.sliceContent(firstPage.text?.content || '', options);
+
+    const notes: string[] = [];
+    if (pageCount > 1) {
+      notes.push(
+        `This journal has ${pageCount} pages. Use list-journals with journalId and pageId to read other pages: ${allPages.map((p: any) => `"${p.name}" (${p.id})`).join(', ')}`
+      );
+    }
+    if (sliced.hasMore) {
+      notes.push(
+        `TRUNCATED: showing characters ${sliced.offset}-${sliced.offset + sliced.returned} of ${sliced.contentLength}. Read the next chunk with offset=${sliced.nextOffset}.`
+      );
     }
 
     return {
-      content: firstPage.text?.content || '',
+      ...sliced,
       currentPage: { id: firstPage.id || '', name: firstPage.name || '' },
       allPages,
       pageCount,
-      note:
-        pageCount > 1
-          ? `This journal has ${pageCount} pages. Use list-journals with journalId and pageId to read other pages: ${allPages.map((p: any) => `"${p.name}" (${p.id})`).join(', ')}`
-          : undefined,
+      note: notes.length ? notes.join(' | ') : undefined,
     };
   }
 
@@ -4379,8 +4443,20 @@ export class FoundryDataAccess {
    */
   async getJournalPageContent(
     journalId: string,
-    pageId: string
-  ): Promise<{ id: string; name: string; type: string; content: string } | null> {
+    pageId: string,
+    options?: { offset?: number | undefined; maxChars?: number | undefined }
+  ): Promise<{
+    id: string;
+    name: string;
+    type: string;
+    content: string;
+    contentLength: number;
+    offset: number;
+    returned: number;
+    hasMore: boolean;
+    nextOffset?: number;
+    note?: string | undefined;
+  } | null> {
     this.validateFoundryState();
 
     const journal = game.journal.get(journalId);
@@ -4393,11 +4469,17 @@ export class FoundryDataAccess {
       return null;
     }
 
+    const full = page.type === 'text' ? page.text?.content || '' : page.src || '';
+    const sliced = this.sliceContent(full, options);
+
     return {
       id: page.id || '',
       name: page.name || '',
       type: page.type || 'text',
-      content: page.type === 'text' ? page.text?.content || '' : page.src || '',
+      ...sliced,
+      note: sliced.hasMore
+        ? `TRUNCATED: showing characters ${sliced.offset}-${sliced.offset + sliced.returned} of ${sliced.contentLength}. Read the next chunk with offset=${sliced.nextOffset}.`
+        : undefined,
     };
   }
 

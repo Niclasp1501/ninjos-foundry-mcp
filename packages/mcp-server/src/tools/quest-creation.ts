@@ -189,7 +189,7 @@ export class QuestCreationTools {
       {
         name: 'list-journals',
         description:
-          "List all journal entries, or read a specific journal/page. Without parameters: lists all journals with their pages (id, name, type). With journalId: reads the journal's first text page content and shows all available pages. With journalId + pageId: reads a specific page's full content.",
+          "List all journal entries, or read a specific journal/page. Without parameters: lists all journals with their pages (id, name, type). With journalId: reads the journal's first text page content and shows all available pages. With journalId + pageId: reads a specific page's content. Large pages are returned in chunks (default 50000 chars): if hasMore is true, call again with offset=nextOffset to read the rest.",
         inputSchema: {
           type: 'object',
           properties: {
@@ -210,6 +210,16 @@ export class QuestCreationTools {
               type: 'string',
               description:
                 "If provided with journalId, read this specific page's content. Get page IDs from the pages array returned when listing journals or reading a journal.",
+            },
+            offset: {
+              type: 'number',
+              description:
+                'Start reading content at this character position (default 0). Use the nextOffset value from a truncated response to read the following chunk.',
+            },
+            maxChars: {
+              type: 'number',
+              description:
+                'Maximum characters of content to return (default 50000, max 200000). Large pages are chunked because an oversized response drops the Foundry connection. Check hasMore/nextOffset in the response.',
             },
           },
         },
@@ -518,6 +528,8 @@ export class QuestCreationTools {
         includeContent: z.boolean().optional().default(false),
         journalId: z.string().optional(),
         pageId: z.string().optional(),
+        offset: z.number().int().min(0).optional(),
+        maxChars: z.number().int().min(1000).max(200000).optional(),
       });
 
       const request = requestSchema.parse(args);
@@ -529,6 +541,8 @@ export class QuestCreationTools {
           {
             journalId: request.journalId,
             pageId: request.pageId,
+            offset: request.offset,
+            maxChars: request.maxChars,
           }
         );
 
@@ -550,6 +564,8 @@ export class QuestCreationTools {
           'foundry-mcp-bridge.getJournalContent',
           {
             journalId: request.journalId,
+            offset: request.offset,
+            maxChars: request.maxChars,
           }
         );
 
@@ -562,6 +578,11 @@ export class QuestCreationTools {
           mode: 'journal',
           journalId: request.journalId,
           content: journalContent.content,
+          contentLength: journalContent.contentLength,
+          offset: journalContent.offset,
+          returned: journalContent.returned,
+          hasMore: journalContent.hasMore,
+          nextOffset: journalContent.nextOffset,
           currentPage: journalContent.currentPage,
           allPages: journalContent.allPages,
           pageCount: journalContent.pageCount,
