@@ -4207,12 +4207,38 @@ export class FoundryDataAccess {
    * Set an actor's token image (prototype token), optionally also the portrait.
    * Fills the token for actors that have none.
    */
+  /**
+   * Ringfarbe nach Gesinnung des Tokens.
+   *
+   * Foundrys Vorgabe ist gelb fuer neutral und tuerkis fuer freundlich -- hier
+   * bewusst rot/blau/gruen, weil das am Tisch schneller lesbar ist.
+   */
+  private static ringColorForDisposition(actor: any): string | null {
+    const RED = '#e72124'; // feindlich
+    const BLUE = '#3b82f6'; // neutral
+    const GREEN = '#33bc4e'; // freundlich
+
+    const d = actor?.prototypeToken?.disposition;
+    switch (d) {
+      case -1:
+        return RED;
+      case 0:
+        return BLUE;
+      case 1:
+        return GREEN;
+      default:
+        return null; // -2 (geheim) o.ae.: Foundry entscheiden lassen
+    }
+  }
+
   async setActorToken(request: {
     actorIdentifier: string;
     tokenImg: string;
     portraitImg?: string;
+    tokenName?: string | undefined;
     ring?: boolean | undefined;
     ringScale?: number | undefined;
+    ringColor?: string | undefined;
   }): Promise<{
     success: boolean;
     actorId: string;
@@ -4232,6 +4258,10 @@ export class FoundryDataAccess {
     const patch: any = { 'prototypeToken.texture.src': request.tokenImg };
     if (request.portraitImg) patch.img = request.portraitImg;
 
+    // Ohne das behalten platzierte Token den Namen aus dem Kompendium
+    // ("Bandit") statt den der Figur ("Ruprecht Saebelhand").
+    if (request.tokenName) patch['prototypeToken.name'] = request.tokenName;
+
     // Dynamischer Token-Ring (Foundry v12+ / dnd5e). Wichtig: Es reicht NICHT,
     // ring.enabled zu setzen -- ohne ring.subject.texture zeichnet Foundry den
     // Ring um ein leeres Feld, weil texture.src dann als Hintergrund gilt.
@@ -4239,7 +4269,16 @@ export class FoundryDataAccess {
       patch['prototypeToken.ring.enabled'] = !!request.ring;
       if (request.ring) {
         patch['prototypeToken.ring.subject.texture'] = request.tokenImg;
-        patch['prototypeToken.ring.subject.scale'] = request.ringScale ?? 1;
+
+        // Skalierung NUR anfassen, wenn ausdruecklich mitgegeben -- sonst wuerde
+        // eine von Hand eingestellte Groessenkorrektur stillschweigend
+        // ueberschrieben.
+        if (request.ringScale !== undefined) {
+          patch['prototypeToken.ring.subject.scale'] = request.ringScale;
+        }
+
+        const color = request.ringColor ?? FoundryDataAccess.ringColorForDisposition(actor);
+        if (color) patch['prototypeToken.ring.colors.ring'] = color;
       }
     }
 

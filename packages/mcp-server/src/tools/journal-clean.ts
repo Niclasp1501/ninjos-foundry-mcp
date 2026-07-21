@@ -127,6 +127,11 @@ export class JournalCleanTools {
               type: 'string',
               description: 'Optional portrait image path (actor.img)',
             },
+            tokenName: {
+              type: 'string',
+              description:
+                "Optional name for the prototype token. Without it, placed tokens keep the compendium name (e.g. 'Bandit') instead of the actor's name. Usually you want to pass the actor's own name here.",
+            },
             ring: {
               type: 'boolean',
               description:
@@ -135,7 +140,12 @@ export class JournalCleanTools {
             ringScale: {
               type: 'number',
               description:
-                'Scale of the artwork inside the ring (default 1). Use ~0.8 if the subject touches the ring edge.',
+                "Scale of the artwork inside the ring. Omit it — the token art should carry its own transparent margin instead (see the image tool's --token-margin). Shrinking the subject here leaves the ring at full size and looks out of proportion.",
+            },
+            ringColor: {
+              type: 'string',
+              description:
+                'Optional ring colour as a hex string, e.g. "#e72124". Omit to colour automatically by disposition: hostile red, neutral blue, friendly green.',
             },
           },
           required: ['actorIdentifier', 'tokenImg'],
@@ -231,15 +241,19 @@ export class JournalCleanTools {
     actorIdentifier: string;
     tokenImg: string;
     portraitImg?: string;
+    tokenName?: string;
     ring?: boolean;
     ringScale?: number;
+    ringColor?: string;
   }): Promise<any> {
     return await this.foundryClient.query('foundry-mcp-bridge.setActorToken', {
       actorIdentifier: args.actorIdentifier,
       tokenImg: args.tokenImg,
       portraitImg: args.portraitImg,
+      tokenName: args.tokenName,
       ring: args.ring,
       ringScale: args.ringScale,
+      ringColor: args.ringColor,
     });
   }
 
