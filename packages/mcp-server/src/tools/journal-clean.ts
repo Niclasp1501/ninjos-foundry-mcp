@@ -117,15 +117,25 @@ export class JournalCleanTools {
       {
         name: 'actor-set-token',
         description:
-          "Set an actor's token image (prototype token) — fills the token for actors that have none. Optionally also set the portrait. Provide a fitting icon path (dnd5e/Foundry icon set, e.g. icons/creatures/...).",
+          "Set an actor's token image (prototype token) — fills the token for actors that have none. Optionally also set the portrait and enable the dynamic token ring (dnd5e/Foundry v12+).",
         inputSchema: {
           type: 'object',
           properties: {
             actorIdentifier: { type: 'string', description: 'Actor name or ID' },
-            tokenImg: { type: 'string', description: 'Token image path (icon)' },
+            tokenImg: { type: 'string', description: 'Token image path' },
             portraitImg: {
               type: 'string',
               description: 'Optional portrait image path (actor.img)',
+            },
+            ring: {
+              type: 'boolean',
+              description:
+                'Enable (true) or disable (false) the dynamic token ring. When true, tokenImg is also set as the ring subject texture — without that the ring would be drawn around an empty field. Omit to leave the current setting untouched.',
+            },
+            ringScale: {
+              type: 'number',
+              description:
+                'Scale of the artwork inside the ring (default 1). Use ~0.8 if the subject touches the ring edge.',
             },
           },
           required: ['actorIdentifier', 'tokenImg'],
@@ -221,11 +231,15 @@ export class JournalCleanTools {
     actorIdentifier: string;
     tokenImg: string;
     portraitImg?: string;
+    ring?: boolean;
+    ringScale?: number;
   }): Promise<any> {
     return await this.foundryClient.query('foundry-mcp-bridge.setActorToken', {
       actorIdentifier: args.actorIdentifier,
       tokenImg: args.tokenImg,
       portraitImg: args.portraitImg,
+      ring: args.ring,
+      ringScale: args.ringScale,
     });
   }
 

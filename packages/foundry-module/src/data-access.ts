@@ -4211,7 +4211,14 @@ export class FoundryDataAccess {
     actorIdentifier: string;
     tokenImg: string;
     portraitImg?: string;
-  }): Promise<{ success: boolean; actorId: string; name: string }> {
+    ring?: boolean | undefined;
+    ringScale?: number | undefined;
+  }): Promise<{
+    success: boolean;
+    actorId: string;
+    name: string;
+    ringEnabled: boolean;
+  }> {
     this.validateFoundryState();
     const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
     if (!permissionCheck.allowed) {
@@ -4224,9 +4231,26 @@ export class FoundryDataAccess {
     }
     const patch: any = { 'prototypeToken.texture.src': request.tokenImg };
     if (request.portraitImg) patch.img = request.portraitImg;
+
+    // Dynamischer Token-Ring (Foundry v12+ / dnd5e). Wichtig: Es reicht NICHT,
+    // ring.enabled zu setzen -- ohne ring.subject.texture zeichnet Foundry den
+    // Ring um ein leeres Feld, weil texture.src dann als Hintergrund gilt.
+    if (request.ring !== undefined) {
+      patch['prototypeToken.ring.enabled'] = !!request.ring;
+      if (request.ring) {
+        patch['prototypeToken.ring.subject.texture'] = request.tokenImg;
+        patch['prototypeToken.ring.subject.scale'] = request.ringScale ?? 1;
+      }
+    }
+
     await actor.update(patch);
     this.auditLog('setActorToken', request, 'success');
-    return { success: true, actorId: actor.id ?? '', name: actor.name ?? '' };
+    return {
+      success: true,
+      actorId: actor.id ?? '',
+      name: actor.name ?? '',
+      ringEnabled: !!(actor as any).prototypeToken?.ring?.enabled,
+    };
   }
 
   /**
