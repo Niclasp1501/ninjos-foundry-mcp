@@ -1785,6 +1785,21 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'journal-split-page':
+                  result = await journalCleanTools.handleSplitJournalPage(args);
+
+                  break;
+
+                case 'journal-rewrite-images':
+                  result = await journalCleanTools.handleRewriteJournalImages(args);
+
+                  break;
+
+                case 'journal-link-tags':
+                  result = await journalCleanTools.handleLinkJournalTags(args);
+
+                  break;
+
                 case 'actor-set-token':
                   result = await journalCleanTools.handleSetActorToken(args);
 

@@ -4293,6 +4293,283 @@ export class FoundryDataAccess {
   }
 
   /**
+   * Split one oversized journal page into one page per section.
+   *
+   * Imported adventure chapters arrive as a single page of 100k+ characters --
+   * unusable at the table and too big for a single socket message. The split
+   * happens HERE, inside Foundry: the content never travels over the bridge.
+   *
+   * Sections are detected by heading level via DOMParser, so the original
+   * markup (images, insets, links, dice formulas) is carried over untouched.
+   */
+  async splitJournalPage(request: {
+    journalId: string;
+    pageId: string;
+    level?: number | undefined;
+    deleteOriginal?: boolean | undefined;
+    namePrefix?: string | undefined;
+  }): Promise<{
+    success: boolean;
+    created: Array<{ id: string; name: string; length: number }>;
+    originalLength: number;
+    deletedOriginal: boolean;
+  }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Journal split denied: ${permissionCheck.reason}`);
+    }
+
+    const journal = game.journal.get(request.journalId);
+    if (!journal) throw new Error(`Journal not found: ${request.journalId}`);
+    const page = journal.pages.get(request.pageId);
+    if (!page) throw new Error(`Page not found: ${request.pageId}`);
+    if (page.type !== 'text') throw new Error('Only text pages can be split');
+
+    const html: string = page.text?.content || '';
+    const maxLevel = Math.min(6, Math.max(1, request.level ?? 1));
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const selector = Array.from({ length: maxLevel }, (_, i) => `h${i + 1}`).join(',');
+
+    type Section = { name: string; html: string };
+    const sections: Section[] = [];
+    let current: Section | null = null;
+
+    for (const node of Array.from(doc.body.children)) {
+      const el = node as HTMLElement;
+      // A separator on its own does not open a section -- it belongs to the
+      // section that follows, so drop it when nothing is open yet.
+      const heading = el.querySelector(selector);
+      if (heading) {
+        const title = (heading.textContent || '').trim().replace(/\s+/g, ' ');
+        current = { name: title || `Abschnitt ${sections.length + 1}`, html: '' };
+        sections.push(current);
+      }
+      if (!current) continue;
+      current.html += el.outerHTML;
+    }
+
+    if (sections.length < 2) {
+      throw new Error(
+        `Found only ${sections.length} section(s) at heading level <=${maxLevel}. ` +
+          'Try a deeper level (e.g. level 2) -- splitting would achieve nothing.'
+      );
+    }
+
+    const prefix = request.namePrefix ? `${request.namePrefix} ` : '';
+    const sortBase = (page.sort ?? 0) + 1;
+    const created = await journal.createEmbeddedDocuments(
+      'JournalEntryPage',
+      sections.map((s, i) => ({
+        name: `${prefix}${s.name}`.slice(0, 120),
+        type: 'text',
+        text: { content: s.html, format: 1 },
+        sort: sortBase + i,
+      }))
+    );
+
+    let deletedOriginal = false;
+    if (request.deleteOriginal) {
+      await journal.deleteEmbeddedDocuments('JournalEntryPage', [request.pageId]);
+      deletedOriginal = true;
+    }
+
+    this.auditLog('splitJournalPage', request, 'success');
+    return {
+      success: true,
+      created: (created as any[]).map((p, i) => ({
+        id: p.id,
+        name: p.name,
+        length: sections[i]?.html.length ?? 0,
+      })),
+      originalLength: html.length,
+      deletedOriginal,
+    };
+  }
+
+  /**
+   * Rewrite external image URLs in journal pages to local Foundry paths.
+   *
+   * Imported adventures point at a CDN, which means no images without internet
+   * and slow loading on tablets. Only the file name is kept; it is looked up
+   * under the given local folder.
+   */
+  async rewriteJournalImages(request: {
+    journalId: string;
+    pageId?: string | undefined;
+    urlPattern: string;
+    localPrefix: string;
+    dryRun?: boolean | undefined;
+  }): Promise<{
+    success: boolean;
+    pagesChanged: number;
+    replacements: number;
+    samples: string[];
+    dryRun: boolean;
+  }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Image rewrite denied: ${permissionCheck.reason}`);
+    }
+
+    const journal = game.journal.get(request.journalId);
+    if (!journal) throw new Error(`Journal not found: ${request.journalId}`);
+
+    const prefix = request.localPrefix.replace(/\/+$/, '');
+    const pattern = new RegExp(
+      `(<img[^>]*\\ssrc=")(${request.urlPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^"]*)(")`,
+      'gi'
+    );
+
+    const pages = request.pageId
+      ? [journal.pages.get(request.pageId)].filter(Boolean)
+      : Array.from(journal.pages).filter((p: any) => p.type === 'text');
+    if (!pages.length) throw new Error('No matching text pages found');
+
+    let pagesChanged = 0;
+    let replacements = 0;
+    const samples: string[] = [];
+    const updates: any[] = [];
+
+    for (const p of pages as any[]) {
+      const content: string = p.text?.content || '';
+      let hits = 0;
+      const next = content.replace(pattern, (_m, pre, url, post) => {
+        hits++;
+        const file = String(url).split('/').pop() || '';
+        const local = `${prefix}/${file}`;
+        if (samples.length < 5) samples.push(`${url}  ->  ${local}`);
+        return `${pre}${local}${post}`;
+      });
+      if (hits > 0) {
+        replacements += hits;
+        pagesChanged++;
+        if (!request.dryRun) updates.push({ _id: p.id, 'text.content': next });
+      }
+    }
+
+    if (!request.dryRun && updates.length) {
+      await journal.updateEmbeddedDocuments('JournalEntryPage', updates);
+    }
+
+    this.auditLog('rewriteJournalImages', request, 'success');
+    return {
+      success: true,
+      pagesChanged,
+      replacements,
+      samples,
+      dryRun: !!request.dryRun,
+    };
+  }
+
+  /**
+   * Turn raw 5etools tags (@creature[Name|Src], @item[Name|Src]) into real
+   * Foundry @UUID links, resolved against the given compendium packs.
+   *
+   * Unresolved names are reported rather than silently left behind, so gaps
+   * are visible instead of looking like a finished job.
+   */
+  async linkJournalTags(request: {
+    journalId: string;
+    pageId?: string | undefined;
+    actorPacks?: string[] | undefined;
+    itemPacks?: string[] | undefined;
+    dryRun?: boolean | undefined;
+  }): Promise<{
+    success: boolean;
+    pagesChanged: number;
+    linked: number;
+    unresolved: string[];
+    samples: string[];
+    dryRun: boolean;
+  }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Tag linking denied: ${permissionCheck.reason}`);
+    }
+
+    const journal = game.journal.get(request.journalId);
+    if (!journal) throw new Error(`Journal not found: ${request.journalId}`);
+
+    // name (lowercased) -> uuid, for actors and items separately
+    const buildIndex = async (packIds: string[]) => {
+      const map = new Map<string, { uuid: string; name: string }>();
+      for (const packId of packIds) {
+        const pack = game.packs.get(packId);
+        if (!pack) continue;
+        const index = await pack.getIndex();
+        for (const entry of index) {
+          const key = String(entry.name || '')
+            .toLowerCase()
+            .trim();
+          if (key && !map.has(key)) {
+            map.set(key, { uuid: `Compendium.${packId}.${entry._id}`, name: entry.name });
+          }
+        }
+      }
+      return map;
+    };
+
+    const actorIndex = await buildIndex(request.actorPacks ?? []);
+    const itemIndex = await buildIndex(request.itemPacks ?? []);
+
+    const pages = request.pageId
+      ? [journal.pages.get(request.pageId)].filter(Boolean)
+      : Array.from(journal.pages).filter((p: any) => p.type === 'text');
+    if (!pages.length) throw new Error('No matching text pages found');
+
+    const unresolved = new Set<string>();
+    const samples: string[] = [];
+    let linked = 0;
+    let pagesChanged = 0;
+    const updates: any[] = [];
+
+    // @creature[Name|Source] or @creature[Name|Source|display text]
+    const tagRe = /@(creature|item)\[([^\]|]+)(?:\|([^\]|]*))?(?:\|([^\]]*))?\]/g;
+
+    for (const p of pages as any[]) {
+      const content: string = p.text?.content || '';
+      let hits = 0;
+      const next = content.replace(tagRe, (whole, kind, rawName, _src, display) => {
+        const name = String(rawName).trim();
+        const index = kind === 'creature' ? actorIndex : itemIndex;
+        const found = index.get(name.toLowerCase());
+        if (!found) {
+          unresolved.add(`${kind}: ${name}`);
+          return whole;
+        }
+        hits++;
+        const label = (display && String(display).trim()) || found.name || name;
+        const link = `@UUID[${found.uuid}]{${label}}`;
+        if (samples.length < 5) samples.push(`${whole}  ->  ${link}`);
+        return link;
+      });
+      if (hits > 0) {
+        linked += hits;
+        pagesChanged++;
+        if (!request.dryRun) updates.push({ _id: p.id, 'text.content': next });
+      }
+    }
+
+    if (!request.dryRun && updates.length) {
+      await journal.updateEmbeddedDocuments('JournalEntryPage', updates);
+    }
+
+    this.auditLog('linkJournalTags', request, 'success');
+    return {
+      success: true,
+      pagesChanged,
+      linked,
+      unresolved: Array.from(unresolved).sort(),
+      samples,
+      dryRun: !!request.dryRun,
+    };
+  }
+
+  /**
    * Rename a JournalEntry.
    */
   async renameJournal(request: {

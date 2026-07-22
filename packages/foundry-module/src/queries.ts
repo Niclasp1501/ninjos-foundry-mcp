@@ -68,6 +68,10 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.deleteJournalPage`] = this.handleDeleteJournalPage.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteJournalEntry`] = this.handleDeleteJournalEntry.bind(this);
     CONFIG.queries[`${modulePrefix}.setActorToken`] = this.handleSetActorToken.bind(this);
+    CONFIG.queries[`${modulePrefix}.splitJournalPage`] = this.handleSplitJournalPage.bind(this);
+    CONFIG.queries[`${modulePrefix}.rewriteJournalImages`] =
+      this.handleRewriteJournalImages.bind(this);
+    CONFIG.queries[`${modulePrefix}.linkJournalTags`] = this.handleLinkJournalTags.bind(this);
     CONFIG.queries[`${modulePrefix}.renameJournal`] = this.handleRenameJournal.bind(this);
     CONFIG.queries[`${modulePrefix}.renameFolder`] = this.handleRenameFolder.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteFolder`] = this.handleDeleteFolder.bind(this);
@@ -1488,6 +1492,60 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to set actor token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private async handleSplitJournalPage(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      this.dataAccess.validateFoundryState();
+      if (!data.journalId || !data.pageId) {
+        throw new Error('journalId and pageId are required');
+      }
+      return await this.dataAccess.splitJournalPage(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to split journal page: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private async handleRewriteJournalImages(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      this.dataAccess.validateFoundryState();
+      if (!data.journalId || !data.urlPattern || !data.localPrefix) {
+        throw new Error('journalId, urlPattern and localPrefix are required');
+      }
+      return await this.dataAccess.rewriteJournalImages(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to rewrite journal images: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private async handleLinkJournalTags(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      this.dataAccess.validateFoundryState();
+      if (!data.journalId) {
+        throw new Error('journalId is required');
+      }
+      return await this.dataAccess.linkJournalTags(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to link journal tags: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

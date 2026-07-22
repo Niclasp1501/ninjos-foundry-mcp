@@ -152,6 +152,94 @@ export class JournalCleanTools {
         },
       },
       {
+        name: 'journal-split-page',
+        description:
+          'Split one oversized journal page into one page per section, detected by heading level. Runs INSIDE Foundry, so the content never travels over the bridge — works on pages of any size. Original markup (images, insets, links, dice formulas) is carried over untouched.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            journalId: { type: 'string' },
+            pageId: { type: 'string', description: 'Page to split' },
+            level: {
+              type: 'number',
+              description:
+                'Split at headings up to this level (1 = only h1, 2 = h1+h2). Default 1. Use 2 for chapters whose sections are h2.',
+            },
+            deleteOriginal: {
+              type: 'boolean',
+              description:
+                'Delete the oversized source page afterwards (default false — keep it until you verified the split).',
+            },
+            namePrefix: {
+              type: 'string',
+              description: 'Optional prefix for every created page name, e.g. "Kap. 2 —".',
+            },
+          },
+          required: ['journalId', 'pageId'],
+        },
+      },
+      {
+        name: 'journal-rewrite-images',
+        description:
+          'Rewrite external image URLs in journal pages to local Foundry paths (keeps only the file name and puts it under localPrefix). Fixes imported adventures that point at a CDN. Runs inside Foundry. Use dryRun first.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            journalId: { type: 'string' },
+            pageId: {
+              type: 'string',
+              description: 'Optional — restrict to one page. Omit to process every text page.',
+            },
+            urlPattern: {
+              type: 'string',
+              description:
+                'Literal URL prefix to match, e.g. "https://cdn.5e.tools/". Matched against the img src.',
+            },
+            localPrefix: {
+              type: 'string',
+              description:
+                'Local folder the file name is placed under, e.g. "Bilder/Kampagnen/PotA".',
+            },
+            dryRun: {
+              type: 'boolean',
+              description: 'Only report what would change (default false).',
+            },
+          },
+          required: ['journalId', 'urlPattern', 'localPrefix'],
+        },
+      },
+      {
+        name: 'journal-link-tags',
+        description:
+          'Convert raw 5etools tags (@creature[Name|Src], @item[Name|Src]) left over from an import into real Foundry @UUID links, resolved against the given compendium packs — e.g. a German monster manual. Unresolved names are reported, never silently skipped. Runs inside Foundry. Use dryRun first.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            journalId: { type: 'string' },
+            pageId: {
+              type: 'string',
+              description: 'Optional — restrict to one page. Omit to process every text page.',
+            },
+            actorPacks: {
+              type: 'array',
+              items: { type: 'string' },
+              description:
+                'Actor compendium pack ids searched for @creature tags, in priority order (e.g. ["dnd-monster-manual-deutsch.actors","dnd5e.monsters"]).',
+            },
+            itemPacks: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Item compendium pack ids searched for @item tags, in priority order.',
+            },
+            dryRun: {
+              type: 'boolean',
+              description: 'Only report what would change (default false).',
+            },
+          },
+          required: ['journalId'],
+        },
+      },
+      {
         name: 'folder-rename',
         description:
           'Rename a sidebar Folder (identified by its current name, optionally by document type). Contents are kept.',
@@ -254,6 +342,54 @@ export class JournalCleanTools {
       ring: args.ring,
       ringScale: args.ringScale,
       ringColor: args.ringColor,
+    });
+  }
+
+  async handleSplitJournalPage(args: {
+    journalId: string;
+    pageId: string;
+    level?: number;
+    deleteOriginal?: boolean;
+    namePrefix?: string;
+  }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.splitJournalPage', {
+      journalId: args.journalId,
+      pageId: args.pageId,
+      level: args.level,
+      deleteOriginal: args.deleteOriginal,
+      namePrefix: args.namePrefix,
+    });
+  }
+
+  async handleRewriteJournalImages(args: {
+    journalId: string;
+    pageId?: string;
+    urlPattern: string;
+    localPrefix: string;
+    dryRun?: boolean;
+  }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.rewriteJournalImages', {
+      journalId: args.journalId,
+      pageId: args.pageId,
+      urlPattern: args.urlPattern,
+      localPrefix: args.localPrefix,
+      dryRun: args.dryRun,
+    });
+  }
+
+  async handleLinkJournalTags(args: {
+    journalId: string;
+    pageId?: string;
+    actorPacks?: string[];
+    itemPacks?: string[];
+    dryRun?: boolean;
+  }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.linkJournalTags', {
+      journalId: args.journalId,
+      pageId: args.pageId,
+      actorPacks: args.actorPacks,
+      itemPacks: args.itemPacks,
+      dryRun: args.dryRun,
     });
   }
 
