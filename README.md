@@ -175,6 +175,143 @@ Once connected, ask Claude Desktop:
 - **40** dnd5e-add-features-from-compendium (D&D 5e Only)
 - **41** manage-actors (create / update / delete actors; update / delete embedded items — any system)
 
+### Ninjo additions
+
+Clean journal handling, token art, and tooling for large imported adventures.
+
+- **42** journal-create — clean multi-page JournalEntry, content stored verbatim (no quest template, no junk page)
+- **43** journal-set-page — replace a page's content verbatim
+- **44** journal-add-page — add a page with verbatim HTML
+- **45** journal-append-page — append a chunk to an existing page
+- **46** journal-page-from-file — fill a page from a file in Foundry's Data directory (**any size**)
+- **47** journal-split-page — split an oversized page into one page per section
+- **48** journal-rewrite-images — external image URLs → local Foundry paths
+- **49** journal-link-tags — raw `@creature[…]` / `@item[…]` tags → real `@UUID` links
+- **50** journal-delete-page / **51** journal-delete / **52** journal-rename
+- **53** actor-set-token — token image, portrait, token name, dynamic ring
+- **54** folder-rename / **55** folder-delete
+
+---
+
+## Working with large imported adventures
+
+Adventures imported by tools such as Plutonium arrive as **one page per chapter**,
+often 70k–250k characters. That breaks several assumptions, and the tools below
+exist because of it. Read this before touching such a world.
+
+### The socket limit is the central constraint
+
+Foundry's socket **drops the whole connection** when a query response gets too
+large — it does not return an error, and the bridge stays dead until the browser
+reloads. A single 250k-character page killed it reliably.
+
+Two mechanisms handle this:
+
+| Direction   | Mechanism                                                                                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Reading** | `list-journals` chunks content. Default 50k, max 200k per call. Check `hasMore` and pass `offset: nextOffset` for the next chunk.                                                               |
+| **Writing** | `journal-page-from-file` — the file is placed in Foundry's Data directory and the **browser fetches it directly** from the Foundry server. Nothing crosses the socket, so size stops mattering. |
+
+`journal-append-page` also exists (create with the first chunk, append the rest in
+~40k pieces), but the file route is simpler and has no size ceiling at all.
+
+**Rule of thumb:** anything above ~100k characters goes through
+`journal-page-from-file`, never through `journal-set-page`.
+
+### Do not split chapters by default
+
+`journal-split-page` works, but it is rarely what you want: **Foundry already
+builds a nested table of contents from the headings inside a page.** A 150k
+chapter is navigable as-is. Splitting produces a flat list of sibling pages and
+_loses_ that hierarchy, because Foundry cannot nest pages.
+
+Split only when you genuinely need per-section pages (e.g. to translate or edit
+one section at a time). Notes if you do:
+
+- Sections are found via `DOMParser` at the requested heading `level`.
+  Imported chapters wrap everything in one container `div`, so the parser
+  descends into it — otherwise it finds exactly one section and splits nothing.
+- New pages are placed **directly after** the source page. Foundry spaces `sort`
+  values 100000 apart, so a naive `+1` lands at the end of the journal.
+- `deleteOriginal` defaults to `false`. Verify first, delete afterwards.
+
+### Fixing an import
+
+Two cleanups are almost always worth running, in this order:
+
+```
+journal-rewrite-images  urlPattern: "https://cdn.5e.tools/"
+                        localPrefix: "Bilder/Kampagnen/<Adventure>"
+journal-link-tags       actorPacks: ["<german-pack>", "dnd5e.actors24", "dnd5e.monsters"]
+```
+
+Both support `dryRun: true` — always look first.
+
+**Linking against a localised compendium.** A German pack lists _Wache_, not
+_guard_, so matching English tags by name fails. But localised packs keep the
+**English document IDs** of the 2024 books, and those are derivable:
+
+```
+"guard"   ->  mmGuard000000000
+"priest"  ->  mmPriest00000000
+"commoner"->  mmCommoner000000
+```
+
+`journal-link-tags` therefore matches by name **and** by derived ID
+(`"mm" + PascalCase(name)`, padded to 16 characters). In practice this raised a
+real chapter from 18 to 96 resolved links.
+
+Names that resolve nowhere are **reported in `unresolved`, never silently
+skipped** — usually adventure-specific NPCs whose stat blocks live in a later
+chapter and do not exist as actors. That is a gap to fill, not a bug.
+
+### Token art and the dynamic ring
+
+`actor-set-token` sets the token image, the portrait, the prototype token name,
+and the dnd5e/Foundry dynamic ring.
+
+- Enabling the ring requires **both** `ring.enabled` _and_
+  `ring.subject.texture`. With only the flag, Foundry draws the ring around an
+  empty field, because `texture.src` then counts as the background.
+- **Do not use `ringScale` to make room for the ring.** The ring always spans the
+  full token square; shrinking the subject leaves the ring at full size and looks
+  out of proportion. The free margin belongs **in the artwork** — see
+  `--token-margin` in the image tool (0.17 measured as the sweet spot: below it
+  the art covers the ring, above it Foundry's dark ring background shows through).
+- Ring colour follows disposition automatically — hostile red, neutral blue,
+  friendly green. Override with `ringColor`.
+- Without `tokenName`, placed tokens keep the compendium name ("Bandit") instead
+  of the actor's name.
+
+### Translating an imported chapter
+
+Translation happens **outside** this bridge, in the companion CLI
+(`Ninjo´s Gemini DnD Portrait-Token Maker/translate.js`), which runs on the
+user's own API key. The bridge only reads and writes:
+
+```
+list-journals (chunked)        read the chapter
+  ↓
+translate.js --glossary …      translate prose, keep HTML/@UUID/[[/r]]/&Reference
+  ↓
+verify + repair HTML           see below
+  ↓
+scp to Foundry Data/           put the file where the browser can reach it
+  ↓
+journal-page-from-file         one call, any size
+  ↓
+journal-link-tags              resolve creature tags
+```
+
+**Always verify the HTML afterwards.** LLM translation reliably damages structure
+at chunk boundaries — in one 167k chapter it added 5 surplus `</div>` and dropped
+one `</p>`, which would have wrecked rendering. Compare tag counts against the
+source (`<div>`/`</div>`, `<p>`/`</p>`, `<h1..3>`, `<img>`, `@creature[`, `@item[`,
+`[[/r`, `@UUID[`) and repair imbalances before writing anything back.
+
+A glossary keeps terminology stable across chapters — without one, a location is
+named differently in chapter 3 than in chapter 11.
+
 ## Settings
 
 <img width="964" height="803" alt="image" src="https://github.com/user-attachments/assets/bfd435d5-2df4-40a6-a79b-87e98121db3f" />

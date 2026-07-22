@@ -1,3 +1,42 @@
+## Ninjo fork (2026-07)
+
+Journal handling for large imported adventures, clean journal editing, and token art.
+See the README section "Working with large imported adventures" for the reasoning.
+
+### New Features
+
+- **Clean journal tools** — content stored verbatim, no quest template, no auto-appended junk page
+  - `journal-create`, `journal-set-page`, `journal-add-page`
+  - `journal-delete-page`, `journal-delete`, `journal-rename`
+  - `folder-rename`, `folder-delete`
+
+- **Large-content handling** — Foundry's socket silently drops the connection when a response gets too big; a single 250k-character page killed the bridge reliably
+  - Reading: `list-journals` chunks content (`offset` / `maxChars`, default 50k, max 200k) and returns `contentLength` / `hasMore` / `nextOffset`, so partial reads are visible instead of looking complete
+  - Writing: `journal-page-from-file` — the browser fetches a file straight from Foundry's Data directory, so **nothing crosses the socket** and size stops mattering
+  - `journal-append-page` — alternative write path: create with the first chunk, append the rest
+
+- **`journal-split-page`** — split an oversized page into one page per section
+  - Sections detected via `DOMParser` at a chosen heading level; original markup carried over untouched
+  - Rarely needed: Foundry already builds a nested table of contents from headings inside a page, and splitting _loses_ that hierarchy because pages cannot nest
+
+- **`journal-rewrite-images`** — external image URLs (CDN) → local Foundry paths; supports `dryRun`
+
+- **`journal-link-tags`** — raw `@creature[…]` / `@item[…]` tags from an import → real `@UUID` links
+  - Matches by name **and** by derived document ID (`"mm" + PascalCase(name)`, padded to 16 chars). Localised packs translate names but keep the English 2024 IDs, so `guard` resolves to `Wache` via `mmGuard000000000`. Raised one real chapter from 18 to 96 resolved links
+  - Unresolved names are **reported**, never silently skipped
+  - Supports `dryRun`
+
+- **`actor-set-token`** — token image, portrait, prototype token name, dynamic ring
+  - Enabling the ring sets `ring.enabled` **and** `ring.subject.texture`; with only the flag Foundry draws the ring around an empty field
+  - Ring colour follows disposition automatically (hostile red, neutral blue, friendly green), overridable via `ringColor`
+  - `tokenName` — without it, placed tokens keep the compendium name instead of the actor's
+
+### Fixes
+
+- `actor-set-token` reset `ring.subject.scale` to `1` on every call with `ring: true`, silently destroying a hand-tuned scale. The field is now only touched when a value is passed
+- `journal-split-page` placed new pages at the end of the journal instead of after the source page (Foundry spaces `sort` values 100000 apart, so the naive `+1` sorted last)
+- `journal-split-page` found only a single section on imported chapters, which wrap all sections in one container `div`; the parser now descends into it and also recognises an element that _is_ the heading
+
 ## v0.8.3 (2026-06-11)
 
 ### New Features

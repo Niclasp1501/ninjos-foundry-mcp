@@ -4634,22 +4634,41 @@ export class FoundryDataAccess {
     if (!journal) throw new Error(`Journal not found: ${request.journalId}`);
 
     // name (lowercased) -> uuid, for actors and items separately
+    // Localised packs carry translated names but keep the English document IDs
+    // of the 2024 books ("guard" -> mmGuard000000000). Deriving that ID lets an
+    // English tag resolve against a German pack without a hand-kept table.
+    const derivedId = (englishName: string): string => {
+      const pascal = englishName
+        .replace(/[^a-zA-Z0-9 ]/g, '')
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join('');
+      return `mm${pascal}`.slice(0, 16).padEnd(16, '0');
+    };
+
     const buildIndex = async (packIds: string[]) => {
-      const map = new Map<string, { uuid: string; name: string }>();
+      const byName = new Map<string, { uuid: string; name: string }>();
+      const byId = new Map<string, { uuid: string; name: string }>();
       for (const packId of packIds) {
         const pack = game.packs.get(packId);
         if (!pack) continue;
         const index = await pack.getIndex();
         for (const entry of index) {
+          const value = { uuid: `Compendium.${packId}.${entry._id}`, name: entry.name };
           const key = String(entry.name || '')
             .toLowerCase()
             .trim();
-          if (key && !map.has(key)) {
-            map.set(key, { uuid: `Compendium.${packId}.${entry._id}`, name: entry.name });
-          }
+          if (key && !byName.has(key)) byName.set(key, value);
+          const id = String(entry._id || '');
+          if (id && !byId.has(id)) byId.set(id, value);
         }
       }
-      return map;
+      return {
+        get(name: string) {
+          return byName.get(name.toLowerCase().trim()) ?? byId.get(derivedId(name));
+        },
+      };
     };
 
     const actorIndex = await buildIndex(request.actorPacks ?? []);
