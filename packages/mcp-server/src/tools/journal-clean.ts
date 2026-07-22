@@ -152,6 +152,20 @@ export class JournalCleanTools {
         },
       },
       {
+        name: 'journal-append-page',
+        description:
+          'Append an HTML chunk to an existing text page. Use for content too large for one call: create the page with the first chunk (journal-create or journal-add-page), then append the rest in ~40k-character chunks — a single oversized message would drop the Foundry socket. Chunks are joined verbatim, so split only at tag boundaries.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            journalId: { type: 'string' },
+            pageId: { type: 'string', description: 'Text page to append to' },
+            html: { type: 'string', description: 'HTML chunk to append verbatim' },
+          },
+          required: ['journalId', 'pageId', 'html'],
+        },
+      },
+      {
         name: 'journal-split-page',
         description:
           'Split one oversized journal page into one page per section, detected by heading level. Runs INSIDE Foundry, so the content never travels over the bridge — works on pages of any size. Original markup (images, insets, links, dice formulas) is carried over untouched.',
@@ -342,6 +356,18 @@ export class JournalCleanTools {
       ring: args.ring,
       ringScale: args.ringScale,
       ringColor: args.ringColor,
+    });
+  }
+
+  async handleAppendJournalPage(args: {
+    journalId: string;
+    pageId: string;
+    html: string;
+  }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.appendJournalPageContent', {
+      journalId: args.journalId,
+      pageId: args.pageId,
+      html: args.html,
     });
   }
 

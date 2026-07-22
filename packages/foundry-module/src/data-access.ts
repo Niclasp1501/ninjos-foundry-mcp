@@ -4332,15 +4332,28 @@ export class FoundryDataAccess {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const selector = Array.from({ length: maxLevel }, (_, i) => `h${i + 1}`).join(',');
 
+    // Imported chapters wrap everything in a single container div, so the real
+    // sections sit one level deeper. Descend while there is exactly one child
+    // that still holds several headings -- otherwise we would "find" one
+    // section and split nothing.
+    let container: HTMLElement = doc.body;
+    for (let depth = 0; depth < 10; depth++) {
+      const children = Array.from(container.children) as HTMLElement[];
+      if (children.length !== 1) break;
+      const only = children[0];
+      if (!only || only.querySelectorAll(selector).length <= 1) break;
+      container = only;
+    }
+
     type Section = { name: string; html: string };
     const sections: Section[] = [];
     let current: Section | null = null;
 
-    for (const node of Array.from(doc.body.children)) {
+    for (const node of Array.from(container.children)) {
       const el = node as HTMLElement;
-      // A separator on its own does not open a section -- it belongs to the
-      // section that follows, so drop it when nothing is open yet.
-      const heading = el.querySelector(selector);
+      // The heading may BE this element (a bare <h1>) or sit inside it (a
+      // section div). Checking only descendants would miss the first case.
+      const heading = el.matches(selector) ? el : el.querySelector(selector);
       if (heading) {
         const title = (heading.textContent || '').trim().replace(/\s+/g, ' ');
         current = { name: title || `Abschnitt ${sections.length + 1}`, html: '' };
@@ -4358,14 +4371,30 @@ export class FoundryDataAccess {
     }
 
     const prefix = request.namePrefix ? `${request.namePrefix} ` : '';
-    const sortBase = (page.sort ?? 0) + 1;
+
+    // Place the new pages directly AFTER the source page, not at the end of the
+    // journal. Foundry spaces sort values widely (100000 apart), so a naive
+    // "+1" lands below everything else and the pages appear last.
+    const ordered = Array.from(journal.pages)
+      .map((p: any) => ({ id: p.id, sort: p.sort ?? 0 }))
+      .sort((a, b) => a.sort - b.sort);
+    const srcIdx = ordered.findIndex(p => p.id === request.pageId);
+    const srcSort = page.sort ?? 0;
+    const nextSort = srcIdx >= 0 ? ordered[srcIdx + 1]?.sort : undefined;
+    const DENSITY = 100000;
+    const span =
+      nextSort !== undefined && nextSort > srcSort
+        ? nextSort - srcSort
+        : DENSITY * (sections.length + 1);
+    const step = span / (sections.length + 1);
+
     const created = await journal.createEmbeddedDocuments(
       'JournalEntryPage',
       sections.map((s, i) => ({
         name: `${prefix}${s.name}`.slice(0, 120),
         type: 'text',
         text: { content: s.html, format: 1 },
-        sort: sortBase + i,
+        sort: Math.round(srcSort + step * (i + 1)),
       }))
     );
 
@@ -4386,6 +4415,37 @@ export class FoundryDataAccess {
       originalLength: html.length,
       deletedOriginal,
     };
+  }
+
+  /**
+   * Append HTML to an existing journal page.
+   *
+   * Counterpart to the chunked READ path: a full imported chapter (150k+)
+   * does not survive as a single socket message, so large pages are written
+   * as create-with-first-chunk followed by appends.
+   */
+  async appendJournalPageContent(request: {
+    journalId: string;
+    pageId: string;
+    html: string;
+  }): Promise<{ success: boolean; pageId: string; newLength: number }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Journal append denied: ${permissionCheck.reason}`);
+    }
+
+    const journal = game.journal.get(request.journalId);
+    if (!journal) throw new Error(`Journal not found: ${request.journalId}`);
+    const page = journal.pages.get(request.pageId);
+    if (!page) throw new Error(`Page not found: ${request.pageId}`);
+    if (page.type !== 'text') throw new Error('Only text pages can be appended to');
+
+    const next = (page.text?.content || '') + request.html;
+    await page.update({ 'text.content': next });
+
+    this.auditLog('appendJournalPageContent', { pageId: request.pageId }, 'success');
+    return { success: true, pageId: page.id ?? '', newLength: next.length };
   }
 
   /**

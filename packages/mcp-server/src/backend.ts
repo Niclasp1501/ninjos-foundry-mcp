@@ -1785,6 +1785,11 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'journal-append-page':
+                  result = await journalCleanTools.handleAppendJournalPage(args);
+
+                  break;
+
                 case 'journal-split-page':
                   result = await journalCleanTools.handleSplitJournalPage(args);
 

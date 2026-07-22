@@ -68,6 +68,8 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.deleteJournalPage`] = this.handleDeleteJournalPage.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteJournalEntry`] = this.handleDeleteJournalEntry.bind(this);
     CONFIG.queries[`${modulePrefix}.setActorToken`] = this.handleSetActorToken.bind(this);
+    CONFIG.queries[`${modulePrefix}.appendJournalPageContent`] =
+      this.handleAppendJournalPageContent.bind(this);
     CONFIG.queries[`${modulePrefix}.splitJournalPage`] = this.handleSplitJournalPage.bind(this);
     CONFIG.queries[`${modulePrefix}.rewriteJournalImages`] =
       this.handleRewriteJournalImages.bind(this);
@@ -1492,6 +1494,24 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to set actor token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private async handleAppendJournalPageContent(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      this.dataAccess.validateFoundryState();
+      if (!data.journalId || !data.pageId || typeof data.html !== 'string') {
+        throw new Error('journalId, pageId and html are required');
+      }
+      return await this.dataAccess.appendJournalPageContent(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to append journal page content: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
