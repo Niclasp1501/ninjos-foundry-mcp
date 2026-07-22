@@ -152,6 +152,31 @@ export class JournalCleanTools {
         },
       },
       {
+        name: 'journal-page-from-file',
+        description:
+          "Fill a journal page from an HTML file that already sits in Foundry's Data directory (upload it there first). The browser fetches the file straight from the Foundry server, so content of ANY size can be written — nothing crosses the MCP socket. Use this instead of journal-set-page for large imported chapters. Creates the page if pageId is omitted.",
+        inputSchema: {
+          type: 'object',
+          properties: {
+            journalId: { type: 'string' },
+            path: {
+              type: 'string',
+              description:
+                'Path relative to the Foundry Data directory, e.g. "Bilder/Kampagnen/PotA/kap2-de.html".',
+            },
+            pageId: {
+              type: 'string',
+              description: 'Existing page to overwrite. Omit to create a new page.',
+            },
+            pageName: {
+              type: 'string',
+              description: 'Name for the new page (only used when pageId is omitted).',
+            },
+          },
+          required: ['journalId', 'path'],
+        },
+      },
+      {
         name: 'journal-append-page',
         description:
           'Append an HTML chunk to an existing text page. Use for content too large for one call: create the page with the first chunk (journal-create or journal-add-page), then append the rest in ~40k-character chunks — a single oversized message would drop the Foundry socket. Chunks are joined verbatim, so split only at tag boundaries.',
@@ -356,6 +381,20 @@ export class JournalCleanTools {
       ring: args.ring,
       ringScale: args.ringScale,
       ringColor: args.ringColor,
+    });
+  }
+
+  async handleJournalPageFromFile(args: {
+    journalId: string;
+    path: string;
+    pageId?: string;
+    pageName?: string;
+  }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.setJournalPageFromFile', {
+      journalId: args.journalId,
+      path: args.path,
+      pageId: args.pageId,
+      pageName: args.pageName,
     });
   }
 

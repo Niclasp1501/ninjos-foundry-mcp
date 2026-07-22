@@ -4418,6 +4418,85 @@ export class FoundryDataAccess {
   }
 
   /**
+   * Load a journal page's content from a file that already sits in Foundry's
+   * Data directory.
+   *
+   * The browser fetches the file straight from the Foundry server, so content
+   * of any size can be written without ever crossing the MCP socket -- the
+   * path that dies on large chapters.
+   */
+  async setJournalPageFromFile(request: {
+    journalId: string;
+    path: string;
+    pageId?: string | undefined;
+    pageName?: string | undefined;
+  }): Promise<{
+    success: boolean;
+    journalId: string;
+    pageId: string;
+    pageName: string;
+    length: number;
+    created: boolean;
+  }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Journal write denied: ${permissionCheck.reason}`);
+    }
+
+    const journal = game.journal.get(request.journalId);
+    if (!journal) throw new Error(`Journal not found: ${request.journalId}`);
+
+    const rel = String(request.path).replace(/^\/+/, '');
+    const route = (foundry as any)?.utils?.getRoute?.(`/${rel}`) ?? `/${rel}`;
+
+    let html: string;
+    try {
+      const res = await fetch(route, { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText}`);
+      }
+      html = await res.text();
+    } catch (e) {
+      throw new Error(
+        `Could not read "${rel}" from the Foundry data directory: ${
+          e instanceof Error ? e.message : 'unknown error'
+        }`
+      );
+    }
+    if (!html.trim()) throw new Error(`File "${rel}" is empty`);
+
+    let page = request.pageId ? journal.pages.get(request.pageId) : null;
+    let created = false;
+
+    if (page) {
+      await page.update({ 'text.content': html });
+    } else {
+      const name = request.pageName || rel.split('/').pop() || 'Imported page';
+      const docs = await journal.createEmbeddedDocuments('JournalEntryPage', [
+        {
+          name,
+          type: 'text',
+          text: { content: html, format: 1 },
+          sort: (journal.pages.size + 1) * 100000,
+        },
+      ]);
+      page = (docs as any[])[0];
+      created = true;
+    }
+
+    this.auditLog('setJournalPageFromFile', { path: rel, journalId: request.journalId }, 'success');
+    return {
+      success: true,
+      journalId: journal.id ?? '',
+      pageId: page?.id ?? '',
+      pageName: page?.name ?? '',
+      length: html.length,
+      created,
+    };
+  }
+
+  /**
    * Append HTML to an existing journal page.
    *
    * Counterpart to the chunked READ path: a full imported chapter (150k+)

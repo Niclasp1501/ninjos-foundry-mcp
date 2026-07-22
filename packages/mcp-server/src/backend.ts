@@ -1785,6 +1785,11 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'journal-page-from-file':
+                  result = await journalCleanTools.handleJournalPageFromFile(args);
+
+                  break;
+
                 case 'journal-append-page':
                   result = await journalCleanTools.handleAppendJournalPage(args);
 
