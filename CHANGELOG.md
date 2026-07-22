@@ -1,4 +1,4 @@
-## Ninjo fork (2026-07)
+## v0.9.0 (2026-07-22)
 
 Journal handling for large imported adventures, clean journal editing, and token art.
 See the README section "Working with large imported adventures" for the reasoning.

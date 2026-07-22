@@ -1,6 +1,12 @@
-# Foundry VTT MCP Bridge
+# Ninjo's Foundry MCP
 
-Connect Foundry VTT to Claude Desktop for AI-powered campaign management through the Model Context Protocol (MCP). It currently supports Dungeons and Dragons Fifth Edition, Pathfinder Second Edition, Das Schwarze Augen Fifth Edition, Cosmere RPG System, Warhammer Fantasy Roleplay 4th Edition, & Mongoose Traveller 2nd Edition. The majority of MCP tools are system agnostic or have features that are aware of the system it is working with, excluding some DSA 5 specific tools.
+Connect Foundry VTT to Claude for AI-powered campaign management through the Model Context Protocol (MCP).
+
+> Built on [adambdooley/foundry-vtt-mcp](https://github.com/adambdooley/foundry-vtt-mcp) (MIT),
+> extended with clean journal editing, tooling for large imported adventures, and token art —
+> see [CHANGELOG](CHANGELOG.md) and _Working with large imported adventures_ below.
+> Upstream install links in this file point at the original project; this repository is built
+> from source (`npm install && npm run build`). It currently supports Dungeons and Dragons Fifth Edition, Pathfinder Second Edition, Das Schwarze Augen Fifth Edition, Cosmere RPG System, Warhammer Fantasy Roleplay 4th Edition, & Mongoose Traveller 2nd Edition. The majority of MCP tools are system agnostic or have features that are aware of the system it is working with, excluding some DSA 5 specific tools.
 
 ## Overview
 
