@@ -4569,6 +4569,8 @@ export class FoundryDataAccess {
     const wantName = !request.fields || request.fields.includes('name');
     const wantImg = !request.fields || request.fields.includes('img');
     const wantDesc = !request.fields || request.fields.includes('description');
+    // Advancement is opt-in: it is the only field that carries player choices.
+    const wantAdv = !!request.fields?.includes('advancement');
 
     // Optional name-based fallback index over the given packs.
     const nameIndex = new Map<string, string>(); // lowercased name -> uuid
@@ -4641,6 +4643,30 @@ export class FoundryDataAccess {
         if (newDesc && newDesc !== oldDesc) {
           patch['system.description.value'] = newDesc;
           changed.push('description');
+        }
+      }
+
+      // Advancement holds BOTH the definition (title, configuration) and the
+      // player's picks (`value`). Take the definition from the source, keep the
+      // picks -- otherwise levelling choices would be reset.
+      if (wantAdv) {
+        const srcAdv: any[] = Array.isArray(src.system?.advancement) ? src.system.advancement : [];
+        const ownAdv: any[] = Array.isArray(it.system?.advancement) ? it.system.advancement : [];
+        if (srcAdv.length && ownAdv.length) {
+          const srcById = new Map<string, any>(srcAdv.map((a: any) => [a._id, a]));
+          let advChanged = false;
+          const merged = ownAdv.map((own: any) => {
+            const s = srcById.get(own._id);
+            if (!s) return own; // entry the source does not know -- leave alone
+            const next = foundry.utils.deepClone(s);
+            if ('value' in own) next.value = own.value; // preserve the picks
+            if (JSON.stringify(next) !== JSON.stringify(own)) advChanged = true;
+            return next;
+          });
+          if (advChanged) {
+            patch['system.advancement'] = merged;
+            changed.push('advancement');
+          }
         }
       }
 

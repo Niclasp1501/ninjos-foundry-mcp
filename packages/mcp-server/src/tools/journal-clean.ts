@@ -161,8 +161,9 @@ export class JournalCleanTools {
             actorIdentifier: { type: 'string', description: 'Actor name or ID' },
             fields: {
               type: 'array',
-              items: { type: 'string', enum: ['name', 'description', 'img'] },
-              description: 'Which fields to refresh. Omit for all three.',
+              items: { type: 'string', enum: ['name', 'description', 'img', 'advancement'] },
+              description:
+                "Which fields to refresh. Omit for name+description+img. 'advancement' is OPT-IN and never included by default: it re-syncs a class item's level progression (entry titles and configuration) from the source while preserving the player's picks (each entry's `value`).",
             },
             namePacks: {
               type: 'array',
