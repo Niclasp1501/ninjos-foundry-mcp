@@ -4528,6 +4528,148 @@ export class FoundryDataAccess {
   }
 
   /**
+   * Refresh an actor's embedded items from the compendium they came from.
+   *
+   * Items dragged onto a sheet are frozen COPIES. If the source pack is later
+   * re-translated (or its links fixed), the copies keep the old text and stale
+   * links. This re-pulls the presentation fields (name / image / description)
+   * from each item's stored source, while leaving every mechanical field
+   * untouched -- levels, uses, prepared/known spells, quantity, equipped,
+   * attunement, advancement choices. No progress is lost.
+   *
+   * Source resolution per item, in order:
+   *   1. `_stats.compendiumSource` (Foundry v11+)
+   *   2. `flags.core.sourceId` (older)
+   *   3. name lookup in `namePacks` (optional fallback)
+   * Items with no resolvable source (hand-made loot) are reported, not touched.
+   */
+  async refreshActorItemsFromSource(request: {
+    actorIdentifier: string;
+    fields?: string[] | undefined;
+    namePacks?: string[] | undefined;
+    dryRun?: boolean | undefined;
+  }): Promise<{
+    success: boolean;
+    actor: string;
+    refreshed: number;
+    changes: Array<{ item: string; newName: string; fields: string[]; via: string }>;
+    unresolved: Array<{ item: string; type: string; reason: string }>;
+    dryRun: boolean;
+  }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Actor refresh denied: ${permissionCheck.reason}`);
+    }
+
+    const actor =
+      game.actors.get(request.actorIdentifier) || game.actors.getName(request.actorIdentifier);
+    if (!actor) throw new Error(`Actor not found: ${request.actorIdentifier}`);
+
+    const wantName = !request.fields || request.fields.includes('name');
+    const wantImg = !request.fields || request.fields.includes('img');
+    const wantDesc = !request.fields || request.fields.includes('description');
+
+    // Optional name-based fallback index over the given packs.
+    const nameIndex = new Map<string, string>(); // lowercased name -> uuid
+    for (const packId of request.namePacks ?? []) {
+      const pack = game.packs.get(packId);
+      if (!pack) continue;
+      const index = await pack.getIndex();
+      for (const entry of index) {
+        const key = String(entry.name || '')
+          .toLowerCase()
+          .trim();
+        if (key && !nameIndex.has(key)) {
+          nameIndex.set(key, `Compendium.${packId}.${entry._id}`);
+        }
+      }
+    }
+
+    const changes: Array<{ item: string; newName: string; fields: string[]; via: string }> = [];
+    const unresolved: Array<{ item: string; type: string; reason: string }> = [];
+    const updates: any[] = [];
+
+    for (const item of actor.items) {
+      const it = item as any;
+      let via = 'compendiumSource';
+      let sourceUuid: string | undefined =
+        it._stats?.compendiumSource || it.flags?.core?.sourceId || undefined;
+
+      if (!sourceUuid && nameIndex.size) {
+        const hit = nameIndex.get(
+          String(it.name || '')
+            .toLowerCase()
+            .trim()
+        );
+        if (hit) {
+          sourceUuid = hit;
+          via = 'name';
+        }
+      }
+
+      if (!sourceUuid) {
+        unresolved.push({ item: it.name, type: it.type, reason: 'no source (hand-made?)' });
+        continue;
+      }
+
+      let src: any = null;
+      try {
+        src = await fromUuid(sourceUuid);
+      } catch {
+        src = null;
+      }
+      if (!src) {
+        unresolved.push({ item: it.name, type: it.type, reason: 'source not found in world' });
+        continue;
+      }
+
+      const patch: any = { _id: it.id };
+      const changed: string[] = [];
+
+      if (wantName && src.name && src.name !== it.name) {
+        patch.name = src.name;
+        changed.push('name');
+      }
+      if (wantImg && src.img && src.img !== it.img) {
+        patch.img = src.img;
+        changed.push('img');
+      }
+      if (wantDesc) {
+        const newDesc = src.system?.description?.value ?? '';
+        const oldDesc = it.system?.description?.value ?? '';
+        if (newDesc && newDesc !== oldDesc) {
+          patch['system.description.value'] = newDesc;
+          changed.push('description');
+        }
+      }
+
+      if (changed.length) {
+        updates.push(patch);
+        changes.push({ item: it.name, newName: patch.name ?? it.name, fields: changed, via });
+      }
+    }
+
+    if (!request.dryRun && updates.length) {
+      await actor.updateEmbeddedDocuments('Item', updates);
+    }
+
+    this.auditLog(
+      'refreshActorItemsFromSource',
+      { actor: actor.name, refreshed: updates.length, dryRun: !!request.dryRun },
+      'success'
+    );
+    return {
+      success: true,
+      actor: actor.name ?? '',
+      refreshed: updates.length,
+      changes,
+      unresolved,
+      dryRun: !!request.dryRun,
+    };
+  }
+
+  /**
    * Rewrite external image URLs in journal pages to local Foundry paths.
    *
    * Imported adventures point at a CDN, which means no images without internet

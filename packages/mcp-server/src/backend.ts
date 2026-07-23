@@ -1785,6 +1785,11 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'actor-refresh-from-source':
+                  result = await journalCleanTools.handleRefreshActorFromSource(args);
+
+                  break;
+
                 case 'journal-page-from-file':
                   result = await journalCleanTools.handleJournalPageFromFile(args);
 

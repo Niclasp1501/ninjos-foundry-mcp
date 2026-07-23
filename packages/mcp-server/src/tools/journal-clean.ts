@@ -152,6 +152,33 @@ export class JournalCleanTools {
         },
       },
       {
+        name: 'actor-refresh-from-source',
+        description:
+          "Refresh an actor's embedded items from the compendium they came from. Items on a sheet are frozen copies; if the source pack was later re-translated or its links fixed, the copies keep the old text. This re-pulls presentation fields (name / image / description with its @UUID links) from each item's stored source, leaving ALL mechanics untouched — levels, uses, prepared spells, quantity, equipped, attunement, advancement choices. No progress is lost. Items with no resolvable source (hand-made loot) are reported, never changed. ALWAYS run with dryRun first.",
+        inputSchema: {
+          type: 'object',
+          properties: {
+            actorIdentifier: { type: 'string', description: 'Actor name or ID' },
+            fields: {
+              type: 'array',
+              items: { type: 'string', enum: ['name', 'description', 'img'] },
+              description: 'Which fields to refresh. Omit for all three.',
+            },
+            namePacks: {
+              type: 'array',
+              items: { type: 'string' },
+              description:
+                'Optional fallback: compendium pack ids to resolve items by name when they carry no stored source. Priority order.',
+            },
+            dryRun: {
+              type: 'boolean',
+              description: 'Only report what would change (default false). Use this first.',
+            },
+          },
+          required: ['actorIdentifier'],
+        },
+      },
+      {
         name: 'journal-page-from-file',
         description:
           "Fill a journal page from an HTML file that already sits in Foundry's Data directory (upload it there first). The browser fetches the file straight from the Foundry server, so content of ANY size can be written — nothing crosses the MCP socket. Use this instead of journal-set-page for large imported chapters. Creates the page if pageId is omitted.",
@@ -381,6 +408,20 @@ export class JournalCleanTools {
       ring: args.ring,
       ringScale: args.ringScale,
       ringColor: args.ringColor,
+    });
+  }
+
+  async handleRefreshActorFromSource(args: {
+    actorIdentifier: string;
+    fields?: string[];
+    namePacks?: string[];
+    dryRun?: boolean;
+  }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.refreshActorItemsFromSource', {
+      actorIdentifier: args.actorIdentifier,
+      fields: args.fields,
+      namePacks: args.namePacks,
+      dryRun: args.dryRun,
     });
   }
 

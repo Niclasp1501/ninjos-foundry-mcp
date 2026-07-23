@@ -68,6 +68,8 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.deleteJournalPage`] = this.handleDeleteJournalPage.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteJournalEntry`] = this.handleDeleteJournalEntry.bind(this);
     CONFIG.queries[`${modulePrefix}.setActorToken`] = this.handleSetActorToken.bind(this);
+    CONFIG.queries[`${modulePrefix}.refreshActorItemsFromSource`] =
+      this.handleRefreshActorItemsFromSource.bind(this);
     CONFIG.queries[`${modulePrefix}.setJournalPageFromFile`] =
       this.handleSetJournalPageFromFile.bind(this);
     CONFIG.queries[`${modulePrefix}.appendJournalPageContent`] =
@@ -1496,6 +1498,24 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to set actor token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private async handleRefreshActorItemsFromSource(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      this.dataAccess.validateFoundryState();
+      if (!data.actorIdentifier) {
+        throw new Error('actorIdentifier is required');
+      }
+      return await this.dataAccess.refreshActorItemsFromSource(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to refresh actor items: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
