@@ -4547,6 +4547,7 @@ export class FoundryDataAccess {
     actorIdentifier: string;
     fields?: string[] | undefined;
     namePacks?: string[] | undefined;
+    preferPacks?: string[] | undefined;
     dryRun?: boolean | undefined;
   }): Promise<{
     success: boolean;
@@ -4588,6 +4589,23 @@ export class FoundryDataAccess {
       }
     }
 
+    // Redirect index: same document ID in a preferred pack wins over the stored
+    // source. Translation modules reuse the official document IDs, so an item
+    // dragged from the system's own pack can be re-pointed at a hand-translated
+    // pack that carries the same IDs -- without matching on names.
+    const preferIndex = new Map<string, string>(); // document id -> uuid
+    for (const packId of request.preferPacks ?? []) {
+      const pack = game.packs.get(packId);
+      if (!pack) continue;
+      const index = await pack.getIndex();
+      for (const entry of index) {
+        const id = String(entry._id || '');
+        if (id && !preferIndex.has(id)) {
+          preferIndex.set(id, `Compendium.${packId}.${id}`);
+        }
+      }
+    }
+
     const changes: Array<{ item: string; newName: string; fields: string[]; via: string }> = [];
     const unresolved: Array<{ item: string; type: string; reason: string }> = [];
     const updates: any[] = [];
@@ -4597,6 +4615,18 @@ export class FoundryDataAccess {
       let via = 'compendiumSource';
       let sourceUuid: string | undefined =
         it._stats?.compendiumSource || it.flags?.core?.sourceId || undefined;
+      let redirected = false;
+
+      // Re-point to a preferred pack that holds the same document ID.
+      if (sourceUuid && preferIndex.size) {
+        const docId = String(sourceUuid).split('.').pop() || '';
+        const better = preferIndex.get(docId);
+        if (better && better !== sourceUuid) {
+          sourceUuid = better;
+          via = 'preferPack';
+          redirected = true;
+        }
+      }
 
       if (!sourceUuid && nameIndex.size) {
         const hit = nameIndex.get(
@@ -4668,6 +4698,12 @@ export class FoundryDataAccess {
             changed.push('advancement');
           }
         }
+      }
+
+      // Record the new origin so later refreshes keep using the better pack
+      // instead of falling back to the old one.
+      if (redirected && changed.length) {
+        patch['_stats.compendiumSource'] = sourceUuid;
       }
 
       if (changed.length) {

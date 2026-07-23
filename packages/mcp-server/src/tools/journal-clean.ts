@@ -171,6 +171,12 @@ export class JournalCleanTools {
               description:
                 'Optional fallback: compendium pack ids to resolve items by name when they carry no stored source. Priority order.',
             },
+            preferPacks: {
+              type: 'array',
+              items: { type: 'string' },
+              description:
+                "Redirect: pack ids that WIN over an item's stored source when they contain the same document ID. Translation modules reuse the official document IDs, so this re-points items that were dragged from the system's own packs at a hand-translated pack — without matching on names. The item's recorded origin is updated too, so later refreshes keep using it.",
+            },
             dryRun: {
               type: 'boolean',
               description: 'Only report what would change (default false). Use this first.',
@@ -416,12 +422,14 @@ export class JournalCleanTools {
     actorIdentifier: string;
     fields?: string[];
     namePacks?: string[];
+    preferPacks?: string[];
     dryRun?: boolean;
   }): Promise<any> {
     return await this.foundryClient.query('foundry-mcp-bridge.refreshActorItemsFromSource', {
       actorIdentifier: args.actorIdentifier,
       fields: args.fields,
       namePacks: args.namePacks,
+      preferPacks: args.preferPacks,
       dryRun: args.dryRun,
     });
   }
