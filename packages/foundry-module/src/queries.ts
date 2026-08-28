@@ -596,6 +596,7 @@ export class QueryHandlers {
 
       return await this.dataAccess.createScene({
         name: data.name,
+        navName: data.navName,
         background: data.background,
         folderPath: data.folderPath,
         templateName: data.templateName,
@@ -628,7 +629,9 @@ export class QueryHandlers {
       return await this.dataAccess.updateScene({
         sceneIdentifier: data.sceneIdentifier,
         name: data.name,
+        navName: data.navName,
         background: data.background,
+        backgroundColor: data.backgroundColor,
         folderPath: data.folderPath,
         width: data.width,
         height: data.height,

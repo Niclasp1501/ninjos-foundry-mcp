@@ -35,6 +35,11 @@ export class SceneTools {
               description:
                 'Path to the image or video inside the Foundry data directory, e.g. "Maps/Schwertküste/Neverwinter/Gefängnis/SC_Kerker.jpg"',
             },
+            navName: {
+              type: 'string',
+              description:
+                'Label shown in the scene navigation bar. Derived from the name automatically if omitted: the SC_ or BM_ prefix is dropped and underscores become spaces.',
+            },
             folderPath: {
               type: 'string',
               description: 'Target folder, nested paths allowed, e.g. "Orte/Neverwinter"',
@@ -65,7 +70,17 @@ export class SceneTools {
           properties: {
             sceneIdentifier: { type: 'string', description: 'Scene name or id' },
             name: { type: 'string', description: 'New name' },
+            navName: {
+              type: 'string',
+              description:
+                'Label in the navigation bar. Re-derived from the name when the name changes.',
+            },
             background: { type: 'string', description: 'New background path' },
+            backgroundColor: {
+              type: 'string',
+              description:
+                'Background colour of the scene level as hex, e.g. "#000000". This is what shows around the artwork.',
+            },
             folderPath: { type: 'string', description: 'Move to this folder path' },
             width: { type: 'number' },
             height: { type: 'number' },
@@ -131,6 +146,7 @@ export class SceneTools {
     const schema = z.object({
       name: z.string().min(1),
       background: z.string().min(1),
+      navName: z.string().optional(),
       folderPath: z.string().optional(),
       templateName: z.string().optional(),
       width: z.number().optional(),
@@ -168,7 +184,9 @@ export class SceneTools {
     const schema = z.object({
       sceneIdentifier: z.string().min(1),
       name: z.string().optional(),
+      navName: z.string().optional(),
       background: z.string().optional(),
+      backgroundColor: z.string().optional(),
       folderPath: z.string().optional(),
       width: z.number().optional(),
       height: z.number().optional(),

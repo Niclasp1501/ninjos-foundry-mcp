@@ -8205,6 +8205,20 @@ export class FoundryDataAccess {
   }
 
   /**
+   * Anzeigename fuer die Navigationsleiste aus dem Szenennamen ableiten.
+   * Der Szenenname folgt der Ablage-Konvention (SC_ fuer Szenen, BM_ fuer
+   * Kampfkarten, Unterstriche statt Leerzeichen), damit er sich sortieren
+   * laesst. In der Leiste ueber dem Spieltisch soll aber Lesbares stehen.
+   */
+  private deriveNavName(name: string): string {
+    return name
+      .replace(/^(SC|BM)[_-]/i, '')
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
    * Masse einer Bild- oder Videodatei im Browser ermitteln.
    * Faellt auf null zurueck, wenn die Datei nicht geladen werden kann.
    */
@@ -8280,6 +8294,7 @@ export class FoundryDataAccess {
   async createScene(request: {
     name: string;
     background: string;
+    navName?: string;
     folderPath?: string;
     templateName?: string;
     width?: number;
@@ -8362,6 +8377,7 @@ export class FoundryDataAccess {
     const sceneData: any = {
       ...base,
       name: request.name.trim(),
+      navName: request.navName?.trim() || this.deriveNavName(request.name.trim()),
       width: finalWidth,
       height: finalHeight,
       padding: request.padding ?? template?.padding ?? 0,
@@ -8387,19 +8403,42 @@ export class FoundryDataAccess {
      * Foundry-Staende kompatibel. */
     let levelPatched = false;
     try {
+      /* Die Ebene der Vorlage mitkopieren, nicht nur den Bildpfad. Foundry legt
+       * neue Ebenen mit grauer Hintergrundfarbe (#999999) und Hoehe 0 bis 20 an;
+       * die Vorlage hat in aller Regel Schwarz und andere Werte. Ohne das hier
+       * sieht eine aus der Vorlage gebaute Szene anders aus als die Vorlage. */
+      const levelPatch: any = { name: sceneData.name, 'background.src': src };
+
+      const templateLevels: any[] = template
+        ? (template.levels?.contents ?? template.levels ?? [])
+        : [];
+      const templateLevel: any = templateLevels[0];
+
+      if (templateLevel) {
+        const tl: any = templateLevel.toObject ? templateLevel.toObject() : templateLevel;
+        if (tl.background?.color) levelPatch['background.color'] = tl.background.color;
+        if (tl.background?.tint) levelPatch['background.tint'] = tl.background.tint;
+        if (tl.background?.alphaThreshold !== undefined) {
+          levelPatch['background.alphaThreshold'] = tl.background.alphaThreshold;
+        }
+        if (tl.elevation) levelPatch.elevation = tl.elevation;
+        if (tl.textures) levelPatch.textures = tl.textures;
+        if (tl.foreground) levelPatch.foreground = tl.foreground;
+      }
+
       const levels: any[] = scene.levels?.contents ?? scene.levels ?? [];
       const level: any = levels[0];
       if (level?.update) {
-        await level.update({ name: sceneData.name, 'background.src': src });
+        await level.update(levelPatch);
         levelPatched = true;
       } else if (scene.updateEmbeddedDocuments) {
         await scene.updateEmbeddedDocuments('SceneLevel', [
-          { _id: 'defaultLevel0000', name: sceneData.name, background: { src } },
+          { _id: 'defaultLevel0000', ...levelPatch, background: { src } },
         ]);
         levelPatched = true;
       }
     } catch (error) {
-      console.warn(`[${this.moduleId}] Ebenen-Hintergrund konnte nicht gesetzt werden:`, error);
+      console.warn(`[${this.moduleId}] Ebene konnte nicht angeglichen werden:`, error);
     }
 
     try {
@@ -8438,7 +8477,9 @@ export class FoundryDataAccess {
   async updateScene(request: {
     sceneIdentifier: string;
     name?: string;
+    navName?: string;
     background?: string;
+    backgroundColor?: string;
     folderPath?: string;
     width?: number;
     height?: number;
@@ -8457,7 +8498,11 @@ export class FoundryDataAccess {
 
     if (request.name) {
       update.name = request.name;
+      update.navName = request.navName?.trim() || this.deriveNavName(request.name);
       changed.push('name');
+    } else if (request.navName !== undefined) {
+      update.navName = request.navName.trim();
+      changed.push('navName');
     }
     if (request.background) {
       update['background.src'] = this.encodeMediaPath(request.background);
@@ -8489,20 +8534,29 @@ export class FoundryDataAccess {
       changed.push('navigation');
     }
 
-    if (!changed.length) throw new Error('Keine Aenderung angegeben');
+    if (!changed.length && !request.backgroundColor) {
+      throw new Error('Keine Aenderung angegeben');
+    }
 
     await scene.update(update);
 
     // Foundry v14: Hintergrund haengt an der Ebene, siehe createScene
-    if (request.background) {
+    if (request.background || request.backgroundColor) {
       try {
+        const levelPatch: any = {};
+        if (request.background) {
+          levelPatch['background.src'] = this.encodeMediaPath(request.background);
+        }
+        if (request.backgroundColor) {
+          levelPatch['background.color'] = request.backgroundColor;
+          changed.push('backgroundColor');
+        }
+
         const levels: any[] = scene.levels?.contents ?? scene.levels ?? [];
         const level: any = levels[0];
-        if (level?.update) {
-          await level.update({ 'background.src': this.encodeMediaPath(request.background) });
-        }
+        if (level?.update) await level.update(levelPatch);
       } catch (error) {
-        console.warn(`[${this.moduleId}] Ebenen-Hintergrund nicht gesetzt:`, error);
+        console.warn(`[${this.moduleId}] Ebene nicht angeglichen:`, error);
       }
     }
 
