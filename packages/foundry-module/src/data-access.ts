@@ -8776,6 +8776,92 @@ export class FoundryDataAccess {
   }
 
   /**
+   * Eine Szene aus einer JSON-Datei im Foundry-Datenverzeichnis anlegen.
+   *
+   * Gedacht fuer die Bergung: Wird eine Szene versehentlich geloescht, laesst
+   * sie sich aus einer Weltsicherung ziehen und hierueber zurueckholen -
+   * vollstaendig, mit Waenden, Kacheln, Lichtern, Klaengen und Token.
+   *
+   * Die Daten kommen bewusst ueber eine Datei und nicht ueber den Datenkanal
+   * zwischen Server und Browser: eine Szene mit Waenden hat schnell hunderttausend
+   * Zeichen, und der Kanal reisst bei grossen Antworten ab.
+   *
+   * Die urspruengliche Kennung wird nur mit keepId uebernommen. Ab Werk bekommt
+   * die Szene eine neue - so kann eine Bergung niemals eine vorhandene Szene
+   * ueberschreiben.
+   */
+  async restoreScene(request: {
+    jsonPath: string;
+    index?: number;
+    name?: string;
+    folderPath?: string;
+    keepId?: boolean;
+    navigation?: boolean;
+  }): Promise<{ id: string; name: string; width: number; height: number; enthalten: string }> {
+    this.validateFoundryState();
+    this.assertAllowed('Scenes', 'create');
+
+    if (!request.jsonPath?.trim()) throw new Error('jsonPath ist erforderlich');
+
+    const url = `/${request.jsonPath.trim().replace(/^\/+/, '')}`;
+    let roh: any;
+    try {
+      const antwort = await fetch(url);
+      if (!antwort.ok) throw new Error(`HTTP ${antwort.status}`);
+      roh = await antwort.json();
+    } catch (error) {
+      throw new Error(
+        `"${request.jsonPath}" konnte nicht gelesen werden: ` +
+          `${error instanceof Error ? error.message : 'Unbekannter Fehler'}. ` +
+          `Der Pfad zaehlt vom Foundry-Datenverzeichnis aus, etwa "Bergung/szenen.json".`
+      );
+    }
+
+    const liste: any[] = Array.isArray(roh) ? roh : [roh];
+    const eintrag: any = liste[request.index ?? 0];
+    if (!eintrag) {
+      throw new Error(
+        `Kein Eintrag ${request.index ?? 0} in der Datei. Enthalten sind ${liste.length}: ` +
+          liste.map((e: any, i: number) => `${i} = ${e?.name ?? '?'}`).join(', ')
+      );
+    }
+
+    const daten: any = foundry.utils.deepClone(eintrag);
+    if (!request.keepId) delete daten._id;
+    delete daten._stats;
+    delete daten.thumb;
+    daten.active = false;
+
+    if (request.name?.trim()) {
+      daten.name = this.lesbarerSzenenname(request.name);
+      daten.navName = this.deriveNavName(request.name.trim());
+    }
+    if (request.navigation !== undefined) daten.navigation = request.navigation;
+    if (request.folderPath !== undefined) {
+      daten.folder = await this.getOrCreateFolderPath(request.folderPath, 'Scene');
+    }
+
+    const scene: any = await Scene.create(daten, { keepId: request.keepId === true });
+    if (!scene) throw new Error('Szene konnte nicht angelegt werden');
+
+    try {
+      await scene
+        .createThumbnail?.()
+        .then((d: any) => (d?.thumb ? scene.update({ thumb: d.thumb }) : null));
+    } catch {
+      // Vorschaubild ist Beiwerk
+    }
+
+    const zaehl = (n: string) => (Array.isArray(daten[n]) ? daten[n].length : 0);
+    const enthalten =
+      `${zaehl('walls')} Waende, ${zaehl('tiles')} Kacheln, ${zaehl('lights')} Lichter, ` +
+      `${zaehl('sounds')} Klaenge, ${zaehl('tokens')} Token, ${zaehl('levels')} Ebenen`;
+
+    this.auditLog('restoreScene', request, 'success');
+    return { id: scene.id, name: scene.name, width: daten.width, height: daten.height, enthalten };
+  }
+
+  /**
    * Vorhandene Szene aendern: Name, Hintergrund, Ordner, Masse, Navigation.
    */
   async updateScene(request: {

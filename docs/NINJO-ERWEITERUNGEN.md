@@ -243,6 +243,46 @@ mitentfernt — sonst erbt jede neue Szene die Verknüpfung der Vorlage.
 
 ---
 
+### Szenen aus einer Sicherung bergen (29.08.2026)
+
+`restore-scene` legt eine Szene aus einer JSON-Datei im Foundry-Datenverzeichnis
+neu an, vollständig mit Wänden, Kacheln, Lichtern, Klängen und Token.
+
+**Warum eine Datei und kein Parameter.** Eine Szene mit Wänden hat schnell
+hunderttausend Zeichen. Der Datenkanal zwischen Server und Browser reißt bei
+großen Antworten ab — derselbe Grund, aus dem Bilder per `scp` und nicht über
+den Kanal auf den Server kommen. Also liegt die JSON-Datei im Datenverzeichnis,
+und über den Kanal geht nur ihr Pfad.
+
+**Die Kennung wird nicht übernommen**, außer `keepId` wird ausdrücklich gesetzt.
+So kann eine Bergung niemals eine vorhandene Szene überschreiben.
+
+#### Szenen aus einer Weltsicherung holen
+
+Die Sicherungen unter `Backups/worlds/<welt>/` sind ZIP-Archive; die Weltdaten
+darin liegen als LevelDB unter `data/scenes`. LevelDB komprimiert die Blöcke,
+`grep` und `strings` finden darin also nichts. Gelesen wird mit `classic-level`,
+das in Foundrys eigenem `node_modules` bereits liegt:
+
+```js
+import { ClassicLevel } from '/home/foundry/foundryvtt/resources/app/node_modules/classic-level/index.js';
+const db = new ClassicLevel(pfad, { valueEncoding: 'json', createIfMissing: false });
+await db.open(); // ohne open() bricht der Iterator ab
+for await (const [k, v] of db.iterator()) {
+  /* ... */
+}
+```
+
+Die Schlüssel verraten den Aufbau: `!scenes!<id>` ist die Szene selbst,
+`!scenes.walls!<szene>.<wand>` eine ihrer Wände, ebenso `.tiles`, `.lights`,
+`.sounds`, `.regions`, `.levels`, `.tokens`. Ein vollständiges Szenendokument
+entsteht, indem man die eingebetteten Sammlungen wieder einhängt.
+
+Die laufende Welt ist durch `LOCK` belegt. Zum Nachsehen wird das Verzeichnis
+kopiert und die Kopie gelesen — nie die Datenbank der laufenden Welt öffnen.
+
+---
+
 ### Was bewusst nicht gebaut wurde
 
 **Dateien hochladen.** Der Weg dafür wäre der Datenkanal zwischen Server und

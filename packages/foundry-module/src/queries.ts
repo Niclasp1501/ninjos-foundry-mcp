@@ -45,6 +45,7 @@ export class QueryHandlers {
 
     // NINJO-ERWEITERUNG: Szenen anlegen und pflegen
     CONFIG.queries[`${modulePrefix}.createScene`] = this.handleCreateScene.bind(this);
+    CONFIG.queries[`${modulePrefix}.restoreScene`] = this.handleRestoreScene.bind(this);
     CONFIG.queries[`${modulePrefix}.updateScene`] = this.handleUpdateScene.bind(this);
     CONFIG.queries[`${modulePrefix}.listSceneFolders`] = this.handleListSceneFolders.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteScene`] = this.handleDeleteScene.bind(this);
@@ -637,6 +638,26 @@ export class QueryHandlers {
   /**
    * Handle scene update
    */
+  async handleRestoreScene(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.jsonPath) throw new Error('jsonPath is required');
+      return await this.dataAccess.restoreScene({
+        jsonPath: data.jsonPath,
+        index: data.index,
+        name: data.name,
+        folderPath: data.folderPath,
+        keepId: data.keepId,
+        navigation: data.navigation,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to restore scene: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
   async handleUpdateScene(data: any): Promise<any> {
     try {
       const gmCheck = this.validateGMAccess();

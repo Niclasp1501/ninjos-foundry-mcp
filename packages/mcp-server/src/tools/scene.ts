@@ -108,6 +108,30 @@ export class SceneTools {
         },
       },
       {
+        name: 'restore-scene',
+        description:
+          'Recreate a scene from a JSON file inside the Foundry data directory, complete with walls, tiles, lights, sounds and tokens. Meant for recovery: pull a deleted scene out of a world backup and put it back. The data travels as a file, not through the data channel, because a scene with walls easily runs to a hundred thousand characters and the channel breaks on large payloads. A fresh id is assigned unless keepId is set, so a recovery can never overwrite an existing scene.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            jsonPath: {
+              type: 'string',
+              description:
+                'Path of the JSON file, counted from the Foundry data directory, e.g. "Bergung/szenen.json". The file may hold one scene or an array of them.',
+            },
+            index: { type: 'number', description: 'Which entry of the array to use, default 0' },
+            name: { type: 'string', description: 'Give the restored scene a different name' },
+            folderPath: { type: 'string', description: 'Target folder, nested paths allowed' },
+            keepId: {
+              type: 'boolean',
+              description: 'Keep the original id. Only do this when the scene is truly gone.',
+            },
+            navigation: { type: 'boolean', description: 'Show in the scene navigation bar' },
+          },
+          required: ['jsonPath'],
+        },
+      },
+      {
         name: 'list-scene-folders',
         description:
           'List all scene folders with their full path and how many scenes each contains. Use this before create-scene to find the right folderPath.',
@@ -233,6 +257,41 @@ export class SceneTools {
       this.logger.error('Failed to update scene', { error });
       throw new Error(
         `Szene konnte nicht geaendert werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      );
+    }
+  }
+
+  async handleRestoreScene(args: any): Promise<any> {
+    const schema = z.object({
+      jsonPath: z.string().min(1),
+      index: z.number().optional(),
+      name: z.string().optional(),
+      folderPath: z.string().optional(),
+      keepId: z.boolean().optional(),
+      navigation: z.boolean().optional(),
+    });
+    const params = schema.parse(args);
+    this.logger.info('Restoring scene', { file: params.jsonPath, index: params.index });
+
+    try {
+      const r = await this.foundryClient.query('foundry-mcp-bridge.restoreScene', params);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: [
+              `Szene geborgen: ${r.name}`,
+              `Id: ${r.id}`,
+              `Groesse: ${r.width}x${r.height}`,
+              `Enthalten: ${r.enthalten}`,
+            ].join('\n'),
+          },
+        ],
+      };
+    } catch (error) {
+      this.logger.error('Failed to restore scene', { error });
+      throw new Error(
+        `Szene konnte nicht geborgen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
       );
     }
   }
