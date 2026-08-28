@@ -97,12 +97,23 @@ export class SocketBridge {
   private async connectWebSocket(): Promise<void> {
     this.activeConnectionType = 'websocket';
 
-    // Auto-detect protocol: wss for HTTPS pages, ws for HTTP.
-    // The port always comes from the configured serverPort setting, the same as
-    // the WebRTC path and everywhere else in the module. Reverse-proxy users set
-    // serverPort to whatever port their proxy exposes (e.g. 443).
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    // Protokollwahl nach den Mixed-Content-Regeln des Browsers:
+    //   - ws:// zu einem Loopback-Host (localhost / 127.0.0.1 / ::1) ist auch von
+    //     einer HTTPS-Seite aus erlaubt, weil Loopback als vertrauenswuerdig gilt.
+    //     Der lokale MCP-Server spricht nur einfaches ws, also MUSS Loopback
+    //     immer ws:// bekommen.
+    //   - ws:// zu einem entfernten Host wird von einer HTTPS-Seite blockiert,
+    //     dort ist wss:// noetig (Fall: TLS-Gegenstelle).
+    // Der Port kommt wie ueberall aus der Einstellung serverPort.
+    //
+    // Uebernommen aus dem Ursprungsprojekt (Commit 4840691). Vorher wurde das
+    // Protokoll allein aus der Seitenadresse abgeleitet: Bei Foundry ueber HTTPS
+    // und Server auf localhost ergab das wss://localhost:31415 und scheiterte mit
+    // ERR_SSL_PROTOCOL_ERROR. Deshalb blieb nur der Umweg ueber WebRTC.
     const host = this.config.serverHost;
+    const isLoopback = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(host);
+    const useSecure = window.location.protocol === 'https:' && !isLoopback;
+    const protocol = useSecure ? 'wss' : 'ws';
     this.log(
       `Using WebSocket (${protocol}://${host}:${this.config.serverPort}${this.config.namespace})`
     );

@@ -1,0 +1,114 @@
+{
+  "foundry-mcp-bridge": {
+    "settings": {
+      "enabled": {
+        "name": "MCP-Bruecke aktivieren",
+        "hint": "Master switch to enable/disable the MCP bridge connection"
+      },
+      "connectionType": {
+        "name": "Verbindungsart",
+        "hint": "Auto: Smart selection (HTTPS→WebRTC, HTTP→WebSocket). WebRTC: Encrypted P2P (works over internet). WebSocket: Traditional (localhost only).",
+        "choices": {
+          "auto": "Auto (empfohlen)",
+          "webrtc": "WebRTC (Internet)",
+          "websocket": "WebSocket (Local Only)"
+        }
+      },
+      "serverHost": {
+        "name": "WebSocket-Server-Host",
+        "hint": "IP address for local Websocket Server connections to the MCP Server (usually localhost). Not used for Remote Connections"
+      },
+      "serverPort": {
+        "name": "Server-Port",
+        "hint": "Port number for MCP server communication"
+      },
+      "allowWriteOperations": {
+        "name": "Schreibzugriff erlauben",
+        "hint": "Let AI model create actors, NPCs, and modify world content. Reading is always allowed."
+      },
+      "permScenes": {
+        "name": "Rechte: Szenen",
+        "hint": "Szenen anlegen, aendern und loeschen. Aktive Szenen sind immer geschuetzt.",
+        "choices": {
+          "read": "Nur lesen",
+          "write": "Anlegen und aendern",
+          "full": "Anlegen, aendern und loeschen"
+        }
+      },
+      "permPlaylists": {
+        "name": "Rechte: Wiedergabelisten",
+        "hint": "Wiedergabelisten und einzelne Stuecke.",
+        "choices": {
+          "read": "Nur lesen",
+          "write": "Anlegen und aendern",
+          "full": "Anlegen, aendern und loeschen"
+        }
+      },
+      "permJournals": {
+        "name": "Rechte: Journale",
+        "hint": "Journaleintraege und einzelne Seiten.",
+        "choices": {
+          "read": "Nur lesen",
+          "write": "Anlegen und aendern",
+          "full": "Anlegen, aendern und loeschen"
+        }
+      },
+      "permRollTables": {
+        "name": "Rechte: Zufallstabellen",
+        "hint": "Zufallstabellen und ihre Eintraege.",
+        "choices": {
+          "read": "Nur lesen",
+          "write": "Anlegen und aendern",
+          "full": "Anlegen, aendern und loeschen"
+        }
+      },
+      "permActors": {
+        "name": "Rechte: Akteure",
+        "hint": "Akteure und ihre Gegenstaende. Vorsicht bei Spielercharakteren.",
+        "choices": {
+          "read": "Nur lesen",
+          "write": "Anlegen und aendern",
+          "full": "Anlegen, aendern und loeschen"
+        }
+      },
+      "permFolders": {
+        "name": "Rechte: Ordner",
+        "hint": "Ordner in der Seitenleiste. Beim Loeschen wandert der Inhalt eine Ebene hoeher.",
+        "choices": {
+          "read": "Nur lesen",
+          "write": "Anlegen und aendern",
+          "full": "Anlegen, aendern und loeschen"
+        }
+      },
+      "maxActorsPerRequest": {
+        "name": "Max. Actors pro Anfrage",
+        "hint": "Maximum number of actors AI model can create in a single request"
+      },
+      "mapGenAutoStart": {
+        "name": "Kartengenerator automatisch starten",
+        "hint": "Startet den Kartengenerator (ComfyUI) beim Hochfahren mit. Ab Werk aus, weil er viel Arbeitsspeicher belegt."
+      },
+      "mapGenQuality": {
+        "name": "Generation Quality",
+        "hint": "Higher quality = better detail but slower generation. Generation time depends on your hardware.",
+        "choices": {
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
+      },
+      "enableNotifications": {
+        "name": "Verbindungsmeldungen anzeigen",
+        "hint": "Display notifications when connecting/disconnecting from AI model"
+      },
+      "autoReconnectEnabled": {
+        "name": "Automatisch neu verbinden",
+        "hint": "Automatically try to reconnect if the connection to AI model is lost"
+      },
+      "heartbeatInterval": {
+        "name": "Pruefintervall der Verbindung",
+        "hint": "How often to check if AI model is still connected (seconds)"
+      }
+    }
+  }
+}

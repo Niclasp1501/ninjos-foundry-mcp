@@ -4161,6 +4161,7 @@ export class FoundryDataAccess {
     pageId: string;
   }): Promise<{ success: boolean; deletedPageId: string }> {
     this.validateFoundryState();
+    this.assertAllowed('Journals', 'delete');
 
     const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
     if (!permissionCheck.allowed) {
@@ -4187,6 +4188,7 @@ export class FoundryDataAccess {
     journalId: string;
   }): Promise<{ success: boolean; deletedJournalId: string }> {
     this.validateFoundryState();
+    this.assertAllowed('Journals', 'delete');
 
     const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
     if (!permissionCheck.allowed) {
@@ -4989,6 +4991,7 @@ export class FoundryDataAccess {
     deleteContents?: boolean;
   }): Promise<{ success: boolean; deletedFolder: string }> {
     this.validateFoundryState();
+    this.assertAllowed('Folders', 'delete');
     const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
     if (!permissionCheck.allowed) {
       throw new Error(`Folder delete denied: ${permissionCheck.reason}`);
@@ -8146,6 +8149,58 @@ export class FoundryDataAccess {
    * ========================================================================= */
 
   /**
+   * Recht je Dokumentart und Aktion pruefen.
+   *
+   * Drei Stufen je Art, in den Moduleinstellungen einzeln waehlbar:
+   *   read  - nur lesen
+   *   write - anlegen und aendern (Werkseinstellung)
+   *   full  - zusaetzlich loeschen
+   *
+   * Loeschen ist ueberall ab Werk aus, weil es sich als einzige Aktion nicht
+   * rueckgaengig machen laesst. Die Fehlermeldung nennt den Schalter beim
+   * Namen, damit klar ist, was einzuschalten waere.
+   */
+  private assertAllowed(
+    kind: 'Scenes' | 'Playlists' | 'Journals' | 'RollTables' | 'Actors' | 'Folders',
+    action: 'create' | 'update' | 'delete'
+  ): void {
+    const labels: Record<string, string> = {
+      Scenes: 'Szenen',
+      Playlists: 'Wiedergabelisten',
+      Journals: 'Journale',
+      RollTables: 'Zufallstabellen',
+      Actors: 'Akteure',
+      Folders: 'Ordner',
+    };
+    const actions: Record<string, string> = {
+      create: 'Anlegen',
+      update: 'Aendern',
+      delete: 'Loeschen',
+    };
+
+    let level = 'write';
+    try {
+      level = (game.settings?.get(this.moduleId, `perm${kind}`) as string) || 'write';
+    } catch {
+      level = 'write';
+    }
+
+    const ok = action === 'delete' ? level === 'full' : level === 'write' || level === 'full';
+
+    if (!ok) {
+      const needed =
+        action === 'delete' ? '"Anlegen, aendern und loeschen"' : '"Anlegen und aendern"';
+      throw new Error(
+        `${actions[action]} von ${labels[kind]} ist nicht freigegeben (aktuell: ${level}). ` +
+          `In den Moduleinstellungen unter "Rechte: ${labels[kind]}" auf ${needed} stellen.` +
+          (action === 'delete'
+            ? ' Loeschen ist ab Werk aus, weil es sich nicht rueckgaengig machen laesst.'
+            : '')
+      );
+    }
+  }
+
+  /**
    * Ordnerpfad wie "Orte/Neverwinter" aufloesen und fehlende Ebenen anlegen.
    * Liefert die Id des untersten Ordners oder null, wenn kein Pfad angegeben war.
    */
@@ -8314,6 +8369,7 @@ export class FoundryDataAccess {
     levelPatched: boolean;
   }> {
     this.validateFoundryState();
+    this.assertAllowed('Scenes', 'create');
 
     if (!request.name?.trim()) throw new Error('name ist erforderlich');
     if (!request.background?.trim()) throw new Error('background ist erforderlich');
@@ -8486,6 +8542,7 @@ export class FoundryDataAccess {
     navigation?: boolean;
   }): Promise<{ id: string; name: string; changed: string[] }> {
     this.validateFoundryState();
+    this.assertAllowed('Scenes', 'update');
 
     const scene: any =
       game.scenes?.get(request.sceneIdentifier) ||
@@ -8571,6 +8628,7 @@ export class FoundryDataAccess {
    */
   async deleteScene(sceneId: string): Promise<{ id: string; name: string }> {
     this.validateFoundryState();
+    this.assertAllowed('Scenes', 'delete');
 
     const scene: any = game.scenes?.get(sceneId);
     if (!scene) throw new Error(`Szene mit der Id "${sceneId}" nicht gefunden`);
@@ -8668,6 +8726,17 @@ export class FoundryDataAccess {
     if (request.newName) data.name = request.newName;
 
     const docType: string = pack.documentName;
+
+    // Recht richtet sich nach der Art des importierten Dokuments
+    const kindByType: Record<string, any> = {
+      Scene: 'Scenes',
+      Playlist: 'Playlists',
+      JournalEntry: 'Journals',
+      RollTable: 'RollTables',
+      Actor: 'Actors',
+    };
+    if (kindByType[docType]) this.assertAllowed(kindByType[docType], 'create');
+
     if (request.folderPath) {
       data.folder = await this.getOrCreateFolderPath(request.folderPath, docType as any);
     } else {
@@ -8693,6 +8762,7 @@ export class FoundryDataAccess {
     soundName?: string | null;
   }): Promise<{ scene: string; playlist: string | null; sound: string | null }> {
     this.validateFoundryState();
+    this.assertAllowed('Scenes', 'update');
 
     const scene: any =
       game.scenes?.get(request.sceneIdentifier) ||
@@ -8776,6 +8846,7 @@ export class FoundryDataAccess {
     results: Array<{ text: string; range?: [number, number]; weight?: number }>;
   }): Promise<{ id: string; name: string; formula: string; resultCount: number }> {
     this.validateFoundryState();
+    this.assertAllowed('RollTables', 'create');
 
     if (!request.name?.trim()) throw new Error('name ist erforderlich');
     if (!request.results?.length) throw new Error('results darf nicht leer sein');
@@ -8845,6 +8916,7 @@ export class FoundryDataAccess {
     iconSize?: number;
   }): Promise<{ id: string; scene: string; journal: string; x: number; y: number }> {
     this.validateFoundryState();
+    this.assertAllowed('Scenes', 'update');
 
     const scene: any =
       game.scenes?.get(request.sceneIdentifier) ||
@@ -8902,6 +8974,7 @@ export class FoundryDataAccess {
    */
   async refreshSceneThumb(sceneIdentifier: string): Promise<{ scene: string; updated: boolean }> {
     this.validateFoundryState();
+    this.assertAllowed('Scenes', 'update');
 
     const scene: any =
       game.scenes?.get(sceneIdentifier) ||
@@ -8920,6 +8993,92 @@ export class FoundryDataAccess {
       );
     }
     return { scene: scene.name, updated: false };
+  }
+
+  /**
+   * Wiedergabeliste loeschen. Verlangt die Kennung, damit nicht versehentlich
+   * eine gleichnamige Liste erwischt wird.
+   */
+  async deletePlaylist(playlistId: string): Promise<{ id: string; name: string }> {
+    this.validateFoundryState();
+    this.assertAllowed('Playlists', 'delete');
+
+    const playlist: any = game.playlists?.get(playlistId);
+    if (!playlist) throw new Error(`Wiedergabeliste mit der Id "${playlistId}" nicht gefunden`);
+
+    const inUse = (game.scenes?.contents ?? []).filter((sc: any) => sc.playlist?.id === playlistId);
+    if (inUse.length) {
+      throw new Error(
+        `"${playlist.name}" ist noch mit ${inUse.length} Szene(n) verknuepft: ` +
+          `${inUse.map((sc: any) => sc.name).join(', ')}. Erst dort loesen.`
+      );
+    }
+
+    const name = playlist.name;
+    await playlist.delete();
+    this.auditLog('deletePlaylist', { playlistId, name }, 'success');
+    return { id: playlistId, name };
+  }
+
+  /**
+   * Zufallstabelle loeschen.
+   */
+  async deleteRollTable(tableId: string): Promise<{ id: string; name: string }> {
+    this.validateFoundryState();
+    this.assertAllowed('RollTables', 'delete');
+
+    const table: any = game.tables?.get(tableId);
+    if (!table) throw new Error(`Zufallstabelle mit der Id "${tableId}" nicht gefunden`);
+
+    const name = table.name;
+    await table.delete();
+    this.auditLog('deleteRollTable', { tableId, name }, 'success');
+    return { id: tableId, name };
+  }
+
+  /**
+   * Die geltenden Rechte je Dokumentart ausgeben, damit man vor einer Aktion
+   * nachsehen kann, ob sie ueberhaupt erlaubt ist.
+   */
+  async getPermissions(): Promise<any> {
+    this.validateFoundryState();
+
+    const kinds = ['Scenes', 'Playlists', 'Journals', 'RollTables', 'Actors', 'Folders'];
+    const labels: Record<string, string> = {
+      Scenes: 'Szenen',
+      Playlists: 'Wiedergabelisten',
+      Journals: 'Journale',
+      RollTables: 'Zufallstabellen',
+      Actors: 'Akteure',
+      Folders: 'Ordner',
+    };
+
+    let writeMaster = true;
+    try {
+      writeMaster = game.settings?.get(this.moduleId, 'allowWriteOperations') !== false;
+    } catch {
+      writeMaster = true;
+    }
+
+    return {
+      writeOperationsEnabled: writeMaster,
+      permissions: kinds.map(k => {
+        let level = 'write';
+        try {
+          level = (game.settings?.get(this.moduleId, `perm${k}`) as string) || 'write';
+        } catch {
+          level = 'write';
+        }
+        return {
+          kind: k,
+          label: labels[k],
+          level,
+          canCreate: writeMaster && (level === 'write' || level === 'full'),
+          canUpdate: writeMaster && (level === 'write' || level === 'full'),
+          canDelete: writeMaster && level === 'full',
+        };
+      }),
+    };
   }
 
   /* ================= ENDE NINJO-ERWEITERUNG ================= */

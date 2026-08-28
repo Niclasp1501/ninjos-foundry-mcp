@@ -192,8 +192,8 @@ export class ModuleSettings {
     // ============================================================================
 
     game.settings.register(this.moduleId, 'enabled', {
-      name: 'Enable MCP Bridge',
-      hint: 'Master switch to enable/disable the MCP bridge connection',
+      name: 'foundry-mcp-bridge.settings.enabled.name',
+      hint: 'foundry-mcp-bridge.settings.enabled.hint',
       scope: 'world',
       config: true,
       type: Boolean,
@@ -202,23 +202,23 @@ export class ModuleSettings {
     });
 
     game.settings.register(this.moduleId, 'connectionType', {
-      name: 'Connection Type',
-      hint: 'Auto: Smart selection (HTTPS→WebRTC, HTTP→WebSocket). WebRTC: Encrypted P2P (works over internet). WebSocket: Traditional (localhost only).',
+      name: 'foundry-mcp-bridge.settings.connectionType.name',
+      hint: 'foundry-mcp-bridge.settings.connectionType.hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        auto: 'Auto (Recommended)',
-        webrtc: 'WebRTC (Internet)',
-        websocket: 'WebSocket (Local Only)',
+        auto: 'foundry-mcp-bridge.settings.connectionType.choices.auto',
+        webrtc: 'foundry-mcp-bridge.settings.connectionType.choices.webrtc',
+        websocket: 'foundry-mcp-bridge.settings.connectionType.choices.websocket',
       },
       default: 'auto',
       onChange: this.onConnectionChange.bind(this),
     });
 
     game.settings.register(this.moduleId, 'serverHost', {
-      name: 'Websocket Server Host',
-      hint: 'IP address for local Websocket Server connections to the MCP Server (usually localhost). Not used for Remote Connections',
+      name: 'foundry-mcp-bridge.settings.serverHost.name',
+      hint: 'foundry-mcp-bridge.settings.serverHost.hint',
       scope: 'world',
       config: true,
       type: String,
@@ -227,8 +227,8 @@ export class ModuleSettings {
     });
 
     game.settings.register(this.moduleId, 'serverPort', {
-      name: 'Server Port',
-      hint: 'Port number for MCP server communication',
+      name: 'foundry-mcp-bridge.settings.serverPort.name',
+      hint: 'foundry-mcp-bridge.settings.serverPort.hint',
       scope: 'world',
       config: false,
       type: Number,
@@ -241,8 +241,8 @@ export class ModuleSettings {
     // ============================================================================
 
     game.settings.register(this.moduleId, 'allowWriteOperations', {
-      name: 'Allow Write Operations',
-      hint: 'Let AI model create actors, NPCs, and modify world content. Reading is always allowed.',
+      name: 'foundry-mcp-bridge.settings.allowWriteOperations.name',
+      hint: 'foundry-mcp-bridge.settings.allowWriteOperations.hint',
       scope: 'world',
       config: true,
       type: Boolean,
@@ -250,12 +250,108 @@ export class ModuleSettings {
     });
 
     // ============================================================================
+    // NINJO-ERWEITERUNG: Rechte je Dokumentart
+    //
+    // Statt eines einzigen Schalters fuer alles steht jede Dokumentart einzeln
+    // zur Wahl, in drei Stufen. Loeschen ist ueberall ab Werk aus, weil es sich
+    // als einzige Aktion nicht rueckgaengig machen laesst. Wer der KI das
+    // Aufraeumen erlauben will, gibt gezielt frei, was sie anfassen darf.
+    //
+    // Der uebergeordnete Schalter "Allow Write Operations" bleibt vorgeschaltet:
+    // ist er aus, aendert die KI gar nichts, unabhaengig von diesen Stufen.
+    // ============================================================================
+
+    game.settings.register(this.moduleId, 'permScenes', {
+      name: 'foundry-mcp-bridge.settings.permScenes.name',
+      hint: 'foundry-mcp-bridge.settings.permScenes.hint',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        read: 'foundry-mcp-bridge.settings.permScenes.choices.read',
+        write: 'foundry-mcp-bridge.settings.permScenes.choices.write',
+        full: 'foundry-mcp-bridge.settings.permScenes.choices.full',
+      },
+      default: 'write',
+    });
+
+    game.settings.register(this.moduleId, 'permPlaylists', {
+      name: 'foundry-mcp-bridge.settings.permPlaylists.name',
+      hint: 'foundry-mcp-bridge.settings.permPlaylists.hint',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        read: 'foundry-mcp-bridge.settings.permPlaylists.choices.read',
+        write: 'foundry-mcp-bridge.settings.permPlaylists.choices.write',
+        full: 'foundry-mcp-bridge.settings.permPlaylists.choices.full',
+      },
+      default: 'write',
+    });
+
+    game.settings.register(this.moduleId, 'permJournals', {
+      name: 'foundry-mcp-bridge.settings.permJournals.name',
+      hint: 'foundry-mcp-bridge.settings.permJournals.hint',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        read: 'foundry-mcp-bridge.settings.permJournals.choices.read',
+        write: 'foundry-mcp-bridge.settings.permJournals.choices.write',
+        full: 'foundry-mcp-bridge.settings.permJournals.choices.full',
+      },
+      default: 'write',
+    });
+
+    game.settings.register(this.moduleId, 'permRollTables', {
+      name: 'foundry-mcp-bridge.settings.permRollTables.name',
+      hint: 'foundry-mcp-bridge.settings.permRollTables.hint',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        read: 'foundry-mcp-bridge.settings.permRollTables.choices.read',
+        write: 'foundry-mcp-bridge.settings.permRollTables.choices.write',
+        full: 'foundry-mcp-bridge.settings.permRollTables.choices.full',
+      },
+      default: 'write',
+    });
+
+    game.settings.register(this.moduleId, 'permActors', {
+      name: 'foundry-mcp-bridge.settings.permActors.name',
+      hint: 'foundry-mcp-bridge.settings.permActors.hint',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        read: 'foundry-mcp-bridge.settings.permActors.choices.read',
+        write: 'foundry-mcp-bridge.settings.permActors.choices.write',
+        full: 'foundry-mcp-bridge.settings.permActors.choices.full',
+      },
+      default: 'write',
+    });
+
+    game.settings.register(this.moduleId, 'permFolders', {
+      name: 'foundry-mcp-bridge.settings.permFolders.name',
+      hint: 'foundry-mcp-bridge.settings.permFolders.hint',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        read: 'foundry-mcp-bridge.settings.permFolders.choices.read',
+        write: 'foundry-mcp-bridge.settings.permFolders.choices.write',
+        full: 'foundry-mcp-bridge.settings.permFolders.choices.full',
+      },
+      default: 'write',
+    });
+
+    // ============================================================================
     // SECTION 3: SAFETY CONTROLS - Limits on AI model's Actions
     // ============================================================================
 
     game.settings.register(this.moduleId, 'maxActorsPerRequest', {
-      name: 'Max Actors Per Request',
-      hint: 'Maximum number of actors AI model can create in a single request',
+      name: 'foundry-mcp-bridge.settings.maxActorsPerRequest.name',
+      hint: 'foundry-mcp-bridge.settings.maxActorsPerRequest.hint',
       scope: 'world',
       config: true,
       type: Number,
@@ -288,23 +384,23 @@ export class ModuleSettings {
     // Map Generation Service settings (configured via submenu only)
     // ComfyUI always runs on localhost:31411 (same machine as MCP server)
     game.settings.register(this.moduleId, 'mapGenAutoStart', {
-      name: 'Auto-start Map Generation Service',
+      name: 'foundry-mcp-bridge.settings.mapGenAutoStart.name',
       scope: 'world',
-      config: false, // Hidden from main config, accessible via submenu only
+      config: true, // NINJO: im Hauptmenue sichtbar, nicht nur im Untermenue
       type: Boolean,
-      default: true,
+      default: false, // NINJO: Kartengenerator startet nur auf ausdruecklichen Wunsch
     });
 
     game.settings.register(this.moduleId, 'mapGenQuality', {
-      name: 'Generation Quality',
-      hint: 'Higher quality = better detail but slower generation. Generation time depends on your hardware.',
+      name: 'foundry-mcp-bridge.settings.mapGenQuality.name',
+      hint: 'foundry-mcp-bridge.settings.mapGenQuality.hint',
       scope: 'world',
       config: false, // Hidden from main config, accessible via submenu only
       type: String,
       choices: {
-        low: 'Low',
-        medium: 'Medium',
-        high: 'High',
+        low: 'foundry-mcp-bridge.settings.mapGenQuality.choices.low',
+        medium: 'foundry-mcp-bridge.settings.mapGenQuality.choices.medium',
+        high: 'foundry-mcp-bridge.settings.mapGenQuality.choices.high',
       },
       default: 'low',
     });
@@ -314,8 +410,8 @@ export class ModuleSettings {
     // ============================================================================
 
     game.settings.register(this.moduleId, 'enableNotifications', {
-      name: 'Show Connection Messages',
-      hint: 'Display notifications when connecting/disconnecting from AI model',
+      name: 'foundry-mcp-bridge.settings.enableNotifications.name',
+      hint: 'foundry-mcp-bridge.settings.enableNotifications.hint',
       scope: 'world',
       config: true,
       type: Boolean,
@@ -323,8 +419,8 @@ export class ModuleSettings {
     });
 
     game.settings.register(this.moduleId, 'autoReconnectEnabled', {
-      name: 'Auto-Reconnect on Disconnect',
-      hint: 'Automatically try to reconnect if the connection to AI model is lost',
+      name: 'foundry-mcp-bridge.settings.autoReconnectEnabled.name',
+      hint: 'foundry-mcp-bridge.settings.autoReconnectEnabled.hint',
       scope: 'world',
       config: true,
       type: Boolean,
@@ -332,8 +428,8 @@ export class ModuleSettings {
     });
 
     game.settings.register(this.moduleId, 'heartbeatInterval', {
-      name: 'Connection Check Frequency',
-      hint: 'How often to check if AI model is still connected (seconds)',
+      name: 'foundry-mcp-bridge.settings.heartbeatInterval.name',
+      hint: 'foundry-mcp-bridge.settings.heartbeatInterval.hint',
       scope: 'world',
       config: true,
       type: Number,

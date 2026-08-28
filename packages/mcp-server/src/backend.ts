@@ -1638,6 +1638,21 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'get-permissions':
+                  result = await ninjoCampaignTools.handleGetPermissions();
+
+                  break;
+
+                case 'delete-playlist':
+                  result = await ninjoCampaignTools.handleDeletePlaylist(args);
+
+                  break;
+
+                case 'delete-roll-table':
+                  result = await ninjoCampaignTools.handleDeleteRollTable(args);
+
+                  break;
+
                 case 'get-world-info':
                   result = await sceneTools.handleGetWorldInfo(args);
 
@@ -1949,7 +1964,16 @@ async function startBackend(): Promise<void> {
     server.on('error', reject);
   });
 
-  void autoStartComfyUI();
+  /* NINJO: Hier wurde der Kartengenerator beim Hochfahren bedingungslos
+   * gestartet, ohne die Einstellung zu beachten. Zusammen mit dem Anzeigefehler
+   * in settings.ts ("|| true") sprang er dadurch immer wieder von selbst an.
+   * Der Start haengt jetzt an FOUNDRY_MCP_AUTOSTART_COMFYUI, ab Werk aus.
+   * An Zeile ~1248 gibt es den regulaeren Weg, der die Einstellung auswertet. */
+  if (process.env.FOUNDRY_MCP_AUTOSTART_COMFYUI === 'true') {
+    void autoStartComfyUI();
+  } else {
+    logger.info('ComfyUI-Autostart uebersprungen (FOUNDRY_MCP_AUTOSTART_COMFYUI nicht gesetzt)');
+  }
 
   // Shutdown hooks
 

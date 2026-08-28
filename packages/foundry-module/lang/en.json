@@ -3,55 +3,112 @@
     "settings": {
       "enabled": {
         "name": "Enable MCP Bridge",
-        "hint": "Enable or disable the MCP bridge connection to external server"
+        "hint": "Master switch to enable/disable the MCP bridge connection"
+      },
+      "connectionType": {
+        "name": "Connection Type",
+        "hint": "Auto: Smart selection (HTTPS→WebRTC, HTTP→WebSocket). WebRTC: Encrypted P2P (works over internet). WebSocket: Traditional (localhost only).",
+        "choices": {
+          "auto": "Auto (Recommended)",
+          "webrtc": "WebRTC (Internet)",
+          "websocket": "WebSocket (Local Only)"
+        }
       },
       "serverHost": {
-        "name": "MCP Server Host",
-        "hint": "Hostname or IP address of the external MCP server (default: localhost)"
+        "name": "Websocket Server Host",
+        "hint": "IP address for local Websocket Server connections to the MCP Server (usually localhost). Not used for Remote Connections"
       },
       "serverPort": {
-        "name": "MCP Server Port",
-        "hint": "Port number for the MCP server connection (default: 30000)"
+        "name": "Server Port",
+        "hint": "Port number for MCP server communication"
       },
-      "namespace": {
-        "name": "Socket Namespace",
-        "hint": "Socket.io namespace path for MCP communication (default: /foundry-mcp)"
+      "allowWriteOperations": {
+        "name": "Allow Write Operations",
+        "hint": "Let AI model create actors, NPCs, and modify world content. Reading is always allowed."
       },
-      "connectionTimeout": {
-        "name": "Connection Timeout (seconds)",
-        "hint": "Maximum time to wait for MCP server connection before timing out"
+      "maxActorsPerRequest": {
+        "name": "Max Actors Per Request",
+        "hint": "Maximum number of actors AI model can create in a single request"
       },
-      "reconnectAttempts": {
-        "name": "Reconnection Attempts",
-        "hint": "Number of times to attempt reconnection when connection is lost"
+      "mapGenAutoStart": {
+        "name": "Auto-start Map Generation Service",
+        "hint": "Starts the map generation service (ComfyUI) on startup. Off by default because it uses a lot of memory."
       },
-      "reconnectDelay": {
-        "name": "Reconnection Delay (ms)",
-        "hint": "Base delay between reconnection attempts (uses exponential backoff)"
+      "mapGenQuality": {
+        "name": "Generation Quality",
+        "hint": "Higher quality = better detail but slower generation. Generation time depends on your hardware.",
+        "choices": {
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
       },
-      "debugLogging": {
-        "name": "Debug Logging",
-        "hint": "Enable detailed console logging for troubleshooting connection issues"
+      "enableNotifications": {
+        "name": "Show Connection Messages",
+        "hint": "Display notifications when connecting/disconnecting from AI model"
+      },
+      "autoReconnectEnabled": {
+        "name": "Auto-Reconnect on Disconnect",
+        "hint": "Automatically try to reconnect if the connection to AI model is lost"
+      },
+      "heartbeatInterval": {
+        "name": "Connection Check Frequency",
+        "hint": "How often to check if AI model is still connected (seconds)"
+      },
+      "permScenes": {
+        "name": "Permissions: Scenes",
+        "hint": "Create, update and delete scenes. Active scenes are always protected.",
+        "choices": {
+          "read": "Read only",
+          "write": "Create and update",
+          "full": "Create, update and delete"
+        }
+      },
+      "permPlaylists": {
+        "name": "Permissions: Playlists",
+        "hint": "Playlists and individual tracks.",
+        "choices": {
+          "read": "Read only",
+          "write": "Create and update",
+          "full": "Create, update and delete"
+        }
+      },
+      "permJournals": {
+        "name": "Permissions: Journals",
+        "hint": "Journal entries and individual pages.",
+        "choices": {
+          "read": "Read only",
+          "write": "Create and update",
+          "full": "Create, update and delete"
+        }
+      },
+      "permRollTables": {
+        "name": "Permissions: Roll tables",
+        "hint": "Roll tables and their results.",
+        "choices": {
+          "read": "Read only",
+          "write": "Create and update",
+          "full": "Create, update and delete"
+        }
+      },
+      "permActors": {
+        "name": "Permissions: Actors",
+        "hint": "Actors and their items. Careful with player characters.",
+        "choices": {
+          "read": "Read only",
+          "write": "Create and update",
+          "full": "Create, update and delete"
+        }
+      },
+      "permFolders": {
+        "name": "Permissions: Folders",
+        "hint": "Sidebar folders. Deleting one moves its contents up a level.",
+        "choices": {
+          "read": "Read only",
+          "write": "Create and update",
+          "full": "Create, update and delete"
+        }
       }
-    },
-    "notifications": {
-      "connected": "MCP Bridge connected successfully to external server",
-      "disconnected": "MCP Bridge disconnected from external server",
-      "connectionFailed": "Failed to connect MCP Bridge to external server",
-      "initializationFailed": "Failed to initialize Foundry MCP Bridge module",
-      "settingsReset": "MCP Bridge settings have been reset to defaults",
-      "invalidSettings": "MCP Bridge settings validation failed",
-      "permissionDenied": "Access denied - this feature is disabled in module settings"
-    },
-    "errors": {
-      "notInitialized": "MCP Bridge module is not properly initialized",
-      "notConnected": "Not connected to MCP server",
-      "characterNotFound": "Character not found in this world",
-      "sceneNotFound": "Scene not found or no active scene",
-      "queryFailed": "Failed to execute query",
-      "invalidQuery": "Invalid query parameters provided",
-      "foundryNotReady": "Foundry VTT is not ready",
-      "noActiveWorld": "No active world loaded"
     }
   }
 }

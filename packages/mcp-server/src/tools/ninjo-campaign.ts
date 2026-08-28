@@ -150,6 +150,36 @@ export class NinjoCampaignTools {
         },
       },
       {
+        name: 'get-permissions',
+        description:
+          'Show what the AI is currently allowed to do per document kind: scenes, playlists, journals, roll tables, actors, folders. Each kind has three levels — read only, create and update, or additionally delete. Deleting is off by default everywhere. Call this when an action was refused, to see which switch has to be flipped in the module settings.',
+        inputSchema: { type: 'object', properties: {} },
+      },
+      {
+        name: 'delete-playlist',
+        description:
+          'Delete a playlist by its id. Refuses while the playlist is still linked to a scene, and names those scenes. Requires the playlist permission to be set to full.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            playlistId: { type: 'string', description: 'Id of the playlist' },
+          },
+          required: ['playlistId'],
+        },
+      },
+      {
+        name: 'delete-roll-table',
+        description:
+          'Delete a roll table by its id. Requires the roll table permission to be set to full.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            tableId: { type: 'string', description: 'Id of the roll table' },
+          },
+          required: ['tableId'],
+        },
+      },
+      {
         name: 'refresh-scene-thumb',
         description:
           'Regenerate the thumbnail of a scene. After swapping a background the sidebar keeps showing the old picture until this runs.',
@@ -298,6 +328,42 @@ export class NinjoCampaignTools {
         },
       ],
     };
+  }
+
+  async handleGetPermissions(): Promise<any> {
+    const result = await this.foundryClient.query('foundry-mcp-bridge.getPermissions');
+
+    const head = result.writeOperationsEnabled
+      ? 'Schreiben ist grundsaetzlich erlaubt.'
+      : 'ACHTUNG: "Allow Write Operations" ist aus, die KI aendert gar nichts.';
+
+    const rows = result.permissions
+      .map((p: any) => {
+        const stufe =
+          p.level === 'full'
+            ? 'anlegen, aendern, loeschen'
+            : p.level === 'write'
+              ? 'anlegen, aendern'
+              : 'nur lesen';
+        return `${p.label.padEnd(18)} ${stufe}`;
+      })
+      .join('\n');
+
+    return { content: [{ type: 'text', text: `${head}\n\n${rows}` }] };
+  }
+
+  async handleDeletePlaylist(args: any): Promise<any> {
+    const schema = z.object({ playlistId: z.string().min(1) });
+    const params = schema.parse(args);
+    const result = await this.foundryClient.query('foundry-mcp-bridge.deletePlaylist', params);
+    return { content: [{ type: 'text', text: `Wiedergabeliste "${result.name}" geloescht.` }] };
+  }
+
+  async handleDeleteRollTable(args: any): Promise<any> {
+    const schema = z.object({ tableId: z.string().min(1) });
+    const params = schema.parse(args);
+    const result = await this.foundryClient.query('foundry-mcp-bridge.deleteRollTable', params);
+    return { content: [{ type: 'text', text: `Zufallstabelle "${result.name}" geloescht.` }] };
   }
 
   async handleRefreshSceneThumb(args: any): Promise<any> {

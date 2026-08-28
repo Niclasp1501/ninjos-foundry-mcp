@@ -56,6 +56,9 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.createRollTable`] = this.handleCreateRollTable.bind(this);
     CONFIG.queries[`${modulePrefix}.createSceneNote`] = this.handleCreateSceneNote.bind(this);
     CONFIG.queries[`${modulePrefix}.refreshSceneThumb`] = this.handleRefreshSceneThumb.bind(this);
+    CONFIG.queries[`${modulePrefix}.deletePlaylist`] = this.handleDeletePlaylist.bind(this);
+    CONFIG.queries[`${modulePrefix}.deleteRollTable`] = this.handleDeleteRollTable.bind(this);
+    CONFIG.queries[`${modulePrefix}.getPermissions`] = this.handleGetPermissions.bind(this);
 
     // World queries
     CONFIG.queries[`${modulePrefix}.getWorldInfo`] = this.handleGetWorldInfo.bind(this);
@@ -797,6 +800,44 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to refresh thumbnail: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleDeletePlaylist(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.playlistId) throw new Error('playlistId is required');
+      return await this.dataAccess.deletePlaylist(data.playlistId);
+    } catch (error) {
+      throw new Error(
+        `Failed to delete playlist: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleDeleteRollTable(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.tableId) throw new Error('tableId is required');
+      return await this.dataAccess.deleteRollTable(data.tableId);
+    } catch (error) {
+      throw new Error(
+        `Failed to delete roll table: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleGetPermissions(): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      return await this.dataAccess.getPermissions();
+    } catch (error) {
+      throw new Error(
+        `Failed to read permissions: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
