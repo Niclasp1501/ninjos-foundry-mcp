@@ -97,6 +97,7 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.appendJournalPageContent`] =
       this.handleAppendJournalPageContent.bind(this);
     CONFIG.queries[`${modulePrefix}.splitJournalPage`] = this.handleSplitJournalPage.bind(this);
+    CONFIG.queries[`${modulePrefix}.rewriteWorldPaths`] = this.handleRewriteWorldPaths.bind(this);
     CONFIG.queries[`${modulePrefix}.rewriteJournalImages`] =
       this.handleRewriteJournalImages.bind(this);
     CONFIG.queries[`${modulePrefix}.linkJournalTags`] = this.handleLinkJournalTags.bind(this);
@@ -1930,6 +1931,24 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to split journal page: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  private async handleRewriteWorldPaths(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      this.dataAccess.validateFoundryState();
+      if (!data.from || !data.to) {
+        throw new Error('from and to are required');
+      }
+      return await this.dataAccess.rewriteWorldPaths(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to rewrite world paths: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

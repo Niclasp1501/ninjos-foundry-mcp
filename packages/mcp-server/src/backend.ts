@@ -1909,6 +1909,11 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'world-rewrite-paths':
+                  result = await journalCleanTools.handleRewriteWorldPaths(args);
+
+                  break;
+
                 case 'journal-rewrite-images':
                   result = await journalCleanTools.handleRewriteJournalImages(args);
 

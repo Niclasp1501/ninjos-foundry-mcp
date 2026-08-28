@@ -4734,6 +4734,224 @@ export class FoundryDataAccess {
   }
 
   /**
+   * Rewrite a path prefix across the ENTIRE world -- scenes, actors, items,
+   * journals, playlists, tables, macros, cards.
+   *
+   * Moving an asset on disk breaks every document pointing at it, and those
+   * pointers are spread over a dozen document types. This walks all of them,
+   * so a move can be completed in one step instead of hunting references by hand.
+   *
+   * Only strings that START with the given prefix are touched, and only at a
+   * path boundary -- "Bilder/Token" never matches "Bilder/Tokenringe".
+   * Percent-encoded spellings are matched too, because Foundry stores paths
+   * URL-encoded ("Maps/Schwertk%C3%BCste"); the remainder keeps its encoding.
+   *
+   * ALWAYS run with dryRun first.
+   */
+  async rewriteWorldPaths(request: {
+    from: string;
+    to: string;
+    dryRun?: boolean | undefined;
+    collections?: string[] | undefined;
+  }): Promise<{
+    success: boolean;
+    world: string;
+    from: string;
+    to: string;
+    totalChanges: number;
+    documentsTouched: number;
+    byCollection: Record<string, number>;
+    samples: string[];
+    dryRun: boolean;
+  }> {
+    this.validateFoundryState();
+    const permissionCheck = permissionManager.checkWritePermission('createActor', { quantity: 1 });
+    if (!permissionCheck.allowed) {
+      throw new Error(`Path rewrite denied: ${permissionCheck.reason}`);
+    }
+
+    const from = String(request.from || '').replace(/\/+$/, '');
+    const to = String(request.to || '').replace(/\/+$/, '');
+    // A very short prefix would match far too much.
+    if (from.length < 3) throw new Error('"from" must be at least 3 characters');
+    if (!to) throw new Error('"to" must not be empty');
+    if (from === to) throw new Error('"from" and "to" are identical');
+
+    const variants = Array.from(new Set([from, encodeURI(from), from.replace(/ /g, '%20')]));
+
+    const rewrite = (s: string): string | null => {
+      for (const v of variants) {
+        if (s.startsWith(v)) {
+          const rest = s.slice(v.length);
+          if (rest === '' || rest.startsWith('/')) return to + rest;
+        }
+      }
+      return null;
+    };
+
+    // Deep-copy a value, rewriting every matching string inside it.
+    const walk = (val: any): [boolean, any] => {
+      if (typeof val === 'string') {
+        const r = rewrite(val);
+        return r === null ? [false, val] : [true, r];
+      }
+      if (Array.isArray(val)) {
+        let changed = false;
+        const out = val.map(v => {
+          const [c, nv] = walk(v);
+          if (c) changed = true;
+          return nv;
+        });
+        return [changed, changed ? out : val];
+      }
+      if (val && typeof val === 'object') {
+        let changed = false;
+        const out: any = {};
+        for (const [k, v] of Object.entries(val)) {
+          const [c, nv] = walk(v);
+          if (c) changed = true;
+          out[k] = nv;
+        }
+        return [changed, changed ? out : val];
+      }
+      return [false, val];
+    };
+
+    const samples: string[] = [];
+    let totalChanges = 0;
+
+    // Flatten into dotted update keys. Arrays are replaced whole -- Foundry
+    // cannot reliably update a single array element via a dotted path.
+    const collect = (val: any, path: string, out: Record<string, any>, skip: Set<string>) => {
+      if (path && skip.has(path)) return;
+      if (typeof val === 'string') {
+        const r = rewrite(val);
+        if (r !== null) {
+          out[path] = r;
+          totalChanges++;
+          if (samples.length < 12) samples.push(`${val}  ->  ${r}`);
+        }
+        return;
+      }
+      if (Array.isArray(val)) {
+        const [changed, nv] = walk(val);
+        if (changed) {
+          out[path] = nv;
+          totalChanges++;
+          if (samples.length < 12) samples.push(`${path}[] (Array ersetzt)`);
+        }
+        return;
+      }
+      if (val && typeof val === 'object') {
+        for (const [k, v] of Object.entries(val)) {
+          collect(v, path ? `${path}.${k}` : k, out, skip);
+        }
+      }
+    };
+
+    // Embedded collections get their own update call, so they are skipped when
+    // flattening the parent document.
+    const EMBEDS: Record<string, string[]> = {
+      scenes: ['tokens', 'tiles', 'drawings', 'notes', 'sounds', 'walls', 'lights', 'regions'],
+      actors: ['items', 'effects'],
+      items: ['effects'],
+      journal: ['pages'],
+      playlists: ['sounds'],
+      tables: ['results'],
+      cards: ['cards'],
+      macros: [],
+    };
+    const EMBED_CLASS: Record<string, string> = {
+      tokens: 'Token',
+      tiles: 'Tile',
+      drawings: 'Drawing',
+      notes: 'Note',
+      sounds: 'AmbientSound',
+      walls: 'Wall',
+      lights: 'AmbientLight',
+      regions: 'Region',
+      items: 'Item',
+      effects: 'ActiveEffect',
+      pages: 'JournalEntryPage',
+      results: 'TableResult',
+      cards: 'Card',
+    };
+
+    const wanted = request.collections?.length
+      ? new Set(request.collections)
+      : new Set(Object.keys(EMBEDS));
+
+    const byCollection: Record<string, number> = {};
+    let documentsTouched = 0;
+
+    for (const key of Object.keys(EMBEDS)) {
+      if (!wanted.has(key)) continue;
+      const coll = (game as any)[key];
+      if (!coll) continue;
+
+      let collChanges = 0;
+
+      for (const doc of coll) {
+        const before = totalChanges;
+        const source = doc.toObject();
+        const embedNames = EMBEDS[key] ?? [];
+
+        // 1) the document's own fields
+        const flat: Record<string, any> = {};
+        collect(source, '', flat, new Set(embedNames));
+        if (Object.keys(flat).length && !request.dryRun) {
+          await doc.update(flat);
+        }
+
+        // 2) its embedded documents
+        for (const embName of embedNames) {
+          const embSource: any[] = Array.isArray(source[embName]) ? source[embName] : [];
+          if (!embSource.length) continue;
+          const embUpdates: any[] = [];
+          for (const e of embSource) {
+            const eFlat: Record<string, any> = {};
+            collect(e, '', eFlat, new Set());
+            if (Object.keys(eFlat).length) {
+              delete eFlat._id;
+              embUpdates.push({ _id: e._id, ...eFlat });
+            }
+          }
+          if (embUpdates.length && !request.dryRun) {
+            const cls = EMBED_CLASS[embName];
+            if (cls) await doc.updateEmbeddedDocuments(cls, embUpdates);
+          }
+        }
+
+        const delta = totalChanges - before;
+        if (delta > 0) {
+          documentsTouched++;
+          collChanges += delta;
+        }
+      }
+
+      if (collChanges > 0) byCollection[key] = collChanges;
+    }
+
+    this.auditLog(
+      'rewriteWorldPaths',
+      { from, to, totalChanges, dryRun: !!request.dryRun },
+      'success'
+    );
+
+    return {
+      success: true,
+      world: (game as any).world?.id ?? '',
+      from,
+      to,
+      totalChanges,
+      documentsTouched,
+      byCollection,
+      samples,
+      dryRun: !!request.dryRun,
+    };
+  }
+
+  /**
    * Rewrite external image URLs in journal pages to local Foundry paths.
    *
    * Imported adventures point at a CDN, which means no images without internet

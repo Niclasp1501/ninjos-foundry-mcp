@@ -252,6 +252,48 @@ export class JournalCleanTools {
         },
       },
       {
+        name: 'world-rewrite-paths',
+        description:
+          "Rewrite an asset path prefix across the ENTIRE world at once -- scenes (background, tiles, tokens, notes, sounds), actors (portrait, prototype token, items, effects), world items, journals (image pages and <img> in text), playlists, roll tables, macros and cards. Use this after MOVING files on disk, so every reference follows along in one step. Only strings starting with the prefix at a path boundary are touched ('Bilder/Token' never matches 'Bilder/Tokenringe'), and percent-encoded spellings are matched too. Runs inside Foundry, so world size does not matter. ALWAYS run dryRun first and read the report.",
+        inputSchema: {
+          type: 'object',
+          properties: {
+            from: {
+              type: 'string',
+              description:
+                'Old path prefix relative to the Foundry Data directory, e.g. "Bilder/Avatare". Minimum 3 characters.',
+            },
+            to: {
+              type: 'string',
+              description: 'New path prefix, e.g. "Bilder/Portraits/Spieler".',
+            },
+            collections: {
+              type: 'array',
+              items: {
+                type: 'string',
+                enum: [
+                  'scenes',
+                  'actors',
+                  'items',
+                  'journal',
+                  'playlists',
+                  'tables',
+                  'cards',
+                  'macros',
+                ],
+              },
+              description:
+                'Restrict to these document collections. Omit to cover all of them (recommended -- a partial rewrite leaves broken references behind).',
+            },
+            dryRun: {
+              type: 'boolean',
+              description: 'Only report what would change (default false). Always use this first.',
+            },
+          },
+          required: ['from', 'to'],
+        },
+      },
+      {
         name: 'journal-rewrite-images',
         description:
           'Rewrite external image URLs in journal pages to local Foundry paths (keeps only the file name and puts it under localPrefix). Fixes imported adventures that point at a CDN. Runs inside Foundry. Use dryRun first.',
@@ -473,6 +515,20 @@ export class JournalCleanTools {
       level: args.level,
       deleteOriginal: args.deleteOriginal,
       namePrefix: args.namePrefix,
+    });
+  }
+
+  async handleRewriteWorldPaths(args: {
+    from: string;
+    to: string;
+    collections?: string[];
+    dryRun?: boolean;
+  }): Promise<any> {
+    return await this.foundryClient.query('foundry-mcp-bridge.rewriteWorldPaths', {
+      from: args.from,
+      to: args.to,
+      collections: args.collections,
+      dryRun: args.dryRun,
     });
   }
 
