@@ -126,6 +126,38 @@
       "label": "Status",
       "connected": "✅ Verbunden",
       "disconnected": "❌ Getrennt — über die Verbindungsleiste verbinden"
+    },
+    "common": {
+      "apply": "Übernehmen",
+      "save": "Speichern"
+    },
+    "mapgen": {
+      "title": "Kartengenerator",
+      "intro": "Erzeugt Kampfkarten mit Hilfe eines KI-Dienstes. ComfyUI läuft auf demselben Rechner wie der MCP-Server.",
+      "statusTitle": "Dienst",
+      "check": "Prüfen",
+      "start": "Starten",
+      "stop": "Anhalten",
+      "settingsTitle": "Einstellungen",
+      "autoStart": "Beim Start von Foundry mitstarten.",
+      "autoStartHint": "Ab Werk aus, weil der Dienst viel Arbeitsspeicher belegt.",
+      "quality": "Güte der Erzeugung",
+      "qualityLow": "Niedrig",
+      "qualityMedium": "Mittel",
+      "qualityHigh": "Hoch",
+      "qualityHint": "Höhere Güte bringt mehr Bilddetails, dauert aber länger. Die Dauer hängt von der Rechenleistung ab."
+    },
+    "index": {
+      "title": "Erweiterter Kreaturenindex",
+      "intro": "Berechnet Kreaturenwerte vorab, damit sich sofort nach Herausforderungsgrad, Art und Fähigkeiten filtern lässt. So findet das KI-Modell passende Kreaturen, ohne jeden Kompendiumseintrag zu laden.",
+      "rebuildTitle": "Neu aufbauen",
+      "rebuildHint": "Nötig, wenn die Kreatursuche nicht mehr stimmt oder neue Kompendien hinzugekommen sind. Dauert je nach Anzahl der Kompendien etwa 30 bis 60 Sekunden.",
+      "rebuild": "Index neu aufbauen",
+      "settingsTitle": "Einstellungen",
+      "enable": "Erweiterten Index verwenden.",
+      "enableHint": "Legt eine durchsuchbare Übersicht an.",
+      "autoRebuild": "Bei Änderungen an Kompendien neu aufbauen.",
+      "autoRebuildHint": "Geschieht dann von selbst im Hintergrund."
     }
   }
 }

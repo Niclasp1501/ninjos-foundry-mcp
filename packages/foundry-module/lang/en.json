@@ -126,6 +126,38 @@
       "label": "Status",
       "connected": "✅ Connected",
       "disconnected": "❌ Disconnected — use the connection panel to connect"
+    },
+    "common": {
+      "apply": "Apply",
+      "save": "Save"
+    },
+    "mapgen": {
+      "title": "Map generation",
+      "intro": "Creates battlemaps through an AI service. ComfyUI runs on the same machine as the MCP server.",
+      "statusTitle": "Service",
+      "check": "Check",
+      "start": "Start",
+      "stop": "Stop",
+      "settingsTitle": "Settings",
+      "autoStart": "Start together with Foundry.",
+      "autoStartHint": "Off by default because the service uses a lot of memory.",
+      "quality": "Generation quality",
+      "qualityLow": "Low",
+      "qualityMedium": "Medium",
+      "qualityHigh": "High",
+      "qualityHint": "Higher quality gives more detail but takes longer. Generation time depends on your hardware."
+    },
+    "index": {
+      "title": "Enhanced creature index",
+      "intro": "Pre-computes creature statistics so you can filter instantly by challenge rating, type and abilities, without loading every compendium entry.",
+      "rebuildTitle": "Rebuild",
+      "rebuildHint": "Needed when creature searches stop matching, or after adding compendium packs. Takes roughly 30 to 60 seconds depending on the number of packs.",
+      "rebuild": "Rebuild index",
+      "settingsTitle": "Settings",
+      "enable": "Use the enhanced index.",
+      "enableHint": "Builds a searchable overview.",
+      "autoRebuild": "Rebuild when compendium packs change.",
+      "autoRebuildHint": "Happens automatically in the background."
     }
   }
 }

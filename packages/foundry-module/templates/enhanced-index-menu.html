@@ -1,48 +1,52 @@
-<form class="eci-settings">
+{{!
+  NINJO-ERWEITERUNG: Texte laufen ueber die Sprachdateien, damit sie nicht mehr
+  fest im Markup stehen.
+}}
+<form class="eci-settings mcp-menu">
   <section class="eci-block">
-    <h2 class="eci-title">Enhanced Creature Index</h2>
-    <p class="eci-note">
-      The Enhanced Creature Index pre-computes creature statistics for instant filtering by
-      Challenge Rating, creature type, and abilities. This enables AI models to quickly find
-      creatures matching specific criteria without loading every compendium entry.
-    </p>
+    <h2 class="eci-title">{{localize "foundry-mcp-bridge.index.title"}}</h2>
+    <p class="eci-note">{{localize "foundry-mcp-bridge.index.intro"}}</p>
   </section>
 
-  <hr class="eci-divider"/>
+  <hr class="eci-divider" />
 
   <section class="eci-block">
-    <h3 class="eci-subtitle">Manual Rebuild</h3>
-    <p class="eci-hint">
-      Use this if creature searches aren't working correctly or after adding new compendium packs.
-      The rebuild takes ~30–60 seconds depending on the number of packs.
-    </p>
+    <h3 class="eci-subtitle">{{localize "foundry-mcp-bridge.index.rebuildTitle"}}</h3>
+    <p class="eci-hint">{{localize "foundry-mcp-bridge.index.rebuildHint"}}</p>
     <button type="button" class="eci-btn rebuild-index-btn" data-action="rebuild">
-      Rebuild Creature Index
+      <i class="fas fa-rotate"></i> {{localize "foundry-mcp-bridge.index.rebuild"}}
     </button>
   </section>
 
-  <hr class="eci-divider"/>
+  <hr class="eci-divider" />
 
   <section class="eci-block eci-settings-block">
-    <h3 class="eci-subtitle">Settings</h3>
+    <h3 class="eci-subtitle">{{localize "foundry-mcp-bridge.index.settingsTitle"}}</h3>
+
     <label class="eci-check">
-      <input type="checkbox" name="enableEnhancedCreatureIndex" {{#if enableEnhancedCreatureIndex}}checked{{/if}} />
+      <input
+        type="checkbox"
+        name="enableEnhancedCreatureIndex"
+        {{#if enableEnhancedCreatureIndex}}checked{{/if}}
+      />
       <span>
-        <strong>Enable Enhanced Creature Index</strong> — Pre-build a searchable database for
-        instant filtering by CR, type, and abilities.
+        <strong>{{localize "foundry-mcp-bridge.index.enable"}}</strong>
+        {{localize "foundry-mcp-bridge.index.enableHint"}}
       </span>
     </label>
 
     <label class="eci-check">
       <input type="checkbox" name="autoRebuildIndex" {{#if autoRebuildIndex}}checked{{/if}} />
       <span>
-        <strong>Auto-Rebuild Index on Pack Changes</strong> — Automatically rebuild when
-        compendium packs are modified.
+        <strong>{{localize "foundry-mcp-bridge.index.autoRebuild"}}</strong>
+        {{localize "foundry-mcp-bridge.index.autoRebuildHint"}}
       </span>
     </label>
   </section>
 
   <div class="form-footer">
-    <button type="submit" class="eci-btn"><i class="fas fa-save"></i> Save Settings</button>
+    <button type="submit" class="eci-btn primary">
+      <i class="fas fa-save"></i> {{localize "foundry-mcp-bridge.common.save"}}
+    </button>
   </div>
 </form>
