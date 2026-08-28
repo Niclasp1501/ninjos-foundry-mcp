@@ -8844,6 +8844,49 @@ export class FoundryDataAccess {
     const scene: any = await Scene.create(daten, { keepId: request.keepId === true });
     if (!scene) throw new Error('Szene konnte nicht angelegt werden');
 
+    /* Szenen aus aelteren Staenden bringen keine Ebenen mit: dort hing der
+     * Hintergrund an der Szene selbst. Foundry v14 legt beim Anlegen eine leere
+     * Standardebene von 0 bis 20 an und verwirft den Hintergrund - die geborgene
+     * Szene bliebe schwarz, und Kacheln ausserhalb dieses Bereichs verschwaenden
+     * mit. Deshalb die Ebene nachziehen: Bild uebernehmen und den Hoehenbereich
+     * so weit fassen, dass alles Mitgebrachte hineinpasst. */
+    let ebeneAngepasst = false;
+    if (!daten.levels?.length) {
+      try {
+        const hoehen: number[] = [
+          ...(daten.tiles ?? []),
+          ...(daten.tokens ?? []),
+          ...(daten.drawings ?? []),
+          ...(daten.lights ?? []),
+        ]
+          .map((o: any) => Number(o?.elevation))
+          .filter((h: number) => Number.isFinite(h));
+
+        const levelPatch: any = {};
+        const src = daten.background?.src;
+        if (src) levelPatch['background.src'] = src;
+        if (daten.background?.color) levelPatch['background.color'] = daten.background.color;
+
+        if (hoehen.length) {
+          levelPatch.elevation = {
+            bottom: Math.min(0, ...hoehen),
+            top: Math.max(20, ...hoehen) + 1,
+          };
+        }
+
+        if (Object.keys(levelPatch).length) {
+          const levels: any[] = scene.levels?.contents ?? scene.levels ?? [];
+          const level: any = levels[0];
+          if (level?.update) {
+            await level.update(levelPatch);
+            ebeneAngepasst = true;
+          }
+        }
+      } catch (error) {
+        console.warn(`[${this.moduleId}] Ebene konnte nicht angeglichen werden:`, error);
+      }
+    }
+
     try {
       await scene
         .createThumbnail?.()
@@ -8858,7 +8901,13 @@ export class FoundryDataAccess {
       `${zaehl('sounds')} Klaenge, ${zaehl('tokens')} Token, ${zaehl('levels')} Ebenen`;
 
     this.auditLog('restoreScene', request, 'success');
-    return { id: scene.id, name: scene.name, width: daten.width, height: daten.height, enthalten };
+    return {
+      id: scene.id,
+      name: scene.name,
+      width: daten.width,
+      height: daten.height,
+      enthalten: ebeneAngepasst ? `${enthalten}; Ebene nachgezogen` : enthalten,
+    };
   }
 
   /**

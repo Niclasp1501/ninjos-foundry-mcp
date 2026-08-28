@@ -278,6 +278,22 @@ Die Schlüssel verraten den Aufbau: `!scenes!<id>` ist die Szene selbst,
 `.sounds`, `.regions`, `.levels`, `.tokens`. Ein vollständiges Szenendokument
 entsteht, indem man die eingebetteten Sammlungen wieder einhängt.
 
+**Zwei Fallstricke beim Zusammenbauen.** Das Szenendokument führt seine
+eingebetteten Sammlungen nur als Kennungen; die Datensätze liegen unter eigenen
+Schlüsseln und müssen die Kennungslisten **ersetzen**, nicht ergänzen. Und die
+Verhalten einer Region liegen noch eine Ebene tiefer, unter
+`!scenes.regions.behaviors!<szene>.<region>.<verhalten>`. Bleiben sie als bloße
+Kennung stehen, bricht das Anlegen mit `RegionBehavior must be constructed with
+a DataModel or Object` ab.
+
+**Ebenen.** Szenen aus älteren Ständen bringen keine Ebenen mit, dort hing der
+Hintergrund an der Szene selbst. Foundry v14 legt beim Anlegen eine leere
+Standardebene von 0 bis 20 an und verwirft den Hintergrund — die geborgene Szene
+bliebe schwarz, und Kacheln außerhalb dieses Bereichs verschwänden mit. Beim
+Schiffgefängnis reichten die Kachelhöhen von −10 bis 999. `restore-scene` zieht
+die Ebene deshalb nach: Bild übernehmen, Höhenbereich über alles Mitgebrachte
+spannen.
+
 Die laufende Welt ist durch `LOCK` belegt. Zum Nachsehen wird das Verzeichnis
 kopiert und die Kopie gelesen — nie die Datenbank der laufenden Welt öffnen.
 
