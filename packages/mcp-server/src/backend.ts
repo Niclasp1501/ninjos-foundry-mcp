@@ -1574,6 +1574,28 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                // NINJO-ERWEITERUNG: Szenen anlegen und pflegen
+
+                case 'create-scene':
+                  result = await sceneTools.handleCreateScene(args);
+
+                  break;
+
+                case 'update-scene':
+                  result = await sceneTools.handleUpdateScene(args);
+
+                  break;
+
+                case 'list-scene-folders':
+                  result = await sceneTools.handleListSceneFolders();
+
+                  break;
+
+                case 'delete-scene':
+                  result = await sceneTools.handleDeleteScene(args);
+
+                  break;
+
                 case 'get-world-info':
                   result = await sceneTools.handleGetWorldInfo(args);
 

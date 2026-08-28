@@ -8137,6 +8137,403 @@ export class FoundryDataAccess {
     }
   }
 
+  /* =========================================================================
+   * NINJO-ERWEITERUNG: Szenen anlegen und pflegen
+   *
+   * Nicht im Original enthalten. Bei einem Merge mit dem Upstream-Projekt
+   * bleibt dieser Block als Ganzes bestehen. Zugehoerige Handler stehen in
+   * queries.ts, die Werkzeuge in packages/mcp-server/src/tools/scene.ts.
+   * ========================================================================= */
+
+  /**
+   * Ordnerpfad wie "Orte/Neverwinter" aufloesen und fehlende Ebenen anlegen.
+   * Liefert die Id des untersten Ordners oder null, wenn kein Pfad angegeben war.
+   */
+  private async getOrCreateFolderPath(
+    path: string | undefined,
+    type: 'Actor' | 'Scene' | 'Item' | 'JournalEntry' | 'Macro' | 'Playlist' | 'RollTable' | 'Cards'
+  ): Promise<string | null> {
+    if (!path || !path.trim()) return null;
+
+    const parts = path
+      .split('/')
+      .map(p => p.trim())
+      .filter(Boolean);
+
+    let parentId: string | null = null;
+
+    for (const name of parts) {
+      const existing: any = game.folders?.find(
+        (f: any) => f.name === name && f.type === type && (f.folder?.id ?? null) === parentId
+      );
+
+      if (existing) {
+        parentId = existing.id;
+        continue;
+      }
+
+      const created: any = await Folder.create({
+        name,
+        type,
+        folder: parentId,
+        sort: 0,
+        flags: {
+          'foundry-mcp-bridge': {
+            mcpGenerated: true,
+            createdAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      if (!created?.id) {
+        throw new Error(`Ordner "${name}" konnte nicht angelegt werden`);
+      }
+      parentId = created.id;
+    }
+
+    return parentId;
+  }
+
+  /**
+   * Foundry speichert Medienpfade URL-kodiert ("Gefängnis" wird zu
+   * "Gef%C3%A4ngnis"). Ein Pfad mit rohen Umlauten wird still verworfen,
+   * die Szene bleibt dann ohne Hintergrund. Deshalb immer kodieren, nie doppelt.
+   */
+  private encodeMediaPath(src: string): string {
+    if (/%[0-9A-Fa-f]{2}/.test(src)) return src;
+    return encodeURI(src);
+  }
+
+  /**
+   * Masse einer Bild- oder Videodatei im Browser ermitteln.
+   * Faellt auf null zurueck, wenn die Datei nicht geladen werden kann.
+   */
+  private async probeMediaSize(
+    src: string
+  ): Promise<{ width: number; height: number; isVideo: boolean } | null> {
+    const url = src.startsWith('http') ? src : `/${src.replace(/^\/+/, '')}`;
+    const isVideo = /\.(mp4|webm|m4v|ogv)$/i.test(src);
+
+    return new Promise(resolve => {
+      const done = (result: { width: number; height: number; isVideo: boolean } | null) => {
+        clearTimeout(timer);
+        resolve(result);
+      };
+      const timer = setTimeout(() => done(null), 8000);
+
+      if (isVideo) {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = () =>
+          done({ width: video.videoWidth, height: video.videoHeight, isVideo: true });
+        video.onerror = () => done(null);
+        video.src = url;
+      } else {
+        const img = new Image();
+        img.onload = () =>
+          done({ width: img.naturalWidth, height: img.naturalHeight, isVideo: false });
+        img.onerror = () => done(null);
+        img.src = url;
+      }
+    });
+  }
+
+  /**
+   * Szenenordner auflisten, mit vollem Pfad wie "Orte/Neverwinter".
+   */
+  async listSceneFolders(): Promise<
+    Array<{ id: string; name: string; path: string; scenes: number }>
+  > {
+    this.validateFoundryState();
+
+    const folders = (game.folders?.filter((f: any) => f.type === 'Scene') || []) as any[];
+
+    const pathOf = (folder: any): string => {
+      const parts: string[] = [folder.name];
+      let current = folder.folder;
+      let guard = 0;
+      while (current && guard++ < 10) {
+        parts.unshift(current.name);
+        current = current.folder;
+      }
+      return parts.join('/');
+    };
+
+    return folders
+      .map((f: any) => ({
+        id: f.id,
+        name: f.name,
+        path: pathOf(f),
+        scenes: (game.scenes?.filter((s: any) => s.folder?.id === f.id) || []).length,
+      }))
+      .sort((a, b) => a.path.localeCompare(b.path));
+  }
+
+  /**
+   * Neue Szene aus einem vorhandenen Bild oder Video anlegen.
+   *
+   * Wird templateName angegeben, werden die Einstellungen dieser Szene
+   * uebernommen (Gitter, Beleuchtung, Modul-Flags), aber niemals deren Id.
+   * So bleibt der Grundsatz erhalten, dass Szenen aus einer Vorlage entstehen,
+   * ohne dass ein Import eine bestehende Szene ueberschreiben kann.
+   */
+  async createScene(request: {
+    name: string;
+    background: string;
+    folderPath?: string;
+    templateName?: string;
+    width?: number;
+    height?: number;
+    padding?: number;
+    gridSize?: number;
+    navigation?: boolean;
+    activate?: boolean;
+  }): Promise<{
+    id: string;
+    name: string;
+    width: number;
+    height: number;
+    folder: string | null;
+    template: string | null;
+    probed: boolean;
+    levelPatched: boolean;
+  }> {
+    this.validateFoundryState();
+
+    if (!request.name?.trim()) throw new Error('name ist erforderlich');
+    if (!request.background?.trim()) throw new Error('background ist erforderlich');
+
+    const src = this.encodeMediaPath(request.background.trim());
+
+    // Vorlage suchen, wenn gewuenscht
+    let template: any = null;
+    if (request.templateName) {
+      template =
+        game.scenes?.find((s: any) => s.id === request.templateName) ||
+        game.scenes?.find((s: any) => s.name === request.templateName) ||
+        null;
+      if (!template) {
+        throw new Error(`Vorlage "${request.templateName}" nicht gefunden`);
+      }
+    }
+
+    // Masse: Angabe schlaegt Messung schlaegt Vorlage
+    let width = request.width;
+    let height = request.height;
+    let probed = false;
+
+    if (!width || !height) {
+      const size = await this.probeMediaSize(src);
+      if (size?.width && size?.height) {
+        width = size.width;
+        height = size.height;
+        probed = true;
+      }
+    }
+
+    const finalWidth: number = width || template?.width || 4000;
+    const finalHeight: number = height || template?.height || 3000;
+
+    const folderId = await this.getOrCreateFolderPath(request.folderPath, 'Scene');
+
+    // Vorlage kopieren, dabei alles entfernen, was eine Szene eindeutig macht
+    const base: any = template ? template.toObject() : {};
+    for (const key of [
+      '_id',
+      'id',
+      '_stats',
+      'thumb',
+      'active',
+      'tokens',
+      'drawings',
+      'lights',
+      'notes',
+      'sounds',
+      'tiles',
+      'walls',
+      'templates',
+      'regions',
+      'levels',
+      'initialLevel',
+    ]) {
+      delete base[key];
+    }
+
+    const sceneData: any = {
+      ...base,
+      name: request.name.trim(),
+      width: finalWidth,
+      height: finalHeight,
+      padding: request.padding ?? template?.padding ?? 0,
+      navigation: request.navigation ?? false,
+      folder: folderId,
+      background: {
+        ...(base.background || {}),
+        src,
+      },
+      grid: {
+        ...(base.grid || {}),
+        size: request.gridSize ?? base.grid?.size ?? 100,
+      },
+    };
+
+    const scene: any = await Scene.create(sceneData);
+    if (!scene) throw new Error('Szene konnte nicht angelegt werden');
+
+    /* Foundry v14: Der Hintergrund haengt nicht mehr an der Szene selbst,
+     * sondern an ihrer Ebene (levels). Wird er nur auf scene.background.src
+     * gesetzt, bleibt die Szene leer. Deshalb hier die Standard-Ebene
+     * nachziehen. Beides zu setzen schadet nicht und haelt aeltere
+     * Foundry-Staende kompatibel. */
+    let levelPatched = false;
+    try {
+      const levels: any[] = scene.levels?.contents ?? scene.levels ?? [];
+      const level: any = levels[0];
+      if (level?.update) {
+        await level.update({ name: sceneData.name, 'background.src': src });
+        levelPatched = true;
+      } else if (scene.updateEmbeddedDocuments) {
+        await scene.updateEmbeddedDocuments('SceneLevel', [
+          { _id: 'defaultLevel0000', name: sceneData.name, background: { src } },
+        ]);
+        levelPatched = true;
+      }
+    } catch (error) {
+      console.warn(`[${this.moduleId}] Ebenen-Hintergrund konnte nicht gesetzt werden:`, error);
+    }
+
+    try {
+      await scene
+        .createThumbnail?.()
+        .then((data: any) => (data?.thumb ? scene.update({ thumb: data.thumb }) : null));
+    } catch {
+      // Vorschaubild ist Beiwerk, ein Fehlschlag darf die Szene nicht kippen
+    }
+
+    if (request.activate) {
+      try {
+        await scene.activate();
+      } catch {
+        /* nicht kritisch */
+      }
+    }
+
+    this.auditLog('createScene', request, 'success');
+
+    return {
+      id: scene.id,
+      name: scene.name,
+      width: finalWidth,
+      height: finalHeight,
+      folder: folderId,
+      template: template?.name ?? null,
+      probed,
+      levelPatched,
+    };
+  }
+
+  /**
+   * Vorhandene Szene aendern: Name, Hintergrund, Ordner, Masse, Navigation.
+   */
+  async updateScene(request: {
+    sceneIdentifier: string;
+    name?: string;
+    background?: string;
+    folderPath?: string;
+    width?: number;
+    height?: number;
+    navigation?: boolean;
+  }): Promise<{ id: string; name: string; changed: string[] }> {
+    this.validateFoundryState();
+
+    const scene: any =
+      game.scenes?.get(request.sceneIdentifier) ||
+      game.scenes?.find((s: any) => s.name === request.sceneIdentifier);
+
+    if (!scene) throw new Error(`Szene "${request.sceneIdentifier}" nicht gefunden`);
+
+    const update: any = {};
+    const changed: string[] = [];
+
+    if (request.name) {
+      update.name = request.name;
+      changed.push('name');
+    }
+    if (request.background) {
+      update['background.src'] = this.encodeMediaPath(request.background);
+      changed.push('background');
+
+      if (!request.width && !request.height) {
+        const size = await this.probeMediaSize(request.background);
+        if (size?.width && size?.height) {
+          update.width = size.width;
+          update.height = size.height;
+          changed.push('dimensions');
+        }
+      }
+    }
+    if (request.width) {
+      update.width = request.width;
+      if (!changed.includes('dimensions')) changed.push('dimensions');
+    }
+    if (request.height) {
+      update.height = request.height;
+      if (!changed.includes('dimensions')) changed.push('dimensions');
+    }
+    if (request.folderPath !== undefined) {
+      update.folder = await this.getOrCreateFolderPath(request.folderPath, 'Scene');
+      changed.push('folder');
+    }
+    if (request.navigation !== undefined) {
+      update.navigation = request.navigation;
+      changed.push('navigation');
+    }
+
+    if (!changed.length) throw new Error('Keine Aenderung angegeben');
+
+    await scene.update(update);
+
+    // Foundry v14: Hintergrund haengt an der Ebene, siehe createScene
+    if (request.background) {
+      try {
+        const levels: any[] = scene.levels?.contents ?? scene.levels ?? [];
+        const level: any = levels[0];
+        if (level?.update) {
+          await level.update({ 'background.src': this.encodeMediaPath(request.background) });
+        }
+      } catch (error) {
+        console.warn(`[${this.moduleId}] Ebenen-Hintergrund nicht gesetzt:`, error);
+      }
+    }
+
+    this.auditLog('updateScene', request, 'success');
+
+    return { id: scene.id, name: scene.name, changed };
+  }
+
+  /**
+   * Szene loeschen. Bewusst nur ueber die Id ansprechbar, damit nicht
+   * versehentlich eine gleichnamige Szene erwischt wird.
+   */
+  async deleteScene(sceneId: string): Promise<{ id: string; name: string }> {
+    this.validateFoundryState();
+
+    const scene: any = game.scenes?.get(sceneId);
+    if (!scene) throw new Error(`Szene mit der Id "${sceneId}" nicht gefunden`);
+    if (scene.active) {
+      throw new Error(
+        `"${scene.name}" ist gerade aktiv. Erst eine andere Szene aktivieren, dann loeschen.`
+      );
+    }
+
+    const name = scene.name;
+    await scene.delete();
+    this.auditLog('deleteScene', { sceneId, name }, 'success');
+    return { id: sceneId, name };
+  }
+
+  /* ================= ENDE NINJO-ERWEITERUNG ================= */
+
   /**
    * List all scenes with filtering options
    */

@@ -1,3 +1,36 @@
+## v0.10.0 (2026-08-28)
+
+Scene management. Until now the bridge could list, switch and AI-generate scenes,
+but not build one from artwork that already exists on disk — the everyday case
+when you produce your own location art.
+
+### New Features
+
+- **`create-scene`** — build a scene from an image or video in the Foundry data directory
+  - Dimensions are measured from the file itself, videos included
+  - `templateName` copies an existing scene's settings (grid, lighting, module flags) but **never its id**
+  - `folderPath` accepts nested paths like `Orte/Neverwinter`; missing levels are created
+
+- **`update-scene`** — rename, swap the background, move to another folder, change dimensions or navigation. A new background re-measures the dimensions.
+
+- **`list-scene-folders`** — every scene folder with its full path, scene count and id
+
+- **`delete-scene`** — deletes by id on purpose, so a similarly named scene cannot be hit by accident. Refuses to delete the active scene.
+
+### Why create-scene exists
+
+Dragging a scene out of a compendium keeps its id and **overwrites any world scene
+carrying the same id**, silently. That is how a finished landing page scene was lost
+on 2026-08-27. `create-scene` copies settings but always assigns a fresh id, so it
+cannot destroy anything.
+
+### Fixes discovered while building this
+
+- **Media paths must be URL-encoded.** Foundry stores `Gefängnis` as `Gef%C3%A4ngnis`. A path with raw umlauts is discarded without any error and the scene ends up blank.
+- **Foundry v14 keeps the background on the scene's level, not on the scene.** Setting only `scene.background.src` leaves the scene empty; the default level (`defaultLevel0000`) has to be updated too.
+
+See `docs/NINJO-ERWEITERUNGEN.md` for details.
+
 ## v0.9.0 (2026-07-22)
 
 Journal handling for large imported adventures, clean journal editing, and token art.

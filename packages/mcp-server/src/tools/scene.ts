@@ -21,6 +21,77 @@ export class SceneTools {
    */
   getToolDefinitions() {
     return [
+      /* NINJO-ERWEITERUNG: Szenen anlegen und pflegen */
+      {
+        name: 'create-scene',
+        description:
+          'Create a Foundry scene from an image or video that already exists in the Foundry data directory. Use this for background art, location scenes and battlemaps you generated or uploaded yourself. Dimensions are measured from the file automatically. Pass templateName to copy the settings of an existing scene (grid, lighting, module flags) without ever reusing its id, so nothing gets overwritten. folderPath accepts nested paths like "Orte/Neverwinter"; missing folders are created.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Scene name' },
+            background: {
+              type: 'string',
+              description:
+                'Path to the image or video inside the Foundry data directory, e.g. "Maps/Schwertküste/Neverwinter/Gefängnis/SC_Kerker.jpg"',
+            },
+            folderPath: {
+              type: 'string',
+              description: 'Target folder, nested paths allowed, e.g. "Orte/Neverwinter"',
+            },
+            templateName: {
+              type: 'string',
+              description: 'Name or id of an existing scene whose settings should be copied',
+            },
+            width: { type: 'number', description: 'Override width in pixels' },
+            height: { type: 'number', description: 'Override height in pixels' },
+            padding: { type: 'number', description: 'Scene padding, default 0 or template value' },
+            gridSize: { type: 'number', description: 'Grid size in pixels' },
+            navigation: {
+              type: 'boolean',
+              description: 'Show in the scene navigation bar (default false)',
+            },
+            activate: { type: 'boolean', description: 'Activate the scene right away' },
+          },
+          required: ['name', 'background'],
+        },
+      },
+      {
+        name: 'update-scene',
+        description:
+          'Update an existing scene: rename it, swap its background image or video, move it to another folder, change its dimensions or navigation. When a new background is set and no dimensions are given, the new dimensions are measured from the file.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            sceneIdentifier: { type: 'string', description: 'Scene name or id' },
+            name: { type: 'string', description: 'New name' },
+            background: { type: 'string', description: 'New background path' },
+            folderPath: { type: 'string', description: 'Move to this folder path' },
+            width: { type: 'number' },
+            height: { type: 'number' },
+            navigation: { type: 'boolean' },
+          },
+          required: ['sceneIdentifier'],
+        },
+      },
+      {
+        name: 'list-scene-folders',
+        description:
+          'List all scene folders with their full path and how many scenes each contains. Use this before create-scene to find the right folderPath.',
+        inputSchema: { type: 'object', properties: {} },
+      },
+      {
+        name: 'delete-scene',
+        description:
+          'Permanently delete a scene by its id. The id is required on purpose so a scene with a similar name cannot be hit by accident. An active scene cannot be deleted; activate another one first.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            sceneId: { type: 'string', description: 'Id of the scene to delete' },
+          },
+          required: ['sceneId'],
+        },
+      },
       {
         name: 'get-current-scene',
         description:
@@ -51,6 +122,119 @@ export class SceneTools {
       },
     ];
   }
+
+  /* =========================================================================
+   * NINJO-ERWEITERUNG: Szenen anlegen und pflegen
+   * ========================================================================= */
+
+  async handleCreateScene(args: any): Promise<any> {
+    const schema = z.object({
+      name: z.string().min(1),
+      background: z.string().min(1),
+      folderPath: z.string().optional(),
+      templateName: z.string().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
+      padding: z.number().optional(),
+      gridSize: z.number().optional(),
+      navigation: z.boolean().optional(),
+      activate: z.boolean().optional(),
+    });
+
+    const params = schema.parse(args);
+    this.logger.info('Creating scene', { name: params.name, background: params.background });
+
+    try {
+      const result = await this.foundryClient.query('foundry-mcp-bridge.createScene', params);
+
+      const lines = [
+        `Szene angelegt: ${result.name}`,
+        `Id: ${result.id}`,
+        `Groesse: ${result.width}x${result.height}${result.probed ? ' (aus der Datei gemessen)' : ''}`,
+        result.template ? `Vorlage: ${result.template}` : 'Vorlage: keine',
+        result.folder ? `Ordner-Id: ${result.folder}` : 'Ordner: keiner',
+      ];
+
+      return { content: [{ type: 'text', text: lines.join('\n') }] };
+    } catch (error) {
+      this.logger.error('Failed to create scene', { error });
+      throw new Error(
+        `Szene konnte nicht angelegt werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      );
+    }
+  }
+
+  async handleUpdateScene(args: any): Promise<any> {
+    const schema = z.object({
+      sceneIdentifier: z.string().min(1),
+      name: z.string().optional(),
+      background: z.string().optional(),
+      folderPath: z.string().optional(),
+      width: z.number().optional(),
+      height: z.number().optional(),
+      navigation: z.boolean().optional(),
+    });
+
+    const params = schema.parse(args);
+    this.logger.info('Updating scene', { scene: params.sceneIdentifier });
+
+    try {
+      const result = await this.foundryClient.query('foundry-mcp-bridge.updateScene', params);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Szene "${result.name}" geaendert (${result.changed.join(', ')})`,
+          },
+        ],
+      };
+    } catch (error) {
+      this.logger.error('Failed to update scene', { error });
+      throw new Error(
+        `Szene konnte nicht geaendert werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      );
+    }
+  }
+
+  async handleListSceneFolders(): Promise<any> {
+    try {
+      const result = await this.foundryClient.query('foundry-mcp-bridge.listSceneFolders');
+      const folders = result?.folders || [];
+
+      if (!folders.length) {
+        return { content: [{ type: 'text', text: 'Keine Szenenordner vorhanden.' }] };
+      }
+
+      const text = folders
+        .map((f: any) => `${f.path}  (${f.scenes} Szenen, Id ${f.id})`)
+        .join('\n');
+
+      return { content: [{ type: 'text', text }] };
+    } catch (error) {
+      this.logger.error('Failed to list scene folders', { error });
+      throw new Error(
+        `Szenenordner konnten nicht gelesen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      );
+    }
+  }
+
+  async handleDeleteScene(args: any): Promise<any> {
+    const schema = z.object({ sceneId: z.string().min(1) });
+    const params = schema.parse(args);
+    this.logger.info('Deleting scene', params);
+
+    try {
+      const result = await this.foundryClient.query('foundry-mcp-bridge.deleteScene', params);
+      return { content: [{ type: 'text', text: `Szene "${result.name}" geloescht.` }] };
+    } catch (error) {
+      this.logger.error('Failed to delete scene', { error });
+      throw new Error(
+        `Szene konnte nicht geloescht werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      );
+    }
+  }
+
+  /* ================= ENDE NINJO-ERWEITERUNG ================= */
 
   async handleGetCurrentScene(args: any): Promise<any> {
     const schema = z.object({

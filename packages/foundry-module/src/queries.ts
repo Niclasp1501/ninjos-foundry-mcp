@@ -43,6 +43,12 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.list-scenes`] = this.handleListScenes.bind(this);
     CONFIG.queries[`${modulePrefix}.switch-scene`] = this.handleSwitchScene.bind(this);
 
+    // NINJO-ERWEITERUNG: Szenen anlegen und pflegen
+    CONFIG.queries[`${modulePrefix}.createScene`] = this.handleCreateScene.bind(this);
+    CONFIG.queries[`${modulePrefix}.updateScene`] = this.handleUpdateScene.bind(this);
+    CONFIG.queries[`${modulePrefix}.listSceneFolders`] = this.handleListSceneFolders.bind(this);
+    CONFIG.queries[`${modulePrefix}.deleteScene`] = this.handleDeleteScene.bind(this);
+
     // World queries
     CONFIG.queries[`${modulePrefix}.getWorldInfo`] = this.handleGetWorldInfo.bind(this);
 
@@ -570,6 +576,108 @@ export class QueryHandlers {
       );
     }
   }
+
+  /* =========================================================================
+   * NINJO-ERWEITERUNG: Szenen anlegen und pflegen
+   * ========================================================================= */
+
+  /**
+   * Handle scene creation from an existing image or video
+   */
+  async handleCreateScene(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+
+      if (!data.name) throw new Error('name is required');
+      if (!data.background) throw new Error('background is required');
+
+      return await this.dataAccess.createScene({
+        name: data.name,
+        background: data.background,
+        folderPath: data.folderPath,
+        templateName: data.templateName,
+        width: data.width,
+        height: data.height,
+        padding: data.padding,
+        gridSize: data.gridSize,
+        navigation: data.navigation,
+        activate: data.activate,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to create scene: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Handle scene update
+   */
+  async handleUpdateScene(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+
+      if (!data.sceneIdentifier) throw new Error('sceneIdentifier is required');
+
+      return await this.dataAccess.updateScene({
+        sceneIdentifier: data.sceneIdentifier,
+        name: data.name,
+        background: data.background,
+        folderPath: data.folderPath,
+        width: data.width,
+        height: data.height,
+        navigation: data.navigation,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to update scene: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Handle listing of scene folders
+   */
+  async handleListSceneFolders(): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+
+      return { folders: await this.dataAccess.listSceneFolders() };
+    } catch (error) {
+      throw new Error(
+        `Failed to list scene folders: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Handle scene deletion
+   */
+  async handleDeleteScene(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+      if (!data.sceneId) throw new Error('sceneId is required');
+      return await this.dataAccess.deleteScene(data.sceneId);
+    } catch (error) {
+      throw new Error(
+        `Failed to delete scene: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /* ================= ENDE NINJO-ERWEITERUNG ================= */
 
   /**
    * Handle journal entry creation
