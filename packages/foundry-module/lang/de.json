@@ -108,6 +108,15 @@
       "heartbeatInterval": {
         "name": "Meldungen · Prüfintervall der Verbindung",
         "hint": "Abstand in Sekunden, in dem die Verbindung überprüft wird."
+      },
+      "permCompendiums": {
+        "name": "Rechte · Kompendien",
+        "hint": "Eigene Weltkompendien anlegen, befüllen und sortieren. Kompendien aus Modulen und Systemen bleiben unberührt.",
+        "choices": {
+          "read": "Nur lesen",
+          "write": "Anlegen und ändern",
+          "full": "Anlegen, ändern und löschen"
+        }
       }
     },
     "menus": {

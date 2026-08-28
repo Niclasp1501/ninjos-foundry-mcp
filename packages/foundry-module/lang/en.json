@@ -108,6 +108,15 @@
           "write": "Create and update",
           "full": "Create, update and delete"
         }
+      },
+      "permCompendiums": {
+        "name": "Permissions · Compendiums",
+        "hint": "Create, fill and organise your own world compendiums. Compendiums from modules and systems are left alone.",
+        "choices": {
+          "read": "Read only",
+          "write": "Create and update",
+          "full": "Create, update and delete"
+        }
       }
     },
     "menus": {

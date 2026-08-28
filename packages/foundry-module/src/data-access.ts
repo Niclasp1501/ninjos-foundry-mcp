@@ -8161,7 +8161,7 @@ export class FoundryDataAccess {
    * Namen, damit klar ist, was einzuschalten waere.
    */
   private assertAllowed(
-    kind: 'Scenes' | 'Playlists' | 'Journals' | 'RollTables' | 'Actors' | 'Folders',
+    kind: 'Scenes' | 'Playlists' | 'Journals' | 'RollTables' | 'Actors' | 'Folders' | 'Compendiums',
     action: 'create' | 'update' | 'delete'
   ): void {
     const labels: Record<string, string> = {
@@ -8171,6 +8171,7 @@ export class FoundryDataAccess {
       RollTables: 'Zufallstabellen',
       Actors: 'Akteure',
       Folders: 'Ordner',
+      Compendiums: 'Kompendien',
     };
     const actions: Record<string, string> = {
       create: 'Anlegen',
@@ -9043,7 +9044,15 @@ export class FoundryDataAccess {
   async getPermissions(): Promise<any> {
     this.validateFoundryState();
 
-    const kinds = ['Scenes', 'Playlists', 'Journals', 'RollTables', 'Actors', 'Folders'];
+    const kinds = [
+      'Scenes',
+      'Playlists',
+      'Journals',
+      'RollTables',
+      'Actors',
+      'Folders',
+      'Compendiums',
+    ];
     const labels: Record<string, string> = {
       Scenes: 'Szenen',
       Playlists: 'Wiedergabelisten',
@@ -9051,6 +9060,7 @@ export class FoundryDataAccess {
       RollTables: 'Zufallstabellen',
       Actors: 'Akteure',
       Folders: 'Ordner',
+      Compendiums: 'Kompendien',
     };
 
     let writeMaster = true;
@@ -9079,6 +9089,269 @@ export class FoundryDataAccess {
         };
       }),
     };
+  }
+
+  /* ---------------------------- Kompendien ---------------------------- */
+
+  /**
+   * Kompendien auflisten, mit Sperrstatus und Herkunft.
+   *
+   * Die Unterscheidung ist wichtig: Kompendien aus einem Modul oder System
+   * gehoeren nicht uns und werden nur gelesen. Nur Weltkompendien sind eigene
+   * und duerfen beschrieben werden.
+   */
+  async listCompendiums(): Promise<any> {
+    this.validateFoundryState();
+
+    const packs = Array.from((game.packs as any) ?? []) as any[];
+
+    return {
+      compendiums: packs.map((p: any) => ({
+        id: p.collection,
+        label: p.metadata?.label ?? p.title,
+        type: p.documentName,
+        locked: p.locked === true,
+        packageType: p.metadata?.packageType ?? 'unknown',
+        ownWorld: (p.metadata?.packageType ?? '') === 'world',
+        entries: p.index?.size ?? 0,
+      })),
+      total: packs.length,
+    };
+  }
+
+  /**
+   * Eigenes Weltkompendium anlegen.
+   */
+  async createCompendium(request: {
+    label: string;
+    type: string;
+  }): Promise<{ id: string; label: string; type: string }> {
+    this.validateFoundryState();
+    this.assertAllowed('Compendiums', 'create');
+
+    if (!request.label?.trim()) throw new Error('label ist erforderlich');
+
+    const erlaubt = [
+      'Actor',
+      'Item',
+      'Scene',
+      'JournalEntry',
+      'RollTable',
+      'Playlist',
+      'Macro',
+      'Cards',
+      'Adventure',
+    ];
+    if (!erlaubt.includes(request.type)) {
+      throw new Error(`type muss einer von: ${erlaubt.join(', ')}`);
+    }
+
+    const cls: any = (globalThis as any).CompendiumCollection;
+    if (!cls?.createCompendium) {
+      throw new Error('CompendiumCollection.createCompendium steht nicht zur Verfuegung');
+    }
+
+    const pack: any = await cls.createCompendium({
+      label: request.label.trim(),
+      type: request.type,
+    });
+    if (!pack) throw new Error('Kompendium konnte nicht angelegt werden');
+
+    this.auditLog('createCompendium', request, 'success');
+    return {
+      id: pack.collection ?? pack.metadata?.id,
+      label: pack.metadata?.label ?? request.label,
+      type: request.type,
+    };
+  }
+
+  /**
+   * Sammlung der Welt zu einer Dokumentart holen.
+   */
+  private weltSammlung(documentType: string): any {
+    const zuordnung: Record<string, any> = {
+      JournalEntry: game.journal,
+      Scene: game.scenes,
+      Actor: game.actors,
+      RollTable: game.tables,
+      Playlist: game.playlists,
+      Item: game.items,
+      Macro: game.macros,
+    };
+    return zuordnung[documentType] ?? null;
+  }
+
+  /**
+   * Dokumente aus der Welt in ein Kompendium sichern.
+   *
+   * Gesperrte Kompendien werden nicht angefasst. Entsperrt wird nur auf
+   * ausdrueckliches Verlangen, und der vorherige Zustand wird danach
+   * wiederhergestellt: Die Sperre ist eine Schutzmassnahme und darf nicht
+   * stillschweigend verschwinden.
+   */
+  async exportToCompendium(request: {
+    packId: string;
+    documentType: string;
+    names?: string[];
+    folderName?: string;
+    unlockIfNeeded?: boolean;
+  }): Promise<{ pack: string; exported: string[]; skipped: string[] }> {
+    this.validateFoundryState();
+    this.assertAllowed('Compendiums', 'update');
+
+    const pack: any = game.packs?.get(request.packId);
+    if (!pack) throw new Error(`Kompendium "${request.packId}" nicht gefunden`);
+
+    if (pack.documentName !== request.documentType) {
+      throw new Error(
+        `"${request.packId}" nimmt ${pack.documentName} auf, nicht ${request.documentType}`
+      );
+    }
+
+    const warLocked = pack.locked === true;
+    if (warLocked) {
+      if (!request.unlockIfNeeded) {
+        throw new Error(
+          `"${request.packId}" ist gesperrt. Mit unlockIfNeeded=true wird die Sperre nur fuer ` +
+            `diesen Vorgang geloest und danach wiederhergestellt.`
+        );
+      }
+      await pack.configure({ locked: false });
+    }
+
+    try {
+      const sammlung = this.weltSammlung(request.documentType);
+      if (!sammlung) throw new Error(`Art "${request.documentType}" wird nicht unterstuetzt`);
+
+      let kandidaten: any[] = Array.from(sammlung as any);
+
+      if (request.folderName) {
+        kandidaten = kandidaten.filter((d: any) => d.folder?.name === request.folderName);
+        if (!kandidaten.length) {
+          throw new Error(`Kein ${request.documentType} im Ordner "${request.folderName}"`);
+        }
+      }
+
+      if (request.names?.length) {
+        const gesucht = request.names.map(n => n.toLowerCase());
+        kandidaten = kandidaten.filter(
+          (d: any) => gesucht.includes((d.name ?? '').toLowerCase()) || gesucht.includes(d.id)
+        );
+      }
+
+      if (!kandidaten.length) throw new Error('Nichts zum Sichern gefunden');
+
+      const exported: string[] = [];
+      const skipped: string[] = [];
+
+      for (const doc of kandidaten) {
+        try {
+          await pack.importDocument(doc);
+          exported.push(doc.name);
+        } catch (error) {
+          console.warn(`[${this.moduleId}] "${doc.name}" nicht gesichert:`, error);
+          skipped.push(doc.name);
+        }
+      }
+
+      this.auditLog('exportToCompendium', request, 'success');
+      return { pack: pack.metadata?.label ?? request.packId, exported, skipped };
+    } finally {
+      if (warLocked) {
+        try {
+          await pack.configure({ locked: true });
+        } catch (error) {
+          console.warn(`[${this.moduleId}] Sperre nicht wiederhergestellt:`, error);
+        }
+      }
+    }
+  }
+
+  /**
+   * Sperre eines eigenen Weltkompendiums setzen oder loesen.
+   */
+  async setCompendiumLock(
+    packId: string,
+    locked: boolean
+  ): Promise<{ pack: string; locked: boolean }> {
+    this.validateFoundryState();
+    this.assertAllowed('Compendiums', 'update');
+
+    const pack: any = game.packs?.get(packId);
+    if (!pack) throw new Error(`Kompendium "${packId}" nicht gefunden`);
+
+    if ((pack.metadata?.packageType ?? '') !== 'world') {
+      throw new Error(
+        `"${packId}" gehoert zu einem Modul oder System und wird nicht veraendert. ` +
+          `Nur eigene Weltkompendien duerfen bearbeitet werden.`
+      );
+    }
+
+    await pack.configure({ locked });
+    this.auditLog('setCompendiumLock', { packId, locked }, 'success');
+    return { pack: pack.metadata?.label ?? packId, locked };
+  }
+
+  /**
+   * Eintraege eines Kompendiums in einen Ordner einsortieren.
+   */
+  async organizeCompendium(request: {
+    packId: string;
+    folderName: string;
+    entryNames: string[];
+    unlockIfNeeded?: boolean;
+  }): Promise<{ pack: string; folder: string; moved: string[] }> {
+    this.validateFoundryState();
+    this.assertAllowed('Compendiums', 'update');
+
+    const pack: any = game.packs?.get(request.packId);
+    if (!pack) throw new Error(`Kompendium "${request.packId}" nicht gefunden`);
+
+    const warLocked = pack.locked === true;
+    if (warLocked) {
+      if (!request.unlockIfNeeded) {
+        throw new Error(`"${request.packId}" ist gesperrt. unlockIfNeeded=true setzen.`);
+      }
+      await pack.configure({ locked: false });
+    }
+
+    try {
+      let ordner: any = pack.folders?.find((f: any) => f.name === request.folderName);
+      if (!ordner) {
+        ordner = await Folder.create(
+          { name: request.folderName, type: pack.documentName, color: '#8b0000' } as any,
+          { pack: request.packId } as any
+        );
+      }
+      if (!ordner?.id) throw new Error('Ordner konnte nicht angelegt werden');
+
+      const index = await pack.getIndex();
+      const moved: string[] = [];
+
+      for (const name of request.entryNames) {
+        const treffer: any =
+          index.find((e: any) => (e.name ?? '').toLowerCase() === name.toLowerCase()) ??
+          index.find((e: any) => (e.name ?? '').toLowerCase().includes(name.toLowerCase()));
+        if (!treffer) continue;
+
+        const doc: any = await pack.getDocument(treffer._id);
+        if (doc?.update) {
+          await doc.update({ folder: ordner.id });
+          moved.push(doc.name);
+        }
+      }
+
+      this.auditLog('organizeCompendium', request, 'success');
+      return { pack: pack.metadata?.label ?? request.packId, folder: request.folderName, moved };
+    } finally {
+      if (warLocked) {
+        try {
+          await pack.configure({ locked: true });
+        } catch {
+          /* wird oben protokolliert */
+        }
+      }
+    }
   }
 
   /* ================= ENDE NINJO-ERWEITERUNG ================= */

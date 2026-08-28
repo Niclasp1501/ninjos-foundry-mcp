@@ -180,6 +180,90 @@ export class NinjoCampaignTools {
         },
       },
       {
+        name: 'list-compendiums',
+        description:
+          'List every compendium with its type, entry count, lock state and where it comes from. Only compendiums belonging to the world can be written to; ones shipped by a module or system are read-only by nature. Call this before exporting to find the right pack id.',
+        inputSchema: { type: 'object', properties: {} },
+      },
+      {
+        name: 'create-compendium',
+        description:
+          'Create a new world compendium, for example to archive a finished chapter of a campaign. Choose the document type it will hold.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            label: {
+              type: 'string',
+              description: 'Display name, e.g. "Geheimnisse der Abgruende, Akt 0"',
+            },
+            type: {
+              type: 'string',
+              description:
+                'What it holds: Actor, Item, Scene, JournalEntry, RollTable, Playlist, Macro, Cards or Adventure',
+            },
+          },
+          required: ['label', 'type'],
+        },
+      },
+      {
+        name: 'export-to-compendium',
+        description:
+          'Copy documents from the world into a compendium, to archive finished material. Select what to copy by name or by the folder they sit in; without either, everything of that type is copied. A locked compendium is refused unless unlockIfNeeded is set, in which case the lock is lifted for this operation only and restored afterwards.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            packId: { type: 'string', description: 'Target compendium id' },
+            documentType: {
+              type: 'string',
+              description: 'JournalEntry, Scene, Actor, RollTable, Playlist, Item or Macro',
+            },
+            names: {
+              type: 'array',
+              description: 'Names or ids to copy. Omit to take everything of that type.',
+              items: { type: 'string' },
+            },
+            folderName: { type: 'string', description: 'Only documents sitting in this folder' },
+            unlockIfNeeded: {
+              type: 'boolean',
+              description: 'Lift the lock for this operation and restore it afterwards',
+            },
+          },
+          required: ['packId', 'documentType'],
+        },
+      },
+      {
+        name: 'set-compendium-lock',
+        description:
+          'Lock or unlock one of your own world compendiums. Compendiums from modules or systems are refused, because they are not yours to change.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            packId: { type: 'string', description: 'Compendium id' },
+            locked: { type: 'boolean', description: 'true locks, false unlocks' },
+          },
+          required: ['packId', 'locked'],
+        },
+      },
+      {
+        name: 'organize-compendium',
+        description:
+          'Sort entries of a compendium into a folder, creating the folder if needed. Use this to bring order into an archive that has grown. Same lock rules as export-to-compendium.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            packId: { type: 'string', description: 'Compendium id' },
+            folderName: { type: 'string', description: 'Folder to move the entries into' },
+            entryNames: {
+              type: 'array',
+              description: 'Names of the entries to move',
+              items: { type: 'string' },
+            },
+            unlockIfNeeded: { type: 'boolean' },
+          },
+          required: ['packId', 'folderName', 'entryNames'],
+        },
+      },
+      {
         name: 'refresh-scene-thumb',
         description:
           'Regenerate the thumbnail of a scene. After swapping a background the sidebar keeps showing the old picture until this runs.',
@@ -364,6 +448,109 @@ export class NinjoCampaignTools {
     const params = schema.parse(args);
     const result = await this.foundryClient.query('foundry-mcp-bridge.deleteRollTable', params);
     return { content: [{ type: 'text', text: `Zufallstabelle "${result.name}" geloescht.` }] };
+  }
+
+  async handleListCompendiums(): Promise<any> {
+    const result = await this.foundryClient.query('foundry-mcp-bridge.listCompendiums');
+    const packs = result?.compendiums ?? [];
+
+    if (!packs.length) {
+      return { content: [{ type: 'text', text: 'Keine Kompendien vorhanden.' }] };
+    }
+
+    const eigene = packs.filter((p: any) => p.ownWorld);
+    const fremde = packs.filter((p: any) => !p.ownWorld);
+
+    const zeile = (p: any) =>
+      `  ${p.label}  [${p.id}]  ${p.type}, ${p.entries} Eintraege${p.locked ? ', gesperrt' : ''}`;
+
+    const teile: string[] = [];
+    if (eigene.length) {
+      teile.push('Eigene Weltkompendien (beschreibbar):');
+      teile.push(eigene.map(zeile).join('\n'));
+    }
+    if (fremde.length) {
+      teile.push('');
+      teile.push(`Aus Modulen und Systemen (nur lesen): ${fremde.length} Stueck`);
+    }
+
+    return { content: [{ type: 'text', text: teile.join('\n') }] };
+  }
+
+  async handleCreateCompendium(args: any): Promise<any> {
+    const schema = z.object({ label: z.string().min(1), type: z.string().min(1) });
+    const params = schema.parse(args);
+    this.logger.info('Creating compendium', params);
+
+    const result = await this.foundryClient.query('foundry-mcp-bridge.createCompendium', params);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Kompendium "${result.label}" angelegt (${result.type})\nId: ${result.id}`,
+        },
+      ],
+    };
+  }
+
+  async handleExportToCompendium(args: any): Promise<any> {
+    const schema = z.object({
+      packId: z.string().min(1),
+      documentType: z.string().min(1),
+      names: z.array(z.string()).optional(),
+      folderName: z.string().optional(),
+      unlockIfNeeded: z.boolean().optional(),
+    });
+    const params = schema.parse(args);
+    this.logger.info('Exporting to compendium', { pack: params.packId });
+
+    const result = await this.foundryClient.query('foundry-mcp-bridge.exportToCompendium', params);
+
+    const zeilen = [`Nach "${result.pack}" gesichert: ${result.exported.length} Eintraege`];
+    if (result.exported.length)
+      zeilen.push(result.exported.map((n: string) => `  ${n}`).join('\n'));
+    if (result.skipped?.length) {
+      zeilen.push(`Uebersprungen: ${result.skipped.join(', ')}`);
+    }
+
+    return { content: [{ type: 'text', text: zeilen.join('\n') }] };
+  }
+
+  async handleSetCompendiumLock(args: any): Promise<any> {
+    const schema = z.object({ packId: z.string().min(1), locked: z.boolean() });
+    const params = schema.parse(args);
+
+    const result = await this.foundryClient.query('foundry-mcp-bridge.setCompendiumLock', params);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `"${result.pack}" ist jetzt ${result.locked ? 'gesperrt' : 'entsperrt'}.`,
+        },
+      ],
+    };
+  }
+
+  async handleOrganizeCompendium(args: any): Promise<any> {
+    const schema = z.object({
+      packId: z.string().min(1),
+      folderName: z.string().min(1),
+      entryNames: z.array(z.string()).min(1),
+      unlockIfNeeded: z.boolean().optional(),
+    });
+    const params = schema.parse(args);
+
+    const result = await this.foundryClient.query('foundry-mcp-bridge.organizeCompendium', params);
+    return {
+      content: [
+        {
+          type: 'text',
+          text:
+            `In "${result.pack}" nach "${result.folder}" verschoben: ` +
+            `${result.moved.length} Eintraege${result.moved.length ? '\n  ' + result.moved.join('\n  ') : ''}`,
+        },
+      ],
+    };
   }
 
   async handleRefreshSceneThumb(args: any): Promise<any> {

@@ -334,6 +334,20 @@ export class ModuleSettings {
       default: 'write',
     });
 
+    game.settings.register(this.moduleId, 'permCompendiums', {
+      name: 'foundry-mcp-bridge.settings.permCompendiums.name',
+      hint: 'foundry-mcp-bridge.settings.permCompendiums.hint',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        read: 'foundry-mcp-bridge.settings.permCompendiums.choices.read',
+        write: 'foundry-mcp-bridge.settings.permCompendiums.choices.write',
+        full: 'foundry-mcp-bridge.settings.permCompendiums.choices.full',
+      },
+      default: 'write',
+    });
+
     game.settings.register(this.moduleId, 'permFolders', {
       name: 'foundry-mcp-bridge.settings.permFolders.name',
       hint: 'foundry-mcp-bridge.settings.permFolders.hint',

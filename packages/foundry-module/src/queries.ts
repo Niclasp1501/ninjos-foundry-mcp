@@ -59,6 +59,11 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.deletePlaylist`] = this.handleDeletePlaylist.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteRollTable`] = this.handleDeleteRollTable.bind(this);
     CONFIG.queries[`${modulePrefix}.getPermissions`] = this.handleGetPermissions.bind(this);
+    CONFIG.queries[`${modulePrefix}.listCompendiums`] = this.handleListCompendiums.bind(this);
+    CONFIG.queries[`${modulePrefix}.createCompendium`] = this.handleCreateCompendium.bind(this);
+    CONFIG.queries[`${modulePrefix}.exportToCompendium`] = this.handleExportToCompendium.bind(this);
+    CONFIG.queries[`${modulePrefix}.setCompendiumLock`] = this.handleSetCompendiumLock.bind(this);
+    CONFIG.queries[`${modulePrefix}.organizeCompendium`] = this.handleOrganizeCompendium.bind(this);
 
     // World queries
     CONFIG.queries[`${modulePrefix}.getWorldInfo`] = this.handleGetWorldInfo.bind(this);
@@ -838,6 +843,88 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to read permissions: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleListCompendiums(): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      return await this.dataAccess.listCompendiums();
+    } catch (error) {
+      throw new Error(
+        `Failed to list compendiums: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleCreateCompendium(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.label) throw new Error('label is required');
+      if (!data.type) throw new Error('type is required');
+      return await this.dataAccess.createCompendium({ label: data.label, type: data.type });
+    } catch (error) {
+      throw new Error(
+        `Failed to create compendium: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleExportToCompendium(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.packId) throw new Error('packId is required');
+      if (!data.documentType) throw new Error('documentType is required');
+      return await this.dataAccess.exportToCompendium({
+        packId: data.packId,
+        documentType: data.documentType,
+        names: data.names,
+        folderName: data.folderName,
+        unlockIfNeeded: data.unlockIfNeeded,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to export to compendium: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleSetCompendiumLock(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.packId) throw new Error('packId is required');
+      if (typeof data.locked !== 'boolean') throw new Error('locked must be true or false');
+      return await this.dataAccess.setCompendiumLock(data.packId, data.locked);
+    } catch (error) {
+      throw new Error(
+        `Failed to set compendium lock: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleOrganizeCompendium(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.packId) throw new Error('packId is required');
+      if (!data.folderName) throw new Error('folderName is required');
+      if (!Array.isArray(data.entryNames) || !data.entryNames.length) {
+        throw new Error('entryNames is required');
+      }
+      return await this.dataAccess.organizeCompendium({
+        packId: data.packId,
+        folderName: data.folderName,
+        entryNames: data.entryNames,
+        unlockIfNeeded: data.unlockIfNeeded,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to organize compendium: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

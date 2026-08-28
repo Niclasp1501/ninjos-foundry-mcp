@@ -1653,6 +1653,31 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'list-compendiums':
+                  result = await ninjoCampaignTools.handleListCompendiums();
+
+                  break;
+
+                case 'create-compendium':
+                  result = await ninjoCampaignTools.handleCreateCompendium(args);
+
+                  break;
+
+                case 'export-to-compendium':
+                  result = await ninjoCampaignTools.handleExportToCompendium(args);
+
+                  break;
+
+                case 'set-compendium-lock':
+                  result = await ninjoCampaignTools.handleSetCompendiumLock(args);
+
+                  break;
+
+                case 'organize-compendium':
+                  result = await ninjoCampaignTools.handleOrganizeCompendium(args);
+
+                  break;
+
                 case 'get-world-info':
                   result = await sceneTools.handleGetWorldInfo(args);
 
