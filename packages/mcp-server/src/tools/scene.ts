@@ -25,7 +25,7 @@ export class SceneTools {
       {
         name: 'create-scene',
         description:
-          'Create a Foundry scene from an image or video that already exists in the Foundry data directory. Use this for background art, location scenes and battlemaps you generated or uploaded yourself. Dimensions are measured from the file automatically. Pass templateName to copy the settings of an existing scene (grid, lighting, module flags) without ever reusing its id, so nothing gets overwritten. folderPath accepts nested paths like "Orte/Neverwinter"; missing folders are created.',
+          'Create a Foundry scene from an image or video that already exists in the Foundry data directory. Use this for background art, location scenes and battlemaps you generated or uploaded yourself. Dimensions are measured from the file automatically. Pass templateName to copy the settings of an existing scene (grid, lighting, module flags) without ever reusing its id, so nothing gets overwritten. folderPath accepts nested paths like "Orte/Neverwinter"; missing folders are created. journalIdentifier links a journal entry to the scene, optionally opening one page of it.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -56,6 +56,15 @@ export class SceneTools {
               type: 'boolean',
               description: 'Show in the scene navigation bar (default false)',
             },
+            journalIdentifier: {
+              type: 'string',
+              description:
+                'Journal to link to the scene, by name or id. Foundry shows it as the scene journal, which is different from a note placed on the map. An empty string removes the link.',
+            },
+            journalPageName: {
+              type: 'string',
+              description: 'Open this page of the journal, by name or id',
+            },
             activate: { type: 'boolean', description: 'Activate the scene right away' },
           },
           required: ['name', 'background'],
@@ -64,7 +73,7 @@ export class SceneTools {
       {
         name: 'update-scene',
         description:
-          'Update an existing scene: rename it, swap its background image or video, move it to another folder, change its dimensions or navigation. When a new background is set and no dimensions are given, the new dimensions are measured from the file.',
+          'Update an existing scene: rename it, swap its background image or video, move it to another folder, change its dimensions or navigation. When a new background is set and no dimensions are given, the new dimensions are measured from the file. journalIdentifier links or, when empty, unlinks the scene journal.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -85,6 +94,15 @@ export class SceneTools {
             width: { type: 'number' },
             height: { type: 'number' },
             navigation: { type: 'boolean' },
+            journalIdentifier: {
+              type: 'string',
+              description:
+                'Journal to link to the scene, by name or id. Foundry shows it as the scene journal, which is different from a note placed on the map. An empty string removes the link.',
+            },
+            journalPageName: {
+              type: 'string',
+              description: 'Open this page of the journal, by name or id',
+            },
           },
           required: ['sceneIdentifier'],
         },
@@ -155,6 +173,8 @@ export class SceneTools {
       gridSize: z.number().optional(),
       navigation: z.boolean().optional(),
       activate: z.boolean().optional(),
+      journalIdentifier: z.string().optional(),
+      journalPageName: z.string().optional(),
     });
 
     const params = schema.parse(args);
@@ -170,6 +190,7 @@ export class SceneTools {
         result.template ? `Vorlage: ${result.template}` : 'Vorlage: keine',
         result.folder ? `Ordner-Id: ${result.folder}` : 'Ordner: keiner',
       ];
+      if (result.journal) lines.push(`Journal: ${result.journal}`);
 
       return { content: [{ type: 'text', text: lines.join('\n') }] };
     } catch (error) {
@@ -191,6 +212,8 @@ export class SceneTools {
       width: z.number().optional(),
       height: z.number().optional(),
       navigation: z.boolean().optional(),
+      journalIdentifier: z.string().optional(),
+      journalPageName: z.string().optional(),
     });
 
     const params = schema.parse(args);

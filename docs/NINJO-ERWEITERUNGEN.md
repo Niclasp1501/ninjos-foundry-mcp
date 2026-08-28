@@ -225,6 +225,24 @@ lassen sich hierüber nicht entfernen; die Fehlermeldung sagt das auch.
 
 ---
 
+### Journal an die Szene hängen (29.08.2026)
+
+Foundry kennt zwei verschiedene Verbindungen zwischen Szene und Journal, und
+sie werden leicht verwechselt:
+
+- **Das Szenenjournal** (`scene.journal`, in der Szenenkonfiguration das Feld
+  _Journaleintrag_). Es gehört zur ganzen Szene und öffnet sich über die
+  Seitenleiste. `create-scene` und `update-scene` setzen es jetzt über
+  `journalIdentifier`, wahlweise mit `journalPageName` auf eine bestimmte
+  Seite. Ein leerer Bezeichner löst die Verbindung wieder.
+- **Eine Notiz auf der Karte** (`create-scene-note`). Das ist ein Buchsymbol an
+  einer Koordinate, für einzelne Orte innerhalb einer Karte.
+
+Beim Bauen aus einer Vorlage werden `journal` und `journalEntryPage` jetzt
+mitentfernt — sonst erbt jede neue Szene die Verknüpfung der Vorlage.
+
+---
+
 ### Was bewusst nicht gebaut wurde
 
 **Dateien hochladen.** Der Weg dafür wäre der Datenkanal zwischen Server und

@@ -8577,6 +8577,8 @@ export class FoundryDataAccess {
     gridSize?: number;
     navigation?: boolean;
     activate?: boolean;
+    journalIdentifier?: string;
+    journalPageName?: string;
   }): Promise<{
     id: string;
     name: string;
@@ -8586,6 +8588,7 @@ export class FoundryDataAccess {
     template: string | null;
     probed: boolean;
     levelPatched: boolean;
+    journal: string | null;
   }> {
     this.validateFoundryState();
     this.assertAllowed('Scenes', 'create');
@@ -8645,6 +8648,9 @@ export class FoundryDataAccess {
       'regions',
       'levels',
       'initialLevel',
+      // Sonst erbt jede aus einer Vorlage gebaute Szene deren Journal
+      'journal',
+      'journalEntryPage',
     ]) {
       delete base[key];
     }
@@ -8667,6 +8673,16 @@ export class FoundryDataAccess {
         size: request.gridSize ?? base.grid?.size ?? 100,
       },
     };
+
+    let journalBeschreibung: string | null = null;
+    if (request.journalIdentifier?.trim()) {
+      const { patch, beschreibung } = this.journalPatchFuerSzene(
+        request.journalIdentifier,
+        request.journalPageName
+      );
+      Object.assign(sceneData, patch);
+      journalBeschreibung = beschreibung;
+    }
 
     const scene: any = await Scene.create(sceneData);
     if (!scene) throw new Error('Szene konnte nicht angelegt werden');
@@ -8743,6 +8759,7 @@ export class FoundryDataAccess {
       template: template?.name ?? null,
       probed,
       levelPatched,
+      journal: journalBeschreibung,
     };
   }
 
@@ -8759,6 +8776,8 @@ export class FoundryDataAccess {
     width?: number;
     height?: number;
     navigation?: boolean;
+    journalIdentifier?: string;
+    journalPageName?: string;
   }): Promise<{ id: string; name: string; changed: string[] }> {
     this.validateFoundryState();
     this.assertAllowed('Scenes', 'update');
@@ -8808,6 +8827,14 @@ export class FoundryDataAccess {
     if (request.navigation !== undefined) {
       update.navigation = request.navigation;
       changed.push('navigation');
+    }
+    if (request.journalIdentifier !== undefined) {
+      const { patch, beschreibung } = this.journalPatchFuerSzene(
+        request.journalIdentifier,
+        request.journalPageName
+      );
+      Object.assign(update, patch);
+      changed.push(`journal (${beschreibung})`);
     }
 
     if (!changed.length && !request.backgroundColor) {
@@ -9124,6 +9151,49 @@ export class FoundryDataAccess {
    * Eine Journalseite als Stecknadel auf einer Szene verankern.
    * Koordinaten sind Bildpunkte auf der Szene.
    */
+  /**
+   * Journal und optional eine Seite daraus auf die Szeneneigenschaften
+   * abbilden. Foundry zeigt das verknuepfte Journal, sobald die Szene
+   * betrachtet wird - das ist etwas anderes als eine Notiz auf der Karte.
+   *
+   * Ein leerer Bezeichner loest die Verknuepfung wieder.
+   */
+  private journalPatchFuerSzene(
+    journalIdentifier: string,
+    pageName?: string
+  ): { patch: any; beschreibung: string } {
+    if (!journalIdentifier.trim()) {
+      return { patch: { journal: null, journalEntryPage: null }, beschreibung: 'geloest' };
+    }
+
+    const journal: any =
+      game.journal?.get(journalIdentifier) ||
+      game.journal?.find((j: any) => j.name === journalIdentifier);
+    if (!journal) throw new Error(`Journal "${journalIdentifier}" nicht gefunden`);
+
+    let pageId: string | null = null;
+    let beschreibung = journal.name;
+
+    if (pageName?.trim()) {
+      const pages: any[] = journal.pages?.contents ?? journal.pages ?? [];
+      const page =
+        pages.find((p: any) => p.id === pageName) ??
+        pages.find((p: any) => p.name === pageName) ??
+        pages.find((p: any) => p.name?.toLowerCase().includes(pageName.toLowerCase()));
+      if (!page) {
+        throw new Error(
+          `Seite "${pageName}" nicht in "${journal.name}". Vorhanden: ${pages
+            .map((p: any) => p.name)
+            .join(', ')}`
+        );
+      }
+      pageId = page.id;
+      beschreibung = `${journal.name} / ${page.name}`;
+    }
+
+    return { patch: { journal: journal.id, journalEntryPage: pageId }, beschreibung };
+  }
+
   async createSceneNote(request: {
     sceneIdentifier: string;
     journalName: string;

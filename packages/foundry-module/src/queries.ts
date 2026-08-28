@@ -624,6 +624,8 @@ export class QueryHandlers {
         gridSize: data.gridSize,
         navigation: data.navigation,
         activate: data.activate,
+        journalIdentifier: data.journalIdentifier,
+        journalPageName: data.journalPageName,
       });
     } catch (error) {
       throw new Error(
@@ -654,6 +656,8 @@ export class QueryHandlers {
         width: data.width,
         height: data.height,
         navigation: data.navigation,
+        journalIdentifier: data.journalIdentifier,
+        journalPageName: data.journalPageName,
       });
     } catch (error) {
       throw new Error(
