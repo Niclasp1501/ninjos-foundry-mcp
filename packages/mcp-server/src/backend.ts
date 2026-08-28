@@ -1663,6 +1663,11 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'delete-compendium':
+                  result = await ninjoCampaignTools.handleDeleteCompendium(args);
+
+                  break;
+
                 case 'export-to-compendium':
                   result = await ninjoCampaignTools.handleExportToCompendium(args);
 

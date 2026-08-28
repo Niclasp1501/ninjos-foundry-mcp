@@ -9432,6 +9432,60 @@ export class FoundryDataAccess {
   }
 
   /**
+   * Ein Kompendium der Welt samt Inhalt entfernen.
+   *
+   * Loeschen ist der einzige Schritt, der sich nicht zuruecknehmen laesst, und
+   * steht deshalb ab Werk aus: die Einstellung "Kompendien" muss ausdruecklich
+   * auf "Anlegen, aendern und loeschen" stehen. Zusaetzlich muss der Name
+   * mitgeschickt werden, damit eine verwechselte Kennung nicht das falsche
+   * Kompendium trifft. Kompendien aus Modulen und aus dem Spielsystem liegen
+   * nicht in der Welt und lassen sich hierueber nicht entfernen.
+   */
+  async deleteCompendium(request: {
+    packId: string;
+    confirmLabel: string;
+  }): Promise<{ id: string; label: string; entries: number }> {
+    this.validateFoundryState();
+    this.assertAllowed('Compendiums', 'delete');
+
+    const pack: any = game.packs?.get(request.packId);
+    if (!pack) throw new Error(`Kompendium "${request.packId}" nicht gefunden`);
+
+    const art = (pack.metadata?.packageType as string) || 'module';
+    if (art !== 'world') {
+      throw new Error(
+        `"${request.packId}" gehoert zu ${art === 'system' ? 'dem Spielsystem' : 'einem Modul'} ` +
+          `und liegt nicht in dieser Welt. Solche Kompendien werden ueber die Verwaltung der ` +
+          `Module entfernt, nicht hierueber.`
+      );
+    }
+
+    this.assertCompendiumFreigegeben(pack, request.packId);
+
+    const label = pack.metadata?.label ?? request.packId;
+    if ((request.confirmLabel ?? '').trim() !== label) {
+      throw new Error(
+        `Zum Loeschen muss confirmLabel genau "${label}" lauten. So kann eine verwechselte ` +
+          `Kennung nicht das falsche Kompendium treffen.`
+      );
+    }
+
+    const anzahl = pack.index?.size ?? 0;
+
+    if (typeof pack.deleteCompendium !== 'function') {
+      throw new Error('Dieses Kompendium laesst sich nicht ueber die Schnittstelle entfernen');
+    }
+    await pack.deleteCompendium();
+
+    this.auditLog(
+      'deleteCompendium',
+      { packId: request.packId, label, entries: anzahl },
+      'success'
+    );
+    return { id: request.packId, label, entries: anzahl };
+  }
+
+  /**
    * Sammlung der Welt zu einer Dokumentart holen.
    */
   private weltSammlung(documentType: string): any {
@@ -9461,7 +9515,7 @@ export class FoundryDataAccess {
     names?: string[];
     folderName?: string;
     unlockIfNeeded?: boolean;
-  }): Promise<{ pack: string; exported: string[]; skipped: string[] }> {
+  }): Promise<{ pack: string; exported: string[]; replaced: string[]; skipped: string[] }> {
     this.validateFoundryState();
     this.assertAllowed('Compendiums', 'update');
 
@@ -9505,12 +9559,18 @@ export class FoundryDataAccess {
       if (!kandidaten.length) throw new Error('Nichts zum Sichern gefunden');
 
       const exported: string[] = [];
+      const replaced: string[] = [];
       const skipped: string[] = [];
 
       for (const doc of kandidaten) {
+        // Die Kennung bleibt beim Sichern erhalten. Lag der Eintrag schon im
+        // Kompendium, wird er ueberschrieben statt verdoppelt - das gehoert in
+        // die Rueckmeldung, sonst wundert man sich, warum die Anzahl gleich bleibt.
+        const warSchonDa = pack.index?.has?.(doc.id) === true;
         try {
           await pack.importDocument(doc);
-          exported.push(doc.name);
+          if (warSchonDa) replaced.push(doc.name);
+          else exported.push(doc.name);
         } catch (error) {
           console.warn(`[${this.moduleId}] "${doc.name}" nicht gesichert:`, error);
           skipped.push(doc.name);
@@ -9518,7 +9578,7 @@ export class FoundryDataAccess {
       }
 
       this.auditLog('exportToCompendium', request, 'success');
-      return { pack: pack.metadata?.label ?? request.packId, exported, skipped };
+      return { pack: pack.metadata?.label ?? request.packId, exported, replaced, skipped };
     } finally {
       if (warLocked) {
         try {

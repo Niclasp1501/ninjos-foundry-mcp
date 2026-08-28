@@ -61,6 +61,7 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.getPermissions`] = this.handleGetPermissions.bind(this);
     CONFIG.queries[`${modulePrefix}.listCompendiums`] = this.handleListCompendiums.bind(this);
     CONFIG.queries[`${modulePrefix}.createCompendium`] = this.handleCreateCompendium.bind(this);
+    CONFIG.queries[`${modulePrefix}.deleteCompendium`] = this.handleDeleteCompendium.bind(this);
     CONFIG.queries[`${modulePrefix}.exportToCompendium`] = this.handleExportToCompendium.bind(this);
     CONFIG.queries[`${modulePrefix}.setCompendiumLock`] = this.handleSetCompendiumLock.bind(this);
     CONFIG.queries[`${modulePrefix}.organizeCompendium`] = this.handleOrganizeCompendium.bind(this);
@@ -870,6 +871,23 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to create compendium: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleDeleteCompendium(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.packId) throw new Error('packId is required');
+      if (!data.confirmLabel) throw new Error('confirmLabel is required');
+      return await this.dataAccess.deleteCompendium({
+        packId: data.packId,
+        confirmLabel: data.confirmLabel,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to delete compendium: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

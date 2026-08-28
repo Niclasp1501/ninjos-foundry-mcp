@@ -172,6 +172,59 @@ von selbst zu `1d6`.
   aus `SC_Neverwinter_Kerker_Tür` wird `Neverwinter Kerker Tür`. Über `navName`
   auch frei setzbar.
 
+## Kompendien verwalten (28.08.2026)
+
+Fertig gespielte Abschnitte gehören ins Kompendium, nicht in die Welt. Dafür
+gibt es jetzt fünf Werkzeuge — und eine Freigabe, die entscheidet, was davon
+überhaupt angefasst werden darf.
+
+### Wer darf was
+
+Zwei Stellschrauben greifen ineinander:
+
+- Die **Rechtematrix** unter „Kompendien" steht ab Werk auf _Anlegen und
+  ändern_. Löschen verlangt ausdrücklich _Anlegen, ändern und löschen_ — wie
+  bei allen anderen Arten auch.
+- Das Fenster **Kompendien freigeben** legt fest, welche Kompendien gemeint
+  sind. Ist dort nichts angehakt, gilt: jedes entsperrte Kompendium darf
+  bearbeitet werden. Das trifft den Normalfall, denn wer ein Kompendium
+  entsperrt, will daran arbeiten. Wer es enger will, hakt einzeln an.
+
+Gesperrte Kompendien bleiben geschützt. `unlockIfNeeded` löst die Sperre für
+einen einzigen Vorgang und stellt sie danach wieder her — auch dann, wenn der
+Vorgang mittendrin scheitert.
+
+### `create-compendium`, `export-to-compendium`, `organize-compendium`
+
+Anlegen, befüllen, einsortieren. Gesichert wird nach Namen, nach Ordner, oder
+alles einer Art. Es gehen alle Dokumentarten: `JournalEntry`, `Scene`, `Actor`,
+`RollTable`, `Playlist`, `Item`, `Macro`. Bei Szenen kommt der vollständige
+Stand mit — Ebene, Hintergrund, Kacheln, verknüpfte Wiedergabeliste.
+
+**Die Kennung bleibt beim Sichern erhalten.** Lag ein Eintrag schon im
+Kompendium, wird er überschrieben statt verdoppelt, und die Gesamtzahl im
+Kompendium ändert sich nicht. Das ist richtig so — sonst sammelten sich bei
+jedem Sichern Dubletten an — sieht aber wie ein Fehlschlag aus. Die Rückmeldung
+weist deshalb getrennt aus, was neu angelegt und was überschrieben wurde.
+
+### `set-compendium-lock`
+
+Sperren und entsperren. Ein Archiv, das fertig ist, gehört gesperrt.
+
+### `delete-compendium`
+
+Entfernt ein Weltkompendium samt Inhalt. Drei Sicherungen liegen davor:
+
+1. Die Rechtematrix muss auf _löschen_ stehen — ab Werk tut sie das nicht.
+2. Das Kompendium muss freigegeben sein.
+3. `confirmLabel` muss genau der Beschriftung entsprechen. Eine vertippte
+   Kennung trifft so nicht das falsche Kompendium.
+
+Kompendien aus Modulen und aus dem Spielsystem liegen nicht in der Welt und
+lassen sich hierüber nicht entfernen; die Fehlermeldung sagt das auch.
+
+---
+
 ### Was bewusst nicht gebaut wurde
 
 **Dateien hochladen.** Der Weg dafür wäre der Datenkanal zwischen Server und

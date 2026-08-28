@@ -206,6 +206,22 @@ export class NinjoCampaignTools {
         },
       },
       {
+        name: 'delete-compendium',
+        description:
+          'Remove a world compendium and everything in it. This cannot be undone, so it is off by default: the module setting for compendiums has to stand on "create, edit and delete". The exact label must be passed as confirmLabel. Compendiums belonging to a module or to the game system cannot be removed this way.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            packId: { type: 'string', description: 'Compendium id, e.g. world.archiv-salzmarsch' },
+            confirmLabel: {
+              type: 'string',
+              description: 'The exact label of the compendium, guarding against a mistyped id',
+            },
+          },
+          required: ['packId', 'confirmLabel'],
+        },
+      },
+      {
         name: 'export-to-compendium',
         description:
           'Copy documents from the world into a compendium, to archive finished material. Select what to copy by name or by the folder they sit in; without either, everything of that type is copied. A locked compendium is refused unless unlockIfNeeded is set, in which case the lock is lifted for this operation only and restored afterwards.',
@@ -493,6 +509,25 @@ export class NinjoCampaignTools {
     };
   }
 
+  async handleDeleteCompendium(args: any): Promise<any> {
+    const schema = z.object({
+      packId: z.string().min(1),
+      confirmLabel: z.string().min(1),
+    });
+    const params = schema.parse(args);
+    this.logger.info('Deleting compendium', { pack: params.packId });
+
+    const result = await this.foundryClient.query('foundry-mcp-bridge.deleteCompendium', params);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Kompendium "${result.label}" geloescht, mit ${result.entries} Eintraegen.`,
+        },
+      ],
+    };
+  }
+
   async handleExportToCompendium(args: any): Promise<any> {
     const schema = z.object({
       packId: z.string().min(1),
@@ -506,9 +541,21 @@ export class NinjoCampaignTools {
 
     const result = await this.foundryClient.query('foundry-mcp-bridge.exportToCompendium', params);
 
-    const zeilen = [`Nach "${result.pack}" gesichert: ${result.exported.length} Eintraege`];
-    if (result.exported.length)
-      zeilen.push(result.exported.map((n: string) => `  ${n}`).join('\n'));
+    const neu: string[] = result.exported ?? [];
+    const ersetzt: string[] = result.replaced ?? [];
+
+    const zeilen = [`Nach "${result.pack}" gesichert: ${neu.length + ersetzt.length} Eintraege`];
+    if (neu.length) {
+      zeilen.push(`Neu angelegt (${neu.length}):`);
+      zeilen.push(neu.map((n: string) => `  ${n}`).join('\n'));
+    }
+    // Beim Sichern bleibt die Kennung erhalten, ein vorhandener Eintrag wird also
+    // ueberschrieben. Ohne diesen Hinweis wundert man sich, warum die Anzahl im
+    // Kompendium gleich bleibt.
+    if (ersetzt.length) {
+      zeilen.push(`Vorhandenen Stand ueberschrieben (${ersetzt.length}):`);
+      zeilen.push(ersetzt.map((n: string) => `  ${n}`).join('\n'));
+    }
     if (result.skipped?.length) {
       zeilen.push(`Uebersprungen: ${result.skipped.join(', ')}`);
     }
