@@ -2,12 +2,12 @@
   "foundry-mcp-bridge": {
     "settings": {
       "enabled": {
-        "name": "MCP-Brücke aktivieren",
-        "hint": "Master switch to enable/disable the MCP bridge connection"
+        "name": "Verbindung · MCP-Brücke aktivieren",
+        "hint": "Schaltet die Verbindung zum MCP-Server ein oder aus."
       },
       "connectionType": {
-        "name": "Verbindungsart",
-        "hint": "Auto: Smart selection (HTTPS→WebRTC, HTTP→WebSocket). WebRTC: Encrypted P2P (works over internet). WebSocket: Traditional (localhost only).",
+        "name": "Verbindung · Verbindungsart",
+        "hint": "Auto wählt selbst: HTTPS-Seiten über WebRTC, HTTP über WebSocket. WebRTC ist verschlüsselt und funktioniert auch über das Internet. WebSocket ist der einfachere Weg und gilt für Verbindungen zum eigenen Rechner.",
         "choices": {
           "auto": "Auto (empfohlen)",
           "webrtc": "WebRTC (Internet)",
@@ -15,19 +15,19 @@
         }
       },
       "serverHost": {
-        "name": "WebSocket-Server-Host",
-        "hint": "IP address for local Websocket Server connections to the MCP Server (usually localhost). Not used for Remote Connections"
+        "name": "Verbindung · WebSocket-Server-Host",
+        "hint": "Rechnername oder Adresse des MCP-Servers. Für den eigenen Rechner: localhost."
       },
       "serverPort": {
-        "name": "Server-Port",
-        "hint": "Port number for MCP server communication"
+        "name": "Verbindung · Server-Port",
+        "hint": "Port des MCP-Servers. Voreingestellt ist 31415."
       },
       "allowWriteOperations": {
-        "name": "Schreibzugriff erlauben",
-        "hint": "Let AI model create actors, NPCs, and modify world content. Reading is always allowed."
+        "name": "Rechte · Schreibzugriff erlauben",
+        "hint": "Übergeordneter Schalter. Ist er aus, ändert das KI-Modell gar nichts, unabhängig von den Rechten darunter. Lesen ist immer erlaubt."
       },
       "permScenes": {
-        "name": "Rechte: Szenen",
+        "name": "Rechte · Szenen",
         "hint": "Szenen anlegen, ändern und löschen. Aktive Szenen sind immer geschützt.",
         "choices": {
           "read": "Nur lesen",
@@ -36,7 +36,7 @@
         }
       },
       "permPlaylists": {
-        "name": "Rechte: Wiedergabelisten",
+        "name": "Rechte · Wiedergabelisten",
         "hint": "Wiedergabelisten und einzelne Stücke.",
         "choices": {
           "read": "Nur lesen",
@@ -45,7 +45,7 @@
         }
       },
       "permJournals": {
-        "name": "Rechte: Journale",
+        "name": "Rechte · Journale",
         "hint": "Journaleintraege und einzelne Seiten.",
         "choices": {
           "read": "Nur lesen",
@@ -54,7 +54,7 @@
         }
       },
       "permRollTables": {
-        "name": "Rechte: Zufallstabellen",
+        "name": "Rechte · Zufallstabellen",
         "hint": "Zufallstabellen und ihre Einträge.",
         "choices": {
           "read": "Nur lesen",
@@ -63,7 +63,7 @@
         }
       },
       "permActors": {
-        "name": "Rechte: Akteure",
+        "name": "Rechte · Akteure",
         "hint": "Akteure und ihre Gegenstände. Vorsicht bei Spielercharakteren.",
         "choices": {
           "read": "Nur lesen",
@@ -72,7 +72,7 @@
         }
       },
       "permFolders": {
-        "name": "Rechte: Ordner",
+        "name": "Rechte · Ordner",
         "hint": "Ordner in der Seitenleiste. Beim Löschen wandert der Inhalt eine Ebene hoeher.",
         "choices": {
           "read": "Nur lesen",
@@ -81,16 +81,16 @@
         }
       },
       "maxActorsPerRequest": {
-        "name": "Max. Actors pro Anfrage",
-        "hint": "Maximum number of actors AI model can create in a single request"
+        "name": "Grenzen · Höchstzahl Akteure je Anfrage",
+        "hint": "Wie viele Akteure das KI-Modell in einer einzigen Anfrage anlegen darf."
       },
       "mapGenAutoStart": {
-        "name": "Kartengenerator automatisch starten",
+        "name": "Kartengenerator · Kartengenerator automatisch starten",
         "hint": "Startet den Kartengenerator (ComfyUI) beim Hochfahren mit. Ab Werk aus, weil er viel Arbeitsspeicher belegt."
       },
       "mapGenQuality": {
-        "name": "Generation Quality",
-        "hint": "Higher quality = better detail but slower generation. Generation time depends on your hardware.",
+        "name": "Kartengenerator · Güte der Erzeugung",
+        "hint": "Höhere Güte bedeutet mehr Bilddetails, dauert aber länger. Die Dauer hängt von der Rechenleistung ab.",
         "choices": {
           "low": "Low",
           "medium": "Medium",
@@ -98,16 +98,16 @@
         }
       },
       "enableNotifications": {
-        "name": "Verbindungsmeldungen anzeigen",
-        "hint": "Display notifications when connecting/disconnecting from AI model"
+        "name": "Meldungen · Verbindungsmeldungen anzeigen",
+        "hint": "Zeigt Meldungen an, wenn die Verbindung auf- oder abgebaut wird."
       },
       "autoReconnectEnabled": {
-        "name": "Automatisch neu verbinden",
-        "hint": "Automatically try to reconnect if the connection to AI model is lost"
+        "name": "Meldungen · Automatisch neu verbinden",
+        "hint": "Versucht nach einem Abbruch von selbst, neu zu verbinden."
       },
       "heartbeatInterval": {
-        "name": "Prüfintervall der Verbindung",
-        "hint": "How often to check if AI model is still connected (seconds)"
+        "name": "Meldungen · Prüfintervall der Verbindung",
+        "hint": "Abstand in Sekunden, in dem die Verbindung überprüft wird."
       }
     },
     "menus": {
@@ -121,6 +121,11 @@
         "label": "Kartengenerator",
         "hint": "Richtet den Dienst zur Kartenerzeugung ein. Derzeit wird ComfyUI unterstützt."
       }
+    },
+    "status": {
+      "label": "Status",
+      "connected": "✅ Verbunden",
+      "disconnected": "❌ Getrennt — über die Verbindungsleiste verbinden"
     }
   }
 }

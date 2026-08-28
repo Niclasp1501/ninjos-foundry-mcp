@@ -2,11 +2,11 @@
   "foundry-mcp-bridge": {
     "settings": {
       "enabled": {
-        "name": "Enable MCP Bridge",
+        "name": "Connection · Enable MCP Bridge",
         "hint": "Master switch to enable/disable the MCP bridge connection"
       },
       "connectionType": {
-        "name": "Connection Type",
+        "name": "Connection · Connection Type",
         "hint": "Auto: Smart selection (HTTPS→WebRTC, HTTP→WebSocket). WebRTC: Encrypted P2P (works over internet). WebSocket: Traditional (localhost only).",
         "choices": {
           "auto": "Auto (Recommended)",
@@ -15,27 +15,27 @@
         }
       },
       "serverHost": {
-        "name": "Websocket Server Host",
+        "name": "Connection · Websocket Server Host",
         "hint": "IP address for local Websocket Server connections to the MCP Server (usually localhost). Not used for Remote Connections"
       },
       "serverPort": {
-        "name": "Server Port",
+        "name": "Connection · Server Port",
         "hint": "Port number for MCP server communication"
       },
       "allowWriteOperations": {
-        "name": "Allow Write Operations",
+        "name": "Permissions · Allow Write Operations",
         "hint": "Let AI model create actors, NPCs, and modify world content. Reading is always allowed."
       },
       "maxActorsPerRequest": {
-        "name": "Max Actors Per Request",
+        "name": "Limits · Max Actors Per Request",
         "hint": "Maximum number of actors AI model can create in a single request"
       },
       "mapGenAutoStart": {
-        "name": "Auto-start Map Generation Service",
+        "name": "Map generation · Auto-start Map Generation Service",
         "hint": "Starts the map generation service (ComfyUI) on startup. Off by default because it uses a lot of memory."
       },
       "mapGenQuality": {
-        "name": "Generation Quality",
+        "name": "Map generation · Generation Quality",
         "hint": "Higher quality = better detail but slower generation. Generation time depends on your hardware.",
         "choices": {
           "low": "Low",
@@ -44,19 +44,19 @@
         }
       },
       "enableNotifications": {
-        "name": "Show Connection Messages",
+        "name": "Notifications · Show Connection Messages",
         "hint": "Display notifications when connecting/disconnecting from AI model"
       },
       "autoReconnectEnabled": {
-        "name": "Auto-Reconnect on Disconnect",
+        "name": "Notifications · Auto-Reconnect on Disconnect",
         "hint": "Automatically try to reconnect if the connection to AI model is lost"
       },
       "heartbeatInterval": {
-        "name": "Connection Check Frequency",
+        "name": "Notifications · Connection Check Frequency",
         "hint": "How often to check if AI model is still connected (seconds)"
       },
       "permScenes": {
-        "name": "Permissions: Scenes",
+        "name": "Permissions · Scenes",
         "hint": "Create, update and delete scenes. Active scenes are always protected.",
         "choices": {
           "read": "Read only",
@@ -65,7 +65,7 @@
         }
       },
       "permPlaylists": {
-        "name": "Permissions: Playlists",
+        "name": "Permissions · Playlists",
         "hint": "Playlists and individual tracks.",
         "choices": {
           "read": "Read only",
@@ -74,7 +74,7 @@
         }
       },
       "permJournals": {
-        "name": "Permissions: Journals",
+        "name": "Permissions · Journals",
         "hint": "Journal entries and individual pages.",
         "choices": {
           "read": "Read only",
@@ -83,7 +83,7 @@
         }
       },
       "permRollTables": {
-        "name": "Permissions: Roll tables",
+        "name": "Permissions · Roll tables",
         "hint": "Roll tables and their results.",
         "choices": {
           "read": "Read only",
@@ -92,7 +92,7 @@
         }
       },
       "permActors": {
-        "name": "Permissions: Actors",
+        "name": "Permissions · Actors",
         "hint": "Actors and their items. Careful with player characters.",
         "choices": {
           "read": "Read only",
@@ -101,7 +101,7 @@
         }
       },
       "permFolders": {
-        "name": "Permissions: Folders",
+        "name": "Permissions · Folders",
         "hint": "Sidebar folders. Deleting one moves its contents up a level.",
         "choices": {
           "read": "Read only",
@@ -121,6 +121,11 @@
         "label": "Configure Map Generation",
         "hint": "Configure your map generation service for AI-powered battlemap creation. Currently supports ComfyUI installations with plans for future cloud services."
       }
+    },
+    "status": {
+      "label": "Status",
+      "connected": "✅ Connected",
+      "disconnected": "❌ Disconnected — use the connection panel to connect"
     }
   }
 }

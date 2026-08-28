@@ -495,13 +495,20 @@ export class ModuleSettings {
   updateConnectionStatusDisplay(connected: boolean, _toolCount: number): void {
     try {
       const statusText = connected
-        ? `✅ Connected`
-        : `❌ Disconnected - Use connection panel to connect`;
+        ? game.i18n.localize(`${this.moduleId}.status.connected`)
+        : game.i18n.localize(`${this.moduleId}.status.disconnected`);
 
-      // Update the hint for the enabled setting to show status
+      /* NINJO: Hier stand der Hinweistext der Einstellung als Grundlage. Seit die
+       * Beschriftungen ueber die Sprachdateien laufen, steht dort aber der
+       * Schluessel und nicht der uebersetzte Text. Das Anhaengen des Status machte
+       * ihn unaufloesbar, im Menue erschien "foundry-mcp-bridge.settings.enabled.hint".
+       * Deshalb wird der Grundtext jetzt ausdruecklich uebersetzt. */
+      const basis = game.i18n.localize(`${this.moduleId}.settings.enabled.hint`);
+      const label = game.i18n.localize(`${this.moduleId}.status.label`);
+
       const enabledSetting = (game.settings as any).settings.get(`${this.moduleId}.enabled`);
       if (enabledSetting) {
-        enabledSetting.hint = `${enabledSetting.hint.split(' |')[0]} | Status: ${statusText}`;
+        enabledSetting.hint = `${basis} | ${label}: ${statusText}`;
       }
     } catch (error) {
       console.warn(`[${this.moduleId}] Failed to update status display:`, error);
