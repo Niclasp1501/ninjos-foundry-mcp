@@ -8484,6 +8484,18 @@ export class FoundryDataAccess {
    * Kampfkarten, Unterstriche statt Leerzeichen), damit er sich sortieren
    * laesst. In der Leiste ueber dem Spieltisch soll aber Lesbares stehen.
    */
+  /**
+   * Unterstriche gehoeren in den Dateinamen, nicht in den Szenennamen.
+   *
+   * Die Ablage folgt der Konvention SC_/BM_ mit Unterstrichen, damit sich die
+   * Dateien sortieren lassen. In der Seitenleiste steht dieser Name aber
+   * ungefiltert und liest sich schlecht. Das Praefix bleibt als Sortierhilfe,
+   * die Unterstriche werden zu Leerzeichen.
+   */
+  private lesbarerSzenenname(name: string): string {
+    return name.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
   private deriveNavName(name: string): string {
     return name
       .replace(/^(SC|BM)[_-]/i, '')
@@ -8657,7 +8669,7 @@ export class FoundryDataAccess {
 
     const sceneData: any = {
       ...base,
-      name: request.name.trim(),
+      name: this.lesbarerSzenenname(request.name),
       navName: request.navName?.trim() || this.deriveNavName(request.name.trim()),
       width: finalWidth,
       height: finalHeight,
@@ -8792,7 +8804,7 @@ export class FoundryDataAccess {
     const changed: string[] = [];
 
     if (request.name) {
-      update.name = request.name;
+      update.name = this.lesbarerSzenenname(request.name);
       update.navName = request.navName?.trim() || this.deriveNavName(request.name);
       changed.push('name');
     } else if (request.navName !== undefined) {
