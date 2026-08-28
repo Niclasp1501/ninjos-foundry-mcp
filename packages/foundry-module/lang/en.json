@@ -145,7 +145,8 @@
       "qualityLow": "Low",
       "qualityMedium": "Medium",
       "qualityHigh": "High",
-      "qualityHint": "Higher quality gives more detail but takes longer. Generation time depends on your hardware."
+      "qualityHint": "Higher quality gives more detail but takes longer. Generation time depends on your hardware.",
+      "window": "Map generation"
     },
     "index": {
       "title": "Enhanced creature index",
@@ -157,7 +158,8 @@
       "enable": "Use the enhanced index.",
       "enableHint": "Builds a searchable overview.",
       "autoRebuild": "Rebuild when compendium packs change.",
-      "autoRebuildHint": "Happens automatically in the background."
+      "autoRebuildHint": "Happens automatically in the background.",
+      "window": "Enhanced creature index"
     }
   }
 }

@@ -21,11 +21,11 @@ export class ModuleSettings {
       type: class extends FormApplication {
         static get defaultOptions() {
           return foundry.utils.mergeObject(super.defaultOptions, {
-            title: 'Enhanced Creature Index Settings',
+            title: game.i18n.localize(`${MODULE_ID}.index.window`),
             template: `modules/${MODULE_ID}/templates/enhanced-index-menu.html`,
-            width: 500,
+            width: 560,
             height: 'auto',
-            resizable: false,
+            resizable: true, // NINJO: vorher fest, dadurch wurde der Inhalt abgeschnitten
             closeOnSubmit: false,
           } as any);
         }
@@ -72,19 +72,22 @@ export class ModuleSettings {
       type: class extends FormApplication {
         static get defaultOptions() {
           return foundry.utils.mergeObject(super.defaultOptions, {
-            title: 'Map Generation Service Settings',
+            title: game.i18n.localize(`${MODULE_ID}.mapgen.window`),
             template: `modules/${MODULE_ID}/templates/comfyui-settings.html`,
-            width: 500,
+            width: 560,
             height: 'auto',
-            resizable: false,
+            resizable: true, // NINJO: vorher fest, dadurch wurde der Inhalt abgeschnitten
             closeOnSubmit: false,
           } as any);
         }
 
         getData(): any {
           return {
-            autoStartService: game.settings.get(MODULE_ID, 'mapGenAutoStart') || true,
-            mapGenQuality: game.settings.get(MODULE_ID, 'mapGenQuality') || 'low',
+            autoStartService: game.settings.get(MODULE_ID, 'mapGenAutoStart') ?? false,
+            // NINJO: vorher "|| true". In JavaScript ergibt false || true = true,
+            // also wurde ein gespeichertes Aus beim Anzeigen wieder zu An und beim
+            // Speichern zurueckgeschrieben. Der Haken liess sich nicht entfernen.
+            mapGenQuality: game.settings.get(MODULE_ID, 'mapGenQuality') ?? 'low',
             connectionStatus: this.getConnectionStatus(),
             connectionStatusText: this.getConnectionStatusText(),
           };

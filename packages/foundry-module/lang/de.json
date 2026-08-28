@@ -145,7 +145,8 @@
       "qualityLow": "Niedrig",
       "qualityMedium": "Mittel",
       "qualityHigh": "Hoch",
-      "qualityHint": "Höhere Güte bringt mehr Bilddetails, dauert aber länger. Die Dauer hängt von der Rechenleistung ab."
+      "qualityHint": "Höhere Güte bringt mehr Bilddetails, dauert aber länger. Die Dauer hängt von der Rechenleistung ab.",
+      "window": "Kartengenerator"
     },
     "index": {
       "title": "Erweiterter Kreaturenindex",
@@ -157,7 +158,8 @@
       "enable": "Erweiterten Index verwenden.",
       "enableHint": "Legt eine durchsuchbare Übersicht an.",
       "autoRebuild": "Bei Änderungen an Kompendien neu aufbauen.",
-      "autoRebuildHint": "Geschieht dann von selbst im Hintergrund."
+      "autoRebuildHint": "Geschieht dann von selbst im Hintergrund.",
+      "window": "Erweiterter Kreaturenindex"
     }
   }
 }
