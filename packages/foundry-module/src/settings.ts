@@ -14,9 +14,9 @@ export class ModuleSettings {
 
     // Enhanced Creature Index submenu
     (game.settings as any).registerMenu(this.moduleId, 'enhancedIndexMenu', {
-      name: 'Enhanced Creature Index',
-      label: 'Configure Enhanced Index',
-      hint: 'The Enhanced Creature Index pre-computes creature statistics for instant filtering by Challenge Rating, creature type, and abilities. This enables AI models to quickly find creatures matching specific criteria without loading every compendium entry.',
+      name: 'foundry-mcp-bridge.menus.enhancedIndexMenu.name',
+      label: 'foundry-mcp-bridge.menus.enhancedIndexMenu.label',
+      hint: 'foundry-mcp-bridge.menus.enhancedIndexMenu.hint',
       icon: 'fas fa-search-plus',
       type: class extends FormApplication {
         static get defaultOptions() {
@@ -65,9 +65,9 @@ export class ModuleSettings {
 
     // Map Generation Service submenu
     (game.settings as any).registerMenu(this.moduleId, 'mapGenerationSettings', {
-      name: 'Map Generation Service Configuration',
-      label: 'Configure Map Generation',
-      hint: 'Configure your map generation service for AI-powered battlemap creation. Currently supports ComfyUI installations with plans for future cloud services.',
+      name: 'foundry-mcp-bridge.menus.mapGenerationSettings.name',
+      label: 'foundry-mcp-bridge.menus.mapGenerationSettings.label',
+      hint: 'foundry-mcp-bridge.menus.mapGenerationSettings.hint',
       icon: 'fas fa-cogs',
       type: class extends FormApplication {
         static get defaultOptions() {

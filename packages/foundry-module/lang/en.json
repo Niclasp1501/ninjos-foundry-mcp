@@ -109,6 +109,18 @@
           "full": "Create, update and delete"
         }
       }
+    },
+    "menus": {
+      "enhancedIndexMenu": {
+        "name": "Enhanced Creature Index",
+        "label": "Configure Enhanced Index",
+        "hint": "The Enhanced Creature Index pre-computes creature statistics for instant filtering by Challenge Rating, creature type, and abilities. This enables AI models to quickly find creatures matching specific criteria without loading every compendium entry."
+      },
+      "mapGenerationSettings": {
+        "name": "Map Generation Service Configuration",
+        "label": "Configure Map Generation",
+        "hint": "Configure your map generation service for AI-powered battlemap creation. Currently supports ComfyUI installations with plans for future cloud services."
+      }
     }
   }
 }

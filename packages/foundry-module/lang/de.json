@@ -2,7 +2,7 @@
   "foundry-mcp-bridge": {
     "settings": {
       "enabled": {
-        "name": "MCP-Bruecke aktivieren",
+        "name": "MCP-Brücke aktivieren",
         "hint": "Master switch to enable/disable the MCP bridge connection"
       },
       "connectionType": {
@@ -28,20 +28,20 @@
       },
       "permScenes": {
         "name": "Rechte: Szenen",
-        "hint": "Szenen anlegen, aendern und loeschen. Aktive Szenen sind immer geschuetzt.",
+        "hint": "Szenen anlegen, ändern und löschen. Aktive Szenen sind immer geschützt.",
         "choices": {
           "read": "Nur lesen",
-          "write": "Anlegen und aendern",
-          "full": "Anlegen, aendern und loeschen"
+          "write": "Anlegen und ändern",
+          "full": "Anlegen, ändern und löschen"
         }
       },
       "permPlaylists": {
         "name": "Rechte: Wiedergabelisten",
-        "hint": "Wiedergabelisten und einzelne Stuecke.",
+        "hint": "Wiedergabelisten und einzelne Stücke.",
         "choices": {
           "read": "Nur lesen",
-          "write": "Anlegen und aendern",
-          "full": "Anlegen, aendern und loeschen"
+          "write": "Anlegen und ändern",
+          "full": "Anlegen, ändern und löschen"
         }
       },
       "permJournals": {
@@ -49,35 +49,35 @@
         "hint": "Journaleintraege und einzelne Seiten.",
         "choices": {
           "read": "Nur lesen",
-          "write": "Anlegen und aendern",
-          "full": "Anlegen, aendern und loeschen"
+          "write": "Anlegen und ändern",
+          "full": "Anlegen, ändern und löschen"
         }
       },
       "permRollTables": {
         "name": "Rechte: Zufallstabellen",
-        "hint": "Zufallstabellen und ihre Eintraege.",
+        "hint": "Zufallstabellen und ihre Einträge.",
         "choices": {
           "read": "Nur lesen",
-          "write": "Anlegen und aendern",
-          "full": "Anlegen, aendern und loeschen"
+          "write": "Anlegen und ändern",
+          "full": "Anlegen, ändern und löschen"
         }
       },
       "permActors": {
         "name": "Rechte: Akteure",
-        "hint": "Akteure und ihre Gegenstaende. Vorsicht bei Spielercharakteren.",
+        "hint": "Akteure und ihre Gegenstände. Vorsicht bei Spielercharakteren.",
         "choices": {
           "read": "Nur lesen",
-          "write": "Anlegen und aendern",
-          "full": "Anlegen, aendern und loeschen"
+          "write": "Anlegen und ändern",
+          "full": "Anlegen, ändern und löschen"
         }
       },
       "permFolders": {
         "name": "Rechte: Ordner",
-        "hint": "Ordner in der Seitenleiste. Beim Loeschen wandert der Inhalt eine Ebene hoeher.",
+        "hint": "Ordner in der Seitenleiste. Beim Löschen wandert der Inhalt eine Ebene hoeher.",
         "choices": {
           "read": "Nur lesen",
-          "write": "Anlegen und aendern",
-          "full": "Anlegen, aendern und loeschen"
+          "write": "Anlegen und ändern",
+          "full": "Anlegen, ändern und löschen"
         }
       },
       "maxActorsPerRequest": {
@@ -106,8 +106,20 @@
         "hint": "Automatically try to reconnect if the connection to AI model is lost"
       },
       "heartbeatInterval": {
-        "name": "Pruefintervall der Verbindung",
+        "name": "Prüfintervall der Verbindung",
         "hint": "How often to check if AI model is still connected (seconds)"
+      }
+    },
+    "menus": {
+      "enhancedIndexMenu": {
+        "name": "Erweiterter Kreaturenindex",
+        "label": "Index einrichten",
+        "hint": "Der erweiterte Kreaturenindex berechnet Kreaturenwerte vorab, damit sich sofort nach Herausforderungsgrad, Art und Fähigkeiten filtern lässt. So findet das KI-Modell passende Kreaturen, ohne jeden Kompendiumseintrag zu laden."
+      },
+      "mapGenerationSettings": {
+        "name": "Kartengenerator einrichten",
+        "label": "Kartengenerator",
+        "hint": "Richtet den Dienst zur Kartenerzeugung ein. Derzeit wird ComfyUI unterstützt."
       }
     }
   }
