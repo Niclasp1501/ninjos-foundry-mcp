@@ -119,17 +119,76 @@ Browsers.
 
 ---
 
+## Kampagnenaufbau (28.08.2026)
+
+Eigene Datei `packages/mcp-server/src/tools/ninjo-campaign.ts`, damit ein
+Abgleich mit dem Ursprungsprojekt nichts davon anfasst.
+
+### Wiedergabelisten
+
+| Werkzeug             | Zweck                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| `list-playlists`     | Wiedergabelisten der Welt mit ihren Stücken und Kennungen                                      |
+| `set-scene-playlist` | Wiedergabeliste und wahlweise ein Stück an eine Szene binden. Leerer Name löst die Verknüpfung |
+
+### `import-from-compendium`
+
+Holt ein Dokument aus einem Kompendium in die Welt: Wiedergabelisten, Szenen,
+Journale, Akteure, Zufallstabellen. **Vergibt immer eine neue Kennung.**
+
+Das ist der Unterschied zum Hineinziehen von Hand: Dabei behält der Eintrag
+seine Kennung und überschreibt still, was in der Welt dieselbe trägt. Genau
+dieser Mechanismus stand am 27.08.2026 unter Verdacht, eine Szene gelöscht zu
+haben.
+
+### Zufallstabellen
+
+| Werkzeug            | Zweck                                                |
+| ------------------- | ---------------------------------------------------- |
+| `list-roll-tables`  | Tabellen der Welt mit Formel und Anzahl der Einträge |
+| `create-roll-table` | Tabelle aus einer Liste von Texten anlegen           |
+
+Bereiche werden fortlaufend vergeben, wenn keine angegeben sind, und die
+Würfelformel ergibt sich aus dem höchsten Bereich. Sechs Einträge werden also
+von selbst zu `1d6`.
+
+### Szenen
+
+| Werkzeug              | Zweck                                                              |
+| --------------------- | ------------------------------------------------------------------ |
+| `create-scene-note`   | Journal oder Journalseite als Stecknadel auf einer Szene verankern |
+| `refresh-scene-thumb` | Vorschaubild neu erzeugen, nötig nach einem Bildtausch             |
+
+### Nachträge zur Szenenverwaltung
+
+- `create-scene` übernimmt jetzt die **komplette Ebenen-Konfiguration** der
+  Vorlage, nicht nur den Bildpfad. Foundry legt neue Ebenen mit grauem
+  Hintergrund (`#999999`) und Höhe 0 bis 20 an; ohne diesen Schritt sah eine aus
+  der Vorlage gebaute Szene anders aus als die Vorlage.
+- `update-scene` kann die Hintergrundfarbe über `backgroundColor` setzen.
+- **Navigationsname**: Der Szenenname folgt der Ablage-Konvention (`SC_` für
+  Szenen, `BM_` für Kampfkarten, Unterstriche statt Leerzeichen), damit er sich
+  sortieren lässt. In der Leiste über dem Spieltisch steht dagegen Lesbares:
+  aus `SC_Neverwinter_Kerker_Tür` wird `Neverwinter Kerker Tür`. Über `navName`
+  auch frei setzbar.
+
+### Was bewusst nicht gebaut wurde
+
+**Dateien hochladen.** Der Weg dafür wäre der Datenkanal zwischen Server und
+Browser, und der bricht bei großen Antworten ab (siehe die Hinweise zu den
+Journalen im CHANGELOG). Ein Bild von 700 KB ergibt als Base64 rund 930.000
+Zeichen und läge deutlich über der Grenze, ab der die Verbindung reißt. Das
+wäre nur mit einer Stückelung zu lösen. Solange der Foundry-Server über SSH
+erreichbar ist, ist `scp` dafür der robustere Weg.
+
+---
+
 ## Naheliegende nächste Schritte
 
 Noch nicht gebaut, aber beim Kampagnenaufbau absehbar gebraucht:
 
-- **Wiedergabelisten**: auflisten, aus einem Kompendium in die Welt holen, einer
-  Szene zuordnen. Konkreter Anlass: In der Welt `farun4` zeigen vier
-  Musikverknüpfungen in den Journalen ins Leere, weil das Material aus einer
-  Vorgängerwelt kopiert wurde, die Wiedergabelisten aber nicht.
-- **Zufallstabellen**: anlegen und befüllen. Das Abenteuer bringt reichlich
-  W6- und W8-Tabellen mit, die bisher nur als Text in den Journalen stehen.
-- **Dateien hochladen**: Bilder über Foundrys eigene Dateiverwaltung ablegen,
-  statt sie per SSH auf den Server zu schieben.
-- **Notizen auf Szenen setzen**: Journalseiten als Stecknadeln auf einer Karte
-  verankern.
+- **Szenenordner pflegen**: umbenennen, verschieben, löschen. Für Journale gibt
+  es das bereits, für Szenen noch nicht.
+- **Zufallstabellen ändern**: bestehende Tabellen ergänzen oder korrigieren.
+  Bisher lassen sie sich nur neu anlegen.
+- **Dateien hochladen** mit Stückelung, falls der SSH-Weg einmal wegfällt.

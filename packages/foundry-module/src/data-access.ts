@@ -8586,6 +8586,342 @@ export class FoundryDataAccess {
     return { id: sceneId, name };
   }
 
+  /* ---------------------------- Wiedergabelisten ---------------------------- */
+
+  /**
+   * Wiedergabelisten der Welt auflisten, mit ihren Stuecken.
+   */
+  async listPlaylists(includeSounds = true): Promise<any> {
+    this.validateFoundryState();
+
+    const playlists = (game.playlists?.contents ?? []) as any[];
+
+    return {
+      playlists: playlists.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        mode: p.mode,
+        playing: p.playing,
+        folder: p.folder?.name ?? null,
+        soundCount: p.sounds?.size ?? p.sounds?.length ?? 0,
+        sounds: includeSounds
+          ? (p.sounds?.contents ?? p.sounds ?? []).map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              path: s.path,
+              repeat: s.repeat,
+              volume: s.volume,
+            }))
+          : undefined,
+      })),
+      total: playlists.length,
+    };
+  }
+
+  /**
+   * Ein Dokument aus einem Kompendium in die Welt holen.
+   *
+   * Vergibt bewusst IMMER eine neue Kennung. Wer stattdessen im Programm ein
+   * Kompendium-Dokument in die Welt zieht, behaelt dessen Kennung und
+   * ueberschreibt damit stillschweigend ein bestehendes Dokument gleicher
+   * Kennung. Genau so gehen Szenen und Wiedergabelisten verloren.
+   */
+  async importFromCompendium(request: {
+    packId: string;
+    entryName?: string;
+    entryId?: string;
+    newName?: string;
+    folderPath?: string;
+  }): Promise<{ id: string; name: string; type: string; pack: string }> {
+    this.validateFoundryState();
+
+    const pack: any = game.packs?.get(request.packId);
+    if (!pack) throw new Error(`Kompendium "${request.packId}" nicht gefunden`);
+
+    const index = await pack.getIndex();
+    let entry: any = null;
+
+    if (request.entryId) {
+      entry = index.get?.(request.entryId) ?? index.find((e: any) => e._id === request.entryId);
+    }
+    if (!entry && request.entryName) {
+      const wanted = request.entryName.toLowerCase();
+      entry =
+        index.find((e: any) => e.name?.toLowerCase() === wanted) ??
+        index.find((e: any) => e.name?.toLowerCase().includes(wanted));
+    }
+    if (!entry) {
+      throw new Error(
+        `Eintrag nicht gefunden in "${request.packId}". Vorhanden: ${index
+          .map((e: any) => e.name)
+          .slice(0, 15)
+          .join(', ')}`
+      );
+    }
+
+    const source: any = await pack.getDocument(entry._id);
+    if (!source) throw new Error(`Eintrag "${entry.name}" konnte nicht geladen werden`);
+
+    const data: any = source.toObject();
+    delete data._id;
+    delete data._stats;
+    if (request.newName) data.name = request.newName;
+
+    const docType: string = pack.documentName;
+    if (request.folderPath) {
+      data.folder = await this.getOrCreateFolderPath(request.folderPath, docType as any);
+    } else {
+      data.folder = null;
+    }
+
+    const cls: any = (globalThis as any).CONFIG?.[docType]?.documentClass;
+    if (!cls?.create) throw new Error(`Dokumenttyp "${docType}" kann nicht angelegt werden`);
+
+    const created: any = await cls.create(data);
+    if (!created) throw new Error('Import fehlgeschlagen');
+
+    this.auditLog('importFromCompendium', request, 'success');
+    return { id: created.id, name: created.name, type: docType, pack: request.packId };
+  }
+
+  /**
+   * Einer Szene eine Wiedergabeliste und wahlweise ein Stueck zuordnen.
+   */
+  async setScenePlaylist(request: {
+    sceneIdentifier: string;
+    playlistName?: string | null;
+    soundName?: string | null;
+  }): Promise<{ scene: string; playlist: string | null; sound: string | null }> {
+    this.validateFoundryState();
+
+    const scene: any =
+      game.scenes?.get(request.sceneIdentifier) ||
+      game.scenes?.find((s: any) => s.name === request.sceneIdentifier);
+    if (!scene) throw new Error(`Szene "${request.sceneIdentifier}" nicht gefunden`);
+
+    // Leerer Name loest die Verknuepfung
+    if (!request.playlistName) {
+      await scene.update({ playlist: null, playlistSound: null });
+      return { scene: scene.name, playlist: null, sound: null };
+    }
+
+    const playlist: any =
+      game.playlists?.get(request.playlistName) ||
+      game.playlists?.find((p: any) => p.name === request.playlistName);
+    if (!playlist) {
+      const available = (game.playlists?.contents ?? [])
+        .map((p: any) => p.name)
+        .slice(0, 20)
+        .join(', ');
+      throw new Error(
+        `Wiedergabeliste "${request.playlistName}" nicht in der Welt. Vorhanden: ${available}`
+      );
+    }
+
+    let soundId: string | null = null;
+    let soundName: string | null = null;
+    if (request.soundName) {
+      const sounds: any[] = playlist.sounds?.contents ?? playlist.sounds ?? [];
+      const sound =
+        sounds.find((s: any) => s.id === request.soundName) ??
+        sounds.find((s: any) => s.name === request.soundName) ??
+        sounds.find((s: any) => s.name?.toLowerCase().includes(request.soundName!.toLowerCase()));
+      if (!sound) {
+        throw new Error(
+          `Stueck "${request.soundName}" nicht in "${playlist.name}". Vorhanden: ${sounds
+            .map((s: any) => s.name)
+            .join(', ')}`
+        );
+      }
+      soundId = sound.id;
+      soundName = sound.name;
+    }
+
+    await scene.update({ playlist: playlist.id, playlistSound: soundId });
+    this.auditLog('setScenePlaylist', request, 'success');
+    return { scene: scene.name, playlist: playlist.name, sound: soundName };
+  }
+
+  /* ---------------------------- Zufallstabellen ---------------------------- */
+
+  /**
+   * Zufallstabellen der Welt auflisten.
+   */
+  async listRollTables(): Promise<any> {
+    this.validateFoundryState();
+
+    const tables = (game.tables?.contents ?? []) as any[];
+    return {
+      tables: tables.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        formula: t.formula,
+        folder: t.folder?.name ?? null,
+        resultCount: t.results?.size ?? t.results?.length ?? 0,
+      })),
+      total: tables.length,
+    };
+  }
+
+  /**
+   * Zufallstabelle anlegen. Die Bereiche werden fortlaufend vergeben, wenn
+   * keine angegeben sind: Eintrag 1 bekommt die 1, Eintrag 2 die 2 und so fort.
+   * Die Wuerfelformel ergibt sich daraus, wenn sie nicht gesetzt wird.
+   */
+  async createRollTable(request: {
+    name: string;
+    description?: string;
+    formula?: string;
+    folderPath?: string;
+    results: Array<{ text: string; range?: [number, number]; weight?: number }>;
+  }): Promise<{ id: string; name: string; formula: string; resultCount: number }> {
+    this.validateFoundryState();
+
+    if (!request.name?.trim()) throw new Error('name ist erforderlich');
+    if (!request.results?.length) throw new Error('results darf nicht leer sein');
+
+    let cursor = 0;
+    const results = request.results.map((r, i) => {
+      let range: [number, number];
+      if (r.range) {
+        range = r.range;
+        cursor = Math.max(cursor, r.range[1]);
+      } else {
+        cursor += 1;
+        range = [cursor, cursor];
+      }
+      return {
+        type: 'text',
+        text: r.text,
+        range,
+        weight: r.weight ?? 1,
+        drawn: false,
+        _id: undefined as any,
+        documentId: null,
+        img: null,
+        sort: (i + 1) * 100,
+      };
+    });
+
+    const max = results.reduce((m, r) => Math.max(m, r.range[1]), 0);
+    const formula = request.formula || `1d${max}`;
+
+    const tableData: any = {
+      name: request.name.trim(),
+      description: request.description ?? '',
+      formula,
+      replacement: true,
+      displayRoll: true,
+      results: results.map(({ _id, ...rest }) => rest),
+      folder: await this.getOrCreateFolderPath(request.folderPath, 'RollTable'),
+    };
+
+    const table: any = await RollTable.create(tableData);
+    if (!table) throw new Error('Zufallstabelle konnte nicht angelegt werden');
+
+    this.auditLog('createRollTable', request, 'success');
+    return {
+      id: table.id,
+      name: table.name,
+      formula,
+      resultCount: results.length,
+    };
+  }
+
+  /* -------------------- Notizen auf Szenen, Vorschaubilder ------------------- */
+
+  /**
+   * Eine Journalseite als Stecknadel auf einer Szene verankern.
+   * Koordinaten sind Bildpunkte auf der Szene.
+   */
+  async createSceneNote(request: {
+    sceneIdentifier: string;
+    journalName: string;
+    pageName?: string;
+    x: number;
+    y: number;
+    label?: string;
+    icon?: string;
+    iconSize?: number;
+  }): Promise<{ id: string; scene: string; journal: string; x: number; y: number }> {
+    this.validateFoundryState();
+
+    const scene: any =
+      game.scenes?.get(request.sceneIdentifier) ||
+      game.scenes?.find((s: any) => s.name === request.sceneIdentifier);
+    if (!scene) throw new Error(`Szene "${request.sceneIdentifier}" nicht gefunden`);
+
+    const journal: any =
+      game.journal?.get(request.journalName) ||
+      game.journal?.find((j: any) => j.name === request.journalName);
+    if (!journal) throw new Error(`Journal "${request.journalName}" nicht gefunden`);
+
+    let pageId: string | null = null;
+    if (request.pageName) {
+      const pages: any[] = journal.pages?.contents ?? journal.pages ?? [];
+      const page =
+        pages.find((p: any) => p.id === request.pageName) ??
+        pages.find((p: any) => p.name === request.pageName) ??
+        pages.find((p: any) => p.name?.toLowerCase().includes(request.pageName!.toLowerCase()));
+      if (!page) {
+        throw new Error(
+          `Seite "${request.pageName}" nicht in "${journal.name}". Vorhanden: ${pages
+            .map((p: any) => p.name)
+            .join(', ')}`
+        );
+      }
+      pageId = page.id;
+    }
+
+    const noteData: any = {
+      entryId: journal.id,
+      pageId,
+      x: request.x,
+      y: request.y,
+      text: request.label ?? undefined,
+      iconSize: request.iconSize ?? 40,
+      texture: { src: request.icon ?? 'icons/svg/book.svg' },
+    };
+
+    const created: any[] = await scene.createEmbeddedDocuments('Note', [noteData]);
+    if (!created?.length) throw new Error('Notiz konnte nicht gesetzt werden');
+
+    this.auditLog('createSceneNote', request, 'success');
+    return {
+      id: created[0].id,
+      scene: scene.name,
+      journal: journal.name,
+      x: request.x,
+      y: request.y,
+    };
+  }
+
+  /**
+   * Vorschaubild einer Szene neu erzeugen. Nach einem Bildtausch bleibt sonst
+   * das alte Bild in der Seitenleiste stehen.
+   */
+  async refreshSceneThumb(sceneIdentifier: string): Promise<{ scene: string; updated: boolean }> {
+    this.validateFoundryState();
+
+    const scene: any =
+      game.scenes?.get(sceneIdentifier) ||
+      game.scenes?.find((s: any) => s.name === sceneIdentifier);
+    if (!scene) throw new Error(`Szene "${sceneIdentifier}" nicht gefunden`);
+
+    try {
+      const data = await scene.createThumbnail();
+      if (data?.thumb) {
+        await scene.update({ thumb: data.thumb });
+        return { scene: scene.name, updated: true };
+      }
+    } catch (error) {
+      throw new Error(
+        `Vorschaubild fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannt'}`
+      );
+    }
+    return { scene: scene.name, updated: false };
+  }
+
   /* ================= ENDE NINJO-ERWEITERUNG ================= */
 
   /**

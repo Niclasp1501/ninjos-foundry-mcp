@@ -48,6 +48,14 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.updateScene`] = this.handleUpdateScene.bind(this);
     CONFIG.queries[`${modulePrefix}.listSceneFolders`] = this.handleListSceneFolders.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteScene`] = this.handleDeleteScene.bind(this);
+    CONFIG.queries[`${modulePrefix}.listPlaylists`] = this.handleListPlaylists.bind(this);
+    CONFIG.queries[`${modulePrefix}.importFromCompendium`] =
+      this.handleImportFromCompendium.bind(this);
+    CONFIG.queries[`${modulePrefix}.setScenePlaylist`] = this.handleSetScenePlaylist.bind(this);
+    CONFIG.queries[`${modulePrefix}.listRollTables`] = this.handleListRollTables.bind(this);
+    CONFIG.queries[`${modulePrefix}.createRollTable`] = this.handleCreateRollTable.bind(this);
+    CONFIG.queries[`${modulePrefix}.createSceneNote`] = this.handleCreateSceneNote.bind(this);
+    CONFIG.queries[`${modulePrefix}.refreshSceneThumb`] = this.handleRefreshSceneThumb.bind(this);
 
     // World queries
     CONFIG.queries[`${modulePrefix}.getWorldInfo`] = this.handleGetWorldInfo.bind(this);
@@ -676,6 +684,119 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to delete scene: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleListPlaylists(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      return await this.dataAccess.listPlaylists(data?.includeSounds !== false);
+    } catch (error) {
+      throw new Error(
+        `Failed to list playlists: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleImportFromCompendium(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.packId) throw new Error('packId is required');
+      if (!data.entryName && !data.entryId) {
+        throw new Error('entryName or entryId is required');
+      }
+      return await this.dataAccess.importFromCompendium({
+        packId: data.packId,
+        entryName: data.entryName,
+        entryId: data.entryId,
+        newName: data.newName,
+        folderPath: data.folderPath,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to import from compendium: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleSetScenePlaylist(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.sceneIdentifier) throw new Error('sceneIdentifier is required');
+      return await this.dataAccess.setScenePlaylist({
+        sceneIdentifier: data.sceneIdentifier,
+        playlistName: data.playlistName,
+        soundName: data.soundName,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to set scene playlist: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleListRollTables(): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      return await this.dataAccess.listRollTables();
+    } catch (error) {
+      throw new Error(
+        `Failed to list roll tables: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleCreateRollTable(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.name) throw new Error('name is required');
+      if (!Array.isArray(data.results) || !data.results.length) {
+        throw new Error('results is required');
+      }
+      return await this.dataAccess.createRollTable({
+        name: data.name,
+        description: data.description,
+        formula: data.formula,
+        folderPath: data.folderPath,
+        results: data.results,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to create roll table: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleCreateSceneNote(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.sceneIdentifier) throw new Error('sceneIdentifier is required');
+      if (!data.journalName) throw new Error('journalName is required');
+      if (data.x === undefined || data.y === undefined) throw new Error('x and y are required');
+      return await this.dataAccess.createSceneNote(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to create scene note: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleRefreshSceneThumb(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data.sceneIdentifier) throw new Error('sceneIdentifier is required');
+      return await this.dataAccess.refreshSceneThumb(data.sceneIdentifier);
+    } catch (error) {
+      throw new Error(
+        `Failed to refresh thumbnail: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

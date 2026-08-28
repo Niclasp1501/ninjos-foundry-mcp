@@ -22,6 +22,9 @@ import { CompendiumTools } from './tools/compendium.js';
 
 import { SceneTools } from './tools/scene.js';
 
+// NINJO-ERWEITERUNG
+import { NinjoCampaignTools } from './tools/ninjo-campaign.js';
+
 import { ActorCreationTools } from './tools/actor-creation.js';
 import { ActorManagementTools } from './tools/actor-management.js';
 
@@ -1191,6 +1194,7 @@ async function startBackend(): Promise<void> {
   const compendiumTools = new CompendiumTools({ foundryClient, logger, systemRegistry });
 
   const sceneTools = new SceneTools({ foundryClient, logger });
+  const ninjoCampaignTools = new NinjoCampaignTools({ foundryClient, logger });
 
   const actorCreationTools = new ActorCreationTools({ foundryClient, logger });
   const actorManagementTools = new ActorManagementTools({ foundryClient, logger, systemRegistry });
@@ -1421,6 +1425,7 @@ async function startBackend(): Promise<void> {
     ...compendiumTools.getToolDefinitions(),
 
     ...sceneTools.getToolDefinitions(),
+    ...ninjoCampaignTools.getToolDefinitions(),
 
     ...actorCreationTools.getToolDefinitions(),
     ...actorManagementTools.getToolDefinitions(),
@@ -1593,6 +1598,43 @@ async function startBackend(): Promise<void> {
 
                 case 'delete-scene':
                   result = await sceneTools.handleDeleteScene(args);
+
+                  break;
+
+                // NINJO-ERWEITERUNG: Kampagnenaufbau
+
+                case 'list-playlists':
+                  result = await ninjoCampaignTools.handleListPlaylists(args);
+
+                  break;
+
+                case 'import-from-compendium':
+                  result = await ninjoCampaignTools.handleImportFromCompendium(args);
+
+                  break;
+
+                case 'set-scene-playlist':
+                  result = await ninjoCampaignTools.handleSetScenePlaylist(args);
+
+                  break;
+
+                case 'list-roll-tables':
+                  result = await ninjoCampaignTools.handleListRollTables();
+
+                  break;
+
+                case 'create-roll-table':
+                  result = await ninjoCampaignTools.handleCreateRollTable(args);
+
+                  break;
+
+                case 'create-scene-note':
+                  result = await ninjoCampaignTools.handleCreateSceneNote(args);
+
+                  break;
+
+                case 'refresh-scene-thumb':
+                  result = await ninjoCampaignTools.handleRefreshSceneThumb(args);
 
                   break;
 
