@@ -182,7 +182,7 @@ export class NinjoCampaignTools {
       {
         name: 'list-compendiums',
         description:
-          'List every compendium with its type, entry count, lock state and where it comes from. Only compendiums belonging to the world can be written to; ones shipped by a module or system are read-only by nature. Call this before exporting to find the right pack id.',
+          'List every compendium with its type, entry count and lock state. An unlocked compendium can be written to, no matter who ships it: many people keep their own collections as a module rather than inside the world. Call this before exporting to find the right pack id.',
         inputSchema: { type: 'object', properties: {} },
       },
       {
@@ -234,7 +234,7 @@ export class NinjoCampaignTools {
       {
         name: 'set-compendium-lock',
         description:
-          'Lock or unlock one of your own world compendiums. Compendiums from modules or systems are refused, because they are not yours to change.',
+          'Lock or unlock a compendium. Which ones may be touched follows the module settings: by default every unlocked compendium, or only the ones listed under writable compendiums if that field has been filled in.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -458,20 +458,20 @@ export class NinjoCampaignTools {
       return { content: [{ type: 'text', text: 'Keine Kompendien vorhanden.' }] };
     }
 
-    const eigene = packs.filter((p: any) => p.ownWorld);
-    const fremde = packs.filter((p: any) => !p.ownWorld);
+    const offen = packs.filter((p: any) => p.writable);
+    const gesperrt = packs.filter((p: any) => !p.writable);
 
-    const zeile = (p: any) =>
-      `  ${p.label}  [${p.id}]  ${p.type}, ${p.entries} Eintraege${p.locked ? ', gesperrt' : ''}`;
+    const zeile = (p: any) => `  ${p.label}  [${p.id}]  ${p.type}, ${p.entries} Eintraege`;
 
     const teile: string[] = [];
-    if (eigene.length) {
-      teile.push('Eigene Weltkompendien (beschreibbar):');
-      teile.push(eigene.map(zeile).join('\n'));
+    if (offen.length) {
+      teile.push(`Entsperrt, also bearbeitbar (${offen.length}):`);
+      teile.push(offen.map(zeile).join('\n'));
     }
-    if (fremde.length) {
+    if (gesperrt.length) {
       teile.push('');
-      teile.push(`Aus Modulen und Systemen (nur lesen): ${fremde.length} Stueck`);
+      teile.push(`Gesperrt (${gesperrt.length}), zum Bearbeiten erst entsperren:`);
+      teile.push(gesperrt.map(zeile).join('\n'));
     }
 
     return { content: [{ type: 'text', text: teile.join('\n') }] };

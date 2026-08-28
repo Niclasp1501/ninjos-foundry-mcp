@@ -334,6 +334,15 @@ export class ModuleSettings {
       default: 'write',
     });
 
+    game.settings.register(this.moduleId, 'writableCompendiums', {
+      name: 'foundry-mcp-bridge.settings.writableCompendiums.name',
+      hint: 'foundry-mcp-bridge.settings.writableCompendiums.hint',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: '',
+    });
+
     game.settings.register(this.moduleId, 'permCompendiums', {
       name: 'foundry-mcp-bridge.settings.permCompendiums.name',
       hint: 'foundry-mcp-bridge.settings.permCompendiums.hint',

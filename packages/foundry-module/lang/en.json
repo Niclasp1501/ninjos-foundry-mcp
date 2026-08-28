@@ -117,6 +117,10 @@
           "write": "Create and update",
           "full": "Create, update and delete"
         }
+      },
+      "writableCompendiums": {
+        "name": "Permissions · Writable compendiums",
+        "hint": "Ids of compendiums that may be edited, separated by commas (e.g. ninjo-kompendium.journale). A bare module name covers all of its compendiums. Leave empty to allow every unlocked compendium."
       }
     },
     "menus": {

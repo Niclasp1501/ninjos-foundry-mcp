@@ -117,6 +117,10 @@
           "write": "Anlegen und ändern",
           "full": "Anlegen, ändern und löschen"
         }
+      },
+      "writableCompendiums": {
+        "name": "Rechte · Kompendien zum Bearbeiten",
+        "hint": "Kennungen der Kompendien, die bearbeitet werden dürfen, durch Komma getrennt (z. B. ninjo-kompendium.journale). Auch ein Modulname allein gilt für alle seine Kompendien. Bleibt das Feld leer, darf jedes entsperrte Kompendium bearbeitet werden."
       }
     },
     "menus": {

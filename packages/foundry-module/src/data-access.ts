@@ -9094,6 +9094,53 @@ export class FoundryDataAccess {
   /* ---------------------------- Kompendien ---------------------------- */
 
   /**
+   * Pruefen, ob ein Kompendium bearbeitet werden darf.
+   *
+   * Massgeblich ist Foundrys eigene Sperre, nicht die Herkunft: Viele pflegen
+   * ihre Sammlungen als eigenes Modul, nicht als Weltkompendium. Wer nach der
+   * Herkunft filtert, sperrt ausgerechnet die selbst gebauten aus.
+   *
+   * Zusaetzlich laesst sich in den Einstellungen eine Liste von Kompendien
+   * hinterlegen. Ist sie gefuellt, gilt nur, was darin steht. Ist sie leer,
+   * zaehlt allein die Sperre.
+   */
+  private assertCompendiumFreigegeben(pack: any, packId: string): void {
+    let liste = '';
+    try {
+      liste = (game.settings?.get(this.moduleId, 'writableCompendiums') as string) || '';
+    } catch {
+      liste = '';
+    }
+
+    const freigegeben = liste
+      .split(/[,\n;]/)
+      .map(e => e.trim())
+      .filter(Boolean);
+
+    if (freigegeben.length) {
+      const passt = freigegeben.some(
+        e => e === packId || e === pack.metadata?.packageName || packId.startsWith(e + '.')
+      );
+      if (!passt) {
+        throw new Error(
+          `"${packId}" steht nicht in der Freigabeliste. In den Moduleinstellungen unter ` +
+            `"Kompendien zum Bearbeiten" ergaenzen, oder die Liste leeren, damit jedes ` +
+            `entsperrte Kompendium bearbeitet werden darf.`
+        );
+      }
+      return;
+    }
+
+    if (pack.locked === true) {
+      throw new Error(
+        `"${packId}" ist gesperrt. Entweder in Foundry entsperren, oder unlockIfNeeded ` +
+          `setzen, damit die Sperre nur fuer diesen Vorgang geloest und danach ` +
+          `wiederhergestellt wird.`
+      );
+    }
+  }
+
+  /**
    * Kompendien auflisten, mit Sperrstatus und Herkunft.
    *
    * Die Unterscheidung ist wichtig: Kompendien aus einem Modul oder System
@@ -9112,7 +9159,8 @@ export class FoundryDataAccess {
         type: p.documentName,
         locked: p.locked === true,
         packageType: p.metadata?.packageType ?? 'unknown',
-        ownWorld: (p.metadata?.packageType ?? '') === 'world',
+        packageName: p.metadata?.packageName ?? null,
+        writable: p.locked !== true,
         entries: p.index?.size ?? 0,
       })),
       total: packs.length,
@@ -9209,13 +9257,10 @@ export class FoundryDataAccess {
     }
 
     const warLocked = pack.locked === true;
+    if (warLocked && !request.unlockIfNeeded) {
+      this.assertCompendiumFreigegeben(pack, request.packId);
+    }
     if (warLocked) {
-      if (!request.unlockIfNeeded) {
-        throw new Error(
-          `"${request.packId}" ist gesperrt. Mit unlockIfNeeded=true wird die Sperre nur fuer ` +
-            `diesen Vorgang geloest und danach wiederhergestellt.`
-        );
-      }
       await pack.configure({ locked: false });
     }
 
@@ -9280,12 +9325,7 @@ export class FoundryDataAccess {
     const pack: any = game.packs?.get(packId);
     if (!pack) throw new Error(`Kompendium "${packId}" nicht gefunden`);
 
-    if ((pack.metadata?.packageType ?? '') !== 'world') {
-      throw new Error(
-        `"${packId}" gehoert zu einem Modul oder System und wird nicht veraendert. ` +
-          `Nur eigene Weltkompendien duerfen bearbeitet werden.`
-      );
-    }
+    this.assertCompendiumFreigegeben(pack, packId);
 
     await pack.configure({ locked });
     this.auditLog('setCompendiumLock', { packId, locked }, 'success');
@@ -9308,10 +9348,10 @@ export class FoundryDataAccess {
     if (!pack) throw new Error(`Kompendium "${request.packId}" nicht gefunden`);
 
     const warLocked = pack.locked === true;
+    if (warLocked && !request.unlockIfNeeded) {
+      this.assertCompendiumFreigegeben(pack, request.packId);
+    }
     if (warLocked) {
-      if (!request.unlockIfNeeded) {
-        throw new Error(`"${request.packId}" ist gesperrt. unlockIfNeeded=true setzen.`);
-      }
       await pack.configure({ locked: false });
     }
 
