@@ -173,6 +173,24 @@
       "autoRebuild": "Rebuild when compendium packs change.",
       "autoRebuildHint": "Happens automatically in the background.",
       "window": "Enhanced creature index"
+    },
+    "compendiumAccess": {
+      "name": "Writable compendiums",
+      "label": "Choose compendiums",
+      "hint": "Decides which compendiums the AI model may edit.",
+      "window": "Writable compendiums",
+      "title": "Writable compendiums",
+      "intro": "Decides which compendiums the AI model may create, fill and organise. Locked compendiums stay protected even when ticked: the lock is only lifted for a single operation when explicitly asked for, and restored afterwards.",
+      "allowAll": "Allow every unlocked compendium.",
+      "allowAllHint": "The simplest setting. Unlocking something means you want to work on it.",
+      "listTitle": "Or pick individually",
+      "entries": "entries",
+      "locked": "locked",
+      "groupWorld": "In this world",
+      "groupModule": "From modules",
+      "groupSystem": "From the game system",
+      "savedAll": "Every unlocked compendium is allowed.",
+      "savedSome": "{count} compendiums allowed."
     }
   }
 }

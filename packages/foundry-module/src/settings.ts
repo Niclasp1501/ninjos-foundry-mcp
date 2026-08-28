@@ -63,6 +63,96 @@ export class ModuleSettings {
       restricted: true,
     });
 
+    // NINJO-ERWEITERUNG: Kompendien zum Anhaken freigeben
+    (game.settings as any).registerMenu(this.moduleId, 'compendiumAccessMenu', {
+      name: 'foundry-mcp-bridge.compendiumAccess.name',
+      label: 'foundry-mcp-bridge.compendiumAccess.label',
+      hint: 'foundry-mcp-bridge.compendiumAccess.hint',
+      icon: 'fas fa-book-open',
+      type: class extends FormApplication {
+        static get defaultOptions() {
+          return foundry.utils.mergeObject(super.defaultOptions, {
+            title: game.i18n.localize(`${MODULE_ID}.compendiumAccess.window`),
+            template: `modules/${MODULE_ID}/templates/compendium-access.html`,
+            width: 620,
+            height: 'auto',
+            resizable: true,
+            closeOnSubmit: true,
+          } as any);
+        }
+
+        getData(): any {
+          const roh = (game.settings.get(MODULE_ID, 'writableCompendiums') as string) || '';
+          const freigegeben = roh
+            .split(/[,\n;]/)
+            .map((e: string) => e.trim())
+            .filter(Boolean);
+
+          const packs = Array.from((game.packs as any) ?? []) as any[];
+
+          const gruppen: Record<string, any> = {
+            world: {
+              label: game.i18n.localize(`${MODULE_ID}.compendiumAccess.groupWorld`),
+              packs: [],
+            },
+            module: {
+              label: game.i18n.localize(`${MODULE_ID}.compendiumAccess.groupModule`),
+              packs: [],
+            },
+            system: {
+              label: game.i18n.localize(`${MODULE_ID}.compendiumAccess.groupSystem`),
+              packs: [],
+            },
+          };
+
+          for (const p of packs) {
+            const art = (p.metadata?.packageType as string) || 'module';
+            const ziel = gruppen[art] ?? gruppen.module;
+            const id = p.collection as string;
+            ziel.packs.push({
+              id,
+              label: p.metadata?.label ?? p.title ?? id,
+              type: p.documentName,
+              entries: p.index?.size ?? 0,
+              locked: p.locked === true,
+              selected:
+                freigegeben.includes(id) || freigegeben.includes(p.metadata?.packageName as string),
+            });
+          }
+
+          for (const g of Object.values(gruppen) as any[]) {
+            g.packs.sort((a: any, b: any) => a.label.localeCompare(b.label));
+          }
+
+          return {
+            allowAllUnlocked: freigegeben.length === 0,
+            groups: Object.values(gruppen).filter((g: any) => g.packs.length),
+          };
+        }
+
+        async _updateObject(_event: Event, formData: any): Promise<void> {
+          // Alles erlauben heisst: leere Liste, dann zaehlt nur die Sperre
+          if (formData.__allowAllUnlocked) {
+            await game.settings.set(MODULE_ID, 'writableCompendiums', '');
+            ui.notifications?.info(game.i18n.localize(`${MODULE_ID}.compendiumAccess.savedAll`));
+            return;
+          }
+
+          const gewaehlt = Object.entries(formData)
+            .filter(([k, v]) => k.startsWith('pack.') && v === true)
+            .map(([k]) => k.slice('pack.'.length));
+
+          await game.settings.set(MODULE_ID, 'writableCompendiums', gewaehlt.join(', '));
+          ui.notifications?.info(
+            game.i18n.format(`${MODULE_ID}.compendiumAccess.savedSome`, {
+              count: gewaehlt.length,
+            })
+          );
+        }
+      },
+      restricted: true,
+    });
+
     // Map Generation Service submenu
     (game.settings as any).registerMenu(this.moduleId, 'mapGenerationSettings', {
       name: 'foundry-mcp-bridge.menus.mapGenerationSettings.name',
@@ -338,7 +428,7 @@ export class ModuleSettings {
       name: 'foundry-mcp-bridge.settings.writableCompendiums.name',
       hint: 'foundry-mcp-bridge.settings.writableCompendiums.hint',
       scope: 'world',
-      config: true,
+      config: false, // NINJO: wird ueber das Menue "Kompendien freigeben" gepflegt
       type: String,
       default: '',
     });

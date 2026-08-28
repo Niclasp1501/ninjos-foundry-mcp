@@ -1,0 +1,62 @@
+{{!
+  NINJO-ERWEITERUNG: Freigabe der Kompendien zum Anhaken.
+
+  Vorher war das ein Textfeld, in das man Kennungen tippen musste. Wer nicht
+  weiss, dass eine Kennung "ninjo-kompendium.journale" lautet, kommt damit nicht
+  weit. Hier stehen alle Kompendien mit Namen, Art und Zustand.
+}}
+<form class="eci-settings mcp-menu mcp-compendium-access">
+  <section class="eci-block">
+    <h2 class="eci-title">{{localize "foundry-mcp-bridge.compendiumAccess.title"}}</h2>
+    <p class="eci-note">{{localize "foundry-mcp-bridge.compendiumAccess.intro"}}</p>
+  </section>
+
+  <hr class="eci-divider" />
+
+  <section class="eci-block">
+    <label class="eci-check mcp-all-row">
+      <input type="checkbox" name="__allowAllUnlocked" {{#if allowAllUnlocked}}checked{{/if}} />
+      <span>
+        <strong>{{localize "foundry-mcp-bridge.compendiumAccess.allowAll"}}</strong>
+        {{localize "foundry-mcp-bridge.compendiumAccess.allowAllHint"}}
+      </span>
+    </label>
+  </section>
+
+  <hr class="eci-divider" />
+
+  <section class="eci-block mcp-pack-list {{#if allowAllUnlocked}}mcp-dimmed{{/if}}">
+    <h3 class="eci-subtitle">{{localize "foundry-mcp-bridge.compendiumAccess.listTitle"}}</h3>
+
+    {{#each groups}}
+    <div class="mcp-group">
+      <div class="mcp-group-head">{{this.label}}</div>
+      {{#each this.packs}}
+      <label class="eci-check mcp-pack {{#if this.locked}}mcp-locked{{/if}}">
+        <input type="checkbox" name="pack.{{this.id}}" {{#if this.selected}}checked{{/if}} />
+        <span class="mcp-pack-body">
+          <span class="mcp-pack-name">{{this.label}}</span>
+          <span class="mcp-pack-meta">
+            {{this.type}} · {{this.entries}}
+            {{localize "foundry-mcp-bridge.compendiumAccess.entries"}}
+            {{#if this.locked}}
+            ·
+            <span class="mcp-tag-locked"
+              >{{localize "foundry-mcp-bridge.compendiumAccess.locked"}}</span
+            >
+            {{/if}}
+          </span>
+          <span class="mcp-pack-id">{{this.id}}</span>
+        </span>
+      </label>
+      {{/each}}
+    </div>
+    {{/each}}
+  </section>
+
+  <div class="form-footer">
+    <button type="submit" class="eci-btn primary">
+      <i class="fas fa-save"></i> {{localize "foundry-mcp-bridge.common.save"}}
+    </button>
+  </div>
+</form>

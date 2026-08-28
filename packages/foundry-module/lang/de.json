@@ -173,6 +173,24 @@
       "autoRebuild": "Bei Änderungen an Kompendien neu aufbauen.",
       "autoRebuildHint": "Geschieht dann von selbst im Hintergrund.",
       "window": "Erweiterter Kreaturenindex"
+    },
+    "compendiumAccess": {
+      "name": "Kompendien freigeben",
+      "label": "Kompendien auswählen",
+      "hint": "Legt fest, welche Kompendien das KI-Modell bearbeiten darf.",
+      "window": "Kompendien freigeben",
+      "title": "Kompendien freigeben",
+      "intro": "Hier wird festgelegt, welche Kompendien das KI-Modell anlegen, befüllen und sortieren darf. Gesperrte Kompendien bleiben auch dann geschützt, wenn sie angehakt sind: Die Sperre wird für einen Vorgang nur dann gelöst, wenn das ausdrücklich verlangt wird, und danach wiederhergestellt.",
+      "allowAll": "Jedes entsperrte Kompendium freigeben.",
+      "allowAllHint": "Die einfachste Einstellung. Wer entsperrt, will daran arbeiten.",
+      "listTitle": "Oder einzeln auswählen",
+      "entries": "Einträge",
+      "locked": "gesperrt",
+      "groupWorld": "In dieser Welt",
+      "groupModule": "Aus Modulen",
+      "groupSystem": "Aus dem Spielsystem",
+      "savedAll": "Jedes entsperrte Kompendium ist freigegeben.",
+      "savedSome": "{count} Kompendien freigegeben."
     }
   }
 }

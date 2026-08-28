@@ -268,3 +268,78 @@
 .mcp-menu .form-footer .eci-btn {
   min-width: 9rem;
 }
+
+/* -------------------------------------------------------------------------
+ * Fenster "Kompendien freigeben"
+ * ---------------------------------------------------------------------- */
+
+.mcp-compendium-access .mcp-pack-list {
+  max-height: 22rem;
+  overflow-y: auto;
+  transition: opacity 0.2s;
+}
+
+/* Ist "alles erlauben" gesetzt, tritt die Einzelauswahl zurueck */
+.mcp-compendium-access .mcp-pack-list.mcp-dimmed {
+  opacity: 0.45;
+}
+
+.mcp-compendium-access .mcp-all-row {
+  border-left: 3px solid var(--mcp-gold);
+}
+
+.mcp-compendium-access .mcp-group {
+  margin-bottom: 10px;
+}
+
+.mcp-compendium-access .mcp-group-head {
+  margin: 4px 0 5px;
+  color: var(--mcp-heading);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mcp-compendium-access .mcp-pack {
+  align-items: center;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+}
+
+.mcp-compendium-access .mcp-pack-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.mcp-compendium-access .mcp-pack-name {
+  font-weight: 600;
+}
+
+.mcp-compendium-access .mcp-pack-meta {
+  font-size: 0.76rem;
+  color: var(--mcp-text-weak);
+}
+
+/* Die Kennung ist nur zur Kontrolle da und tritt zurueck */
+.mcp-compendium-access .mcp-pack-id {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.7rem;
+  color: var(--mcp-text-weak);
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-compendium-access .mcp-tag-locked {
+  color: var(--mcp-red);
+  font-weight: 700;
+}
+
+/* Gesperrte Eintraege erkennbar, aber waehlbar: die Freigabe gilt fuer spaeter */
+.mcp-compendium-access .mcp-pack.mcp-locked {
+  border-left: 3px solid rgba(139, 0, 0, 0.35);
+}
