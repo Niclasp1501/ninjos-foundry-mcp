@@ -21,7 +21,7 @@
   "readme": "https://github.com/adambdooley/foundry-vtt-mcp/blob/master/README.md",
   "license": "https://github.com/adambdooley/foundry-vtt-mcp/blob/master/LICENSE",
   "esmodules": ["dist/main.js"],
-  "styles": ["styles/module.css", "styles/enhanced-creature-index.css"],
+  "styles": ["styles/module.css", "styles/enhanced-creature-index.css", "styles/ninjo-menu.css"],
   "languages": [
     {
       "lang": "en",

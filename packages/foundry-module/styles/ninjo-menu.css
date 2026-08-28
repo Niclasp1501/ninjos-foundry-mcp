@@ -1,0 +1,270 @@
+/* =============================================================================
+ * NINJO-ERWEITERUNG: Gestaltung der Modulfenster im Haus-Design
+ *
+ * Uebernimmt das Pergament-Design mit Rot und Gold aus FANG, damit die Fenster
+ * dieses Moduls aussehen wie die uebrigen eigenen Anwendungen. Die Farbwerte
+ * sind bewusst dieselben wie dort. Aendert sich das Hausdesign, gehoert diese
+ * Datei mit angepasst.
+ * ========================================================================== */
+
+.mcp-menu {
+  /* Pergament */
+  --mcp-bg: #fdfbf7;
+  --mcp-card: #ffffff;
+  --mcp-nav: #f4f1ea;
+  --mcp-border: #dcd6cc;
+  --mcp-text: #1a1a1a;
+  --mcp-text-weak: #5f5a52;
+
+  /* Akzente */
+  --mcp-red: #8b0000;
+  --mcp-red-dark: #600000;
+  --mcp-gold: #d4af37;
+  --mcp-heading: #5f4a21;
+
+  --mcp-font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --mcp-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  background: var(--mcp-bg);
+  color: var(--mcp-text);
+  font-family: var(--mcp-font);
+  padding: 0;
+  margin: 0;
+}
+
+.mcp-menu * {
+  box-sizing: border-box;
+}
+
+/* Das Fenster selbst mitfaerben, sonst steht helles Pergament in dunklem Rahmen */
+.window-app:has(.mcp-menu) .window-content {
+  background: var(--mcp-bg, #fdfbf7);
+  padding: 0;
+}
+
+/* --- Kopfbereich ------------------------------------------------------- */
+
+.mcp-menu .eci-title {
+  margin: 0;
+  padding: 14px 18px 10px;
+  border: none;
+  border-bottom: 2px solid var(--mcp-red);
+  background: var(--mcp-nav);
+  color: var(--mcp-red);
+  font-family: var(--mcp-font);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.mcp-menu .eci-title + .eci-note {
+  padding: 10px 18px 0;
+}
+
+/* --- Abschnitte -------------------------------------------------------- */
+
+.mcp-menu .eci-block {
+  margin: 0;
+  padding: 12px 18px;
+  background: transparent;
+  border: none;
+}
+
+.mcp-menu .eci-subtitle {
+  margin: 0 0 8px;
+  border: none;
+  color: var(--mcp-heading);
+  font-family: var(--mcp-font);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.mcp-menu .eci-note,
+.mcp-menu .eci-hint,
+.mcp-menu .notes {
+  margin: 0 0 8px;
+  color: var(--mcp-text-weak);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.mcp-menu .eci-divider {
+  border: none;
+  border-top: 1px solid var(--mcp-border);
+  margin: 0 18px;
+}
+
+/* --- Knoepfe ----------------------------------------------------------- */
+
+.mcp-menu .eci-btn {
+  padding: 9px 14px;
+  border: 1px solid var(--mcp-border);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  background: var(--mcp-nav);
+  color: var(--mcp-text);
+  font-family: var(--mcp-font);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: normal;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--mcp-shadow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-shadow: none;
+}
+
+.mcp-menu .eci-btn:hover {
+  background: #ebe5dc;
+  color: var(--mcp-red);
+  box-shadow: none;
+}
+
+.mcp-menu .eci-btn:active {
+  transform: translateY(2px);
+  border-bottom-width: 0;
+  margin-top: 2px;
+}
+
+/* Der bestaetigende Knopf unten traegt das Rot */
+.mcp-menu .eci-btn.primary {
+  background: var(--mcp-red);
+  border-color: transparent;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  color: #ffffff;
+}
+
+.mcp-menu .eci-btn.primary:hover {
+  background: var(--mcp-red-dark);
+  color: #ffffff;
+}
+
+/* Die drei Dienstknoepfe nebeneinander, gleich breit */
+.mcp-menu .eci-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.mcp-menu .eci-controls .eci-btn {
+  flex: 1;
+}
+
+/* Einzelknopf innerhalb eines Abschnitts: normale Breite statt voller Zeile */
+.mcp-menu .eci-block > .eci-btn {
+  width: auto;
+  min-width: 13rem;
+}
+
+/* Farbige Sonderfaelle des Ursprungs neutralisieren */
+.mcp-menu .eci-btn.check,
+.mcp-menu .eci-btn.start,
+.mcp-menu .eci-btn.stop {
+  background: var(--mcp-nav);
+  color: var(--mcp-text);
+}
+
+.mcp-menu .eci-btn.check:hover,
+.mcp-menu .eci-btn.start:hover {
+  background: #ebe5dc;
+  color: var(--mcp-red);
+}
+
+/* Anhalten ist der eingreifende Schritt und traegt einen roten Rand */
+.mcp-menu .eci-btn.stop {
+  border-color: rgba(139, 0, 0, 0.35);
+}
+
+.mcp-menu .eci-btn.stop:hover {
+  background: var(--mcp-red);
+  color: #ffffff;
+}
+
+/* --- Statuszeile ------------------------------------------------------- */
+
+.mcp-menu .eci-status-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mcp-menu .eci-status {
+  padding: 8px 12px;
+  border: 1px solid var(--mcp-border);
+  border-left: 3px solid var(--mcp-gold);
+  border-radius: 2px;
+  background: var(--mcp-card);
+  color: var(--mcp-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+/* --- Kaestchen und Auswahl --------------------------------------------- */
+
+.mcp-menu .eci-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  border: 1px solid var(--mcp-border);
+  border-radius: 2px;
+  background: var(--mcp-card);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.mcp-menu .eci-check input {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.mcp-menu .eci-check strong {
+  color: var(--mcp-text);
+}
+
+.mcp-menu .form-group {
+  margin: 10px 0 0;
+}
+
+.mcp-menu .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--mcp-heading);
+  font-size: 0.88rem;
+}
+
+.mcp-menu select {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--mcp-border);
+  border-radius: 2px;
+  background: var(--mcp-card);
+  color: var(--mcp-text);
+  font-family: var(--mcp-font);
+  font-size: 0.9rem;
+}
+
+.mcp-menu select:focus {
+  border-color: var(--mcp-red);
+  outline: none;
+}
+
+/* --- Fusszeile --------------------------------------------------------- */
+
+.mcp-menu .form-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 18px 14px;
+  margin-top: 4px;
+  border-top: 1px solid var(--mcp-border);
+  background: var(--mcp-nav);
+}
+
+.mcp-menu .form-footer .eci-btn {
+  min-width: 9rem;
+}
