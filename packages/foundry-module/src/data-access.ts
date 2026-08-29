@@ -4779,11 +4779,25 @@ export class FoundryDataAccess {
 
     const variants = Array.from(new Set([from, encodeURI(from), from.replace(/ /g, '%20')]));
 
+    // Match the target's spelling to the one that was found, so a rewritten
+    // path never mixes raw and percent-encoded segments.
+    const safeDecode = (v: string) => {
+      try {
+        return decodeURI(v);
+      } catch {
+        return v;
+      }
+    };
+    const toRaw = safeDecode(to);
+    const toEncoded = encodeURI(toRaw);
+
     const rewrite = (s: string): string | null => {
       for (const v of variants) {
         if (s.startsWith(v)) {
           const rest = s.slice(v.length);
-          if (rest === '' || rest.startsWith('/')) return to + rest;
+          if (rest !== '' && !rest.startsWith('/')) continue;
+          const replacement = v === from ? toRaw : toEncoded;
+          return replacement + rest;
         }
       }
       return null;
@@ -4851,30 +4865,26 @@ export class FoundryDataAccess {
 
     // Embedded collections get their own update call, so they are skipped when
     // flattening the parent document.
-    const EMBEDS: Record<string, string[]> = {
-      scenes: ['tokens', 'tiles', 'drawings', 'notes', 'sounds', 'walls', 'lights', 'regions'],
-      actors: ['items', 'effects'],
-      items: ['effects'],
-      journal: ['pages'],
-      playlists: ['sounds'],
-      tables: ['results'],
-      cards: ['cards'],
-      macros: [],
-    };
-    const EMBED_CLASS: Record<string, string> = {
-      tokens: 'Token',
-      tiles: 'Tile',
-      drawings: 'Drawing',
-      notes: 'Note',
-      sounds: 'AmbientSound',
-      walls: 'Wall',
-      lights: 'AmbientLight',
-      regions: 'Region',
-      items: 'Item',
-      effects: 'ActiveEffect',
-      pages: 'JournalEntryPage',
-      results: 'TableResult',
-      cards: 'Card',
+    // The document class MUST be looked up per parent: both Scene and Playlist
+    // have a "sounds" collection, but they hold AmbientSound vs PlaylistSound.
+    const EMBEDS: Record<string, Record<string, string>> = {
+      scenes: {
+        tokens: 'Token',
+        tiles: 'Tile',
+        drawings: 'Drawing',
+        notes: 'Note',
+        sounds: 'AmbientSound',
+        walls: 'Wall',
+        lights: 'AmbientLight',
+        regions: 'Region',
+      },
+      actors: { items: 'Item', effects: 'ActiveEffect' },
+      items: { effects: 'ActiveEffect' },
+      journal: { pages: 'JournalEntryPage' },
+      playlists: { sounds: 'PlaylistSound' },
+      tables: { results: 'TableResult' },
+      cards: { cards: 'Card' },
+      macros: {},
     };
 
     const wanted = request.collections?.length
@@ -4894,7 +4904,8 @@ export class FoundryDataAccess {
       for (const doc of coll) {
         const before = totalChanges;
         const source = doc.toObject();
-        const embedNames = EMBEDS[key] ?? [];
+        const embedMap = EMBEDS[key] ?? {};
+        const embedNames = Object.keys(embedMap);
 
         // 1) the document's own fields
         const flat: Record<string, any> = {};
@@ -4917,7 +4928,7 @@ export class FoundryDataAccess {
             }
           }
           if (embUpdates.length && !request.dryRun) {
-            const cls = EMBED_CLASS[embName];
+            const cls = embedMap[embName];
             if (cls) await doc.updateEmbeddedDocuments(cls, embUpdates);
           }
         }
