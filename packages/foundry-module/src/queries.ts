@@ -37,6 +37,10 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.listCreaturesByCriteria`] =
       this.handleListCreaturesByCriteria.bind(this);
     CONFIG.queries[`${modulePrefix}.getAvailablePacks`] = this.handleGetAvailablePacks.bind(this);
+    // NINJO: Der Server rief getPackIndex auf, ohne dass es hier je registriert war.
+    // Beide Schreibweisen wie bei den uebrigen Abfragen.
+    CONFIG.queries[`${modulePrefix}.getPackIndex`] = this.handleGetPackIndex.bind(this);
+    CONFIG.queries[`${modulePrefix}.get-pack-index`] = this.handleGetPackIndex.bind(this);
 
     // Scene queries
     CONFIG.queries[`${modulePrefix}.getActiveScene`] = this.handleGetActiveScene.bind(this);
@@ -360,6 +364,26 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to list creatures by criteria: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Handle get available packs request
+   */
+  private async handleGetPackIndex(data: any): Promise<any> {
+    try {
+      // SECURITY: Silent GM validation
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+
+      this.dataAccess.validateFoundryState();
+      return await this.dataAccess.getPackIndex(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to get pack index: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

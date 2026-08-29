@@ -1,0 +1,94 @@
+# Baut das Foundry-Modul und reicht es beim Foundry-Katalog ein.
+#
+# Ausgeloest wird das vom selben Tag wie der PC-Teil (build-complete-release.yml).
+# Das ist Absicht: Modul und MCP-Server sprechen ueber rund hundert Abfragenamen
+# miteinander, die kein Compiler prueft. Kaemen die beiden Haelften aus
+# verschiedenen Tags, koennten sie auseinanderlaufen, ohne dass es auffaellt -
+# genau das ist am 30.08.2026 passiert.
+name: Modul veroeffentlichen
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  modul:
+    # Beta-Tags bauen, aber nicht beim Katalog einreichen
+    if: ${{ startsWith(github.ref_name, 'v') }}
+    runs-on: ubuntu-latest
+    env:
+      # Auf Auftragsebene, weil das `if` eines Schrittes dessen eigenes env
+      # noch nicht sieht.
+      PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Abhaengigkeiten
+        run: npm ci
+
+      - name: Vertrag zwischen Server und Modul pruefen
+        run: node scripts/abfragen-pruefen.mjs
+
+      - name: Version gegen den Tag pruefen
+        run: node scripts/version-pruefen.mjs ${{ github.ref_name }}
+
+      - name: Bauen
+        run: npm run build
+
+      - name: Modulpaket schnueren
+        run: |
+          cd packages/foundry-module
+          # Was Foundry braucht, geht mit. Quelltext, Typen und die
+          # Bauwerkzeuge bleiben draussen - das Modul laedt nur dist/.
+          zip -r ../../module.zip . \
+            -x "src/*" \
+            -x "types/*" \
+            -x "node_modules/*" \
+            -x "scripts/*" \
+            -x "tsconfig.json" \
+            -x "package.json"
+          cd ../..
+          cp packages/foundry-module/module.json module.json
+          echo "Inhalt des Pakets:"
+          unzip -l module.zip | tail -20
+
+      - name: Anhaenge an das Release
+        # Titel und Text setzt bewusst nur build-complete-release.yml. Beide
+        # Workflows haengen am selben Tag und schreiben in dasselbe Release -
+        # wuerden beide einen Namen setzen, ueberschriebe der spaetere Lauf den
+        # frueheren, und welcher das ist, ist Zufall.
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            module.json
+            module.zip
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Beim Foundry-Katalog einreichen
+        # Ohne hinterlegtes PACKAGE_TOKEN wird der Schritt still uebersprungen.
+        # Das hat bei den In-Person Tools schon einmal Zeit gekostet, deshalb
+        # meldet der naechste Schritt es ausdruecklich.
+        if: ${{ env.PACKAGE_TOKEN != '' && !contains(github.ref_name, 'beta') }}
+        uses: cs96and/FoundryVTT-release-package@v1
+        with:
+          package-token: ${{ secrets.PACKAGE_TOKEN }}
+          manifest-url: https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/download/${{ github.ref_name }}/module.json
+
+      - name: Hinweis, falls nicht eingereicht wurde
+        if: ${{ env.PACKAGE_TOKEN == '' && !contains(github.ref_name, 'beta') }}
+        run: |
+          echo "::warning::PACKAGE_TOKEN ist nicht hinterlegt - das Release liegt auf GitHub, wurde aber NICHT beim Foundry-Katalog eingereicht."

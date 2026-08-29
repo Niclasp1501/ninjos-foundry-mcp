@@ -444,7 +444,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.ref_name }}
-        name: Foundry MCP Server ${{ github.ref_name }}
+        name: Ninjo's Foundry MCP ${{ github.ref_name }}
         body: |
           ## Foundry MCP Server ${{ github.ref_name }}
 

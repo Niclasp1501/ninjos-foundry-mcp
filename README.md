@@ -1,15 +1,73 @@
 # Ninjo's Foundry MCP
 
-Connect Foundry VTT to Claude for AI-powered campaign management through the Model Context Protocol (MCP).
+**Current Version / Aktuelle Version:** `14.2608.1`
+
+Run your Foundry VTT world through a conversation with Claude: build scenes, write
+journals and quests, create actors, manage compendiums, request dice rolls.
+
+_(Scroll down for German version / Scrolle weiter runter für die deutsche Version)_
 
 > Built on [adambdooley/foundry-vtt-mcp](https://github.com/adambdooley/foundry-vtt-mcp) by Adam Dooley,
 > used under the MIT license — see [LICENSE](LICENSE). This is an independent fork, not a replacement
-> for the original project. Added here: scene management including restore-from-backup, compendium
-> management, per-document-type permissions, a German interface, clean journal editing, tooling for
-> large imported adventures, and token art — see [CHANGELOG](CHANGELOG.md).
-> It currently supports Dungeons and Dragons Fifth Edition, Pathfinder Second Edition, Das Schwarze Augen Fifth Edition, Cosmere RPG System, Warhammer Fantasy Roleplay 4th Edition, & Mongoose Traveller 2nd Edition. The majority of MCP tools are system agnostic or have features that are aware of the system it is working with, excluding some DSA 5 specific tools.
+> for the original project.
 
-## Overview
+---
+
+## ⚠️ This is one half of a pair
+
+**The Foundry module alone does nothing.** It is a bridge, and a bridge needs both banks:
+
+| Part                          | Runs on                             | What it does                                |
+| ----------------------------- | ----------------------------------- | ------------------------------------------- |
+| **The module** (this package) | inside Foundry, in the GM's browser | carries out the requests against your world |
+| **The MCP server**            | on the GM's own PC, next to Claude  | offers Claude the tools and forwards them   |
+
+Both come from the **same release** and must carry the **same version** — an old server
+with a new module cannot talk to it. Install one without the other and nothing happens:
+Foundry will show "MCP Server not found", or Claude will show no Foundry tools at all.
+
+Everything is **GM-only**. Players never get access, and deleting is switched off
+everywhere by default.
+
+---
+
+## 🇬🇧 English
+
+### Installation
+
+**Step 1 — the Foundry module.** In Foundry: _Add-on Modules → Install Module_, paste
+this manifest URL, install, then enable **Ninjo's Foundry MCP** in your world:
+
+```
+https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/latest/download/module.json
+```
+
+**Step 2 — the MCP server on your PC.** Download the installer for your system from
+[Releases](https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/latest) — it
+installs the server and registers it with Claude Desktop. Then restart Claude Desktop.
+
+**Step 3 — load your world.** The module connects from the browser to the server on your
+PC. If both halves are up, Claude sees the Foundry tools.
+
+Requirements: Foundry VTT v13 or v14, Claude Desktop, and Windows or macOS for the
+installers (Node.js 18+ if you build from source).
+
+<details>
+<summary>Building from source instead</summary>
+
+```bash
+git clone https://github.com/Niclasp1501/ninjos-foundry-mcp.git
+cd ninjos-foundry-mcp
+npm install
+npm run build
+npm run pruefen   # checks that both halves agree on the query names
+```
+
+The module is `packages/foundry-module/`, the server `packages/mcp-server/`.
+
+</details>
+
+### Overview
 
 The Ninjo's Foundry MCP enables natural AI conversations with your Foundry VTT game data:
 
@@ -22,61 +80,7 @@ The Ninjo's Foundry MCP enables natural AI conversations with your Foundry VTT g
 - **Campaign Management**: Multi-part quest and campaign tracking
 - **Map Generation**: Create maps from prompts and automatically upload them into scenes in Foundry VTT using the optional ComfyUI component
 
-## Installation
-
-### Prerequisites
-
-- **Foundry VTT v13 or v14**
-- **Claude Desktop** with MCP support
-- **Windows** (for automated installer) or **Node.js 18+** for manual installation
-
-### Option 1: Windows Installer
-
-[Video guide for Windows Installer](https://youtu.be/Se04A21wrbE)
-
-1. Download the latest `FoundryMCPServer-Setup-vx.x.x.exe` from [Releases](https://github.com/Niclasp1501/ninjos-foundry-mcp/releases)
-2. Run the installer - it will:
-   - Install the MCP server with bundled Node.js runtime
-   - Configure the Claude Desktop MCP server settings
-   - Optionally install the Foundry module and ComfyUI Map Generation to your VTT installation
-   - Choose Cuda version for your GPU type during install
-3. Restart Claude Desktop
-4. Enable "Ninjo's Foundry MCP" in your Foundry Module Management
-
-### Option 2: Mac Installer
-
-1.  Download the latest `FoundryMCPServer-vx.x.x.dmg` from [Releases](https://github.com/Niclasp1501/ninjos-foundry-mcp/releases)
-2.  Run the package installer inside the dmg - it will:
-    - Open DMG and double-click the PKG installer
-    - Configure the Claude Desktop MCP server settings
-    - Optionally install the Foundry module and ComfyUI Map Generation to your Foundry VTT installation
-3.  Restart Claude Desktop
-4.  Enable "Ninjo's Foundry MCP" in your Foundry Module Management
-
-### Option 3: Manual Installation
-
-#### Install the Foundry Module
-
-1. Open Foundry VTT (v13 or v14)
-2. Select install module in the Foundry Add-ons menu
-3. At the bottom of the window, add the Manifest URL as: https://raw.githubusercontent.com/Niclasp1501/ninjos-foundry-mcp/main/packages/foundry-module/module.json and click install
-4. Enable "Ninjo's Foundry MCP" in Module Management
-   - **Do not change the module ID or folder name.** The MCP backend and the Claude integration both expect the module to live in a directory called `ninjos-foundry-mcp`. Renaming the ID in `module.json` breaks socket routing and stops Claude from seeing the backend.
-
-#### Install the MCP Server
-
-```bash
-# Clone repository
-git clone https://github.com/Niclasp1501/ninjos-foundry-mcp.git
-cd ninjos-foundry-mcp
-
-# Install dependencies and build
-npm install
-npm run build
-
-```
-
-#### Configure Claude Desktop
+### Configuring Claude Desktop by hand
 
 Add this to your Claude Desktop configuration (claude_desktop_config.json) file:
 
@@ -107,7 +111,7 @@ Starting Claude Desktop will start the MCP Server.
 2. Open Claude Desktop
 3. Chat with Claude about your currently loaded Foundry World
 
-## Example Usage
+### Example Usage
 
 Once connected, ask Claude Desktop:
 
@@ -118,7 +122,7 @@ Once connected, ask Claude Desktop:
 - _"What's in the current Foundry scene?"_
 - _"Create me a small map of a Riverside Cottage in Foundry"_
 
-## Features
+### Features
 
 - **43 MCP Tools** that allow Claude to interact with Foundry
 - **D&D 5e NPC Creation Suite**: Build complete NPCs from prompts — stat block, attacks, saves, auras, and spellcasting
@@ -138,7 +142,7 @@ Once connected, ask Claude Desktop:
 - **Remote Connections**: WebRTC connections initiated through browser (Tested with Google Chrome) to MCP server and ComfyUI
 - **Windows and Mac Installers** Automated installation of Foundry MCP Server for Claude Dekstop, Ninjo's Foundry MCP Foundry VTT Module, and ComfyUI backend with dependencies
 
-## MCP Tools
+### MCP Tools
 
 - **1** get-world-info
 - **2** list-scenes
@@ -182,7 +186,7 @@ Once connected, ask Claude Desktop:
 - **40** dnd5e-add-features-from-compendium (D&D 5e Only)
 - **41** manage-actors (create / update / delete actors; update / delete embedded items — any system)
 
-### Ninjo additions
+#### Ninjo additions
 
 Clean journal handling, token art, and tooling for large imported adventures.
 
@@ -200,13 +204,13 @@ Clean journal handling, token art, and tooling for large imported adventures.
 
 ---
 
-## Working with large imported adventures
+### Working with large imported adventures
 
 Adventures imported by tools such as Plutonium arrive as **one page per chapter**,
 often 70k–250k characters. That breaks several assumptions, and the tools below
 exist because of it. Read this before touching such a world.
 
-### The socket limit is the central constraint
+#### The socket limit is the central constraint
 
 Foundry's socket **drops the whole connection** when a query response gets too
 large — it does not return an error, and the bridge stays dead until the browser
@@ -225,7 +229,7 @@ Two mechanisms handle this:
 **Rule of thumb:** anything above ~100k characters goes through
 `journal-page-from-file`, never through `journal-set-page`.
 
-### Do not split chapters by default
+#### Do not split chapters by default
 
 `journal-split-page` works, but it is rarely what you want: **Foundry already
 builds a nested table of contents from the headings inside a page.** A 150k
@@ -242,7 +246,7 @@ one section at a time). Notes if you do:
   values 100000 apart, so a naive `+1` lands at the end of the journal.
 - `deleteOriginal` defaults to `false`. Verify first, delete afterwards.
 
-### Fixing an import
+#### Fixing an import
 
 Two cleanups are almost always worth running, in this order:
 
@@ -272,7 +276,7 @@ Names that resolve nowhere are **reported in `unresolved`, never silently
 skipped** — usually adventure-specific NPCs whose stat blocks live in a later
 chapter and do not exist as actors. That is a gap to fill, not a bug.
 
-### Token art and the dynamic ring
+#### Token art and the dynamic ring
 
 `actor-set-token` sets the token image, the portrait, the prototype token name,
 and the dnd5e/Foundry dynamic ring.
@@ -290,7 +294,7 @@ and the dnd5e/Foundry dynamic ring.
 - Without `tokenName`, placed tokens keep the compendium name ("Bandit") instead
   of the actor's name.
 
-### Translating an imported chapter
+#### Translating an imported chapter
 
 Translation happens **outside** this bridge, in the companion CLI
 (`Ninjo´s Gemini DnD Portrait-Token Maker/translate.js`), which runs on the
@@ -319,7 +323,7 @@ source (`<div>`/`</div>`, `<p>`/`</p>`, `<h1..3>`, `<img>`, `@creature[`, `@item
 A glossary keeps terminology stable across chapters — without one, a location is
 named differently in chapter 3 than in chapter 11.
 
-## Settings
+### Settings
 
 <img width="964" height="803" alt="image" src="https://github.com/user-attachments/assets/bfd435d5-2df4-40a6-a79b-87e98121db3f" />
 
@@ -334,7 +338,7 @@ named differently in chapter 3 than in chapter 11.
 - **Auto-Reconnect on Disconnect** Will automatically attempt to reconnect if the connection is lost
 - **Connection Check Frequency** How often it will check connection status
 
-### Enhanced Creature Index Sub-menu
+#### Enhanced Creature Index Sub-menu
 
 <img width="497" height="604" alt="image" src="https://github.com/user-attachments/assets/bf1a6fdb-9bd5-4256-b922-d28cf65b1e7d" />
 
@@ -342,7 +346,7 @@ named differently in chapter 3 than in chapter 11.
 - **Enable Enhanced Creature Index** This should be left on as Claude builds additional metadata in the world files to give it better searches
 - **Auto-Rebuild Index on Pack Changes** Experimental feature that hasn't been fully tested yet
 
-### Map Generation Service Sub-menu
+#### Map Generation Service Sub-menu
 
 <img width="489" height="779" alt="image" src="https://github.com/user-attachments/assets/a43d3a3d-266f-41c9-b40a-236d14cfcba9" />
 
@@ -350,7 +354,7 @@ named differently in chapter 3 than in chapter 11.
 - **Auto-start Map Generation Service** Controls whether ComfyUI service connection is automatically connected at startup of the Foundry world.
 - **Generation Quality** Controls the quality of the maps generated by the SDXL checkpoints wiht ComfyUI. Low uses 8 steps of generation, Medium uses 20 steps of generation, and High uses 35 steps. The D&D Battlemaps SDXL Upscale v1.0 Checkpoint used in this image generation recommends using 35 steps but on low end GPUs or GPUs with out CUDA, this generation will take several minutes. These options can give you a trade off to have maps generated faster at the expense of quality.
 
-## Architecture
+### Architecture
 
 ```
 Claude Desktop ↔ MCP Protocol ↔ MCP Server ↔ WebSocket ↔ Foundry Module ↔ Foundry VTT
@@ -364,13 +368,13 @@ Claude Desktop ↔ MCP Protocol ↔ MCP Server ↔ WebSocket ↔ Foundry Module 
 - **Map Generation Service**: A headless ComfyUI backend that is spawned by Claude Desktop
 - **No API Keys Required**: Uses your existing Claude Desktop subscription
 
-## Security & Permissions
+### Security & Permissions
 
 - **GM-Only Access**: All functionality restricted to Game Master users
 - **Configurable Permissions**: Control what data Claude can access and modify
 - **Session-Based Authentication**: Uses Foundry's built-in authentication system
 
-## System Requirements
+### System Requirements
 
 - **Foundry VTT**: Version 13
 - **Claude Desktop**: Latest version with MCP support
@@ -378,7 +382,7 @@ Claude Desktop ↔ MCP Protocol ↔ MCP Server ↔ WebSocket ↔ Foundry Module 
 - **Operating System**: Windows 10/11 (installer), or other OSes/manual Windows install with Node.js 18+ (manual)
 - **GPU Requirements**: A GPU with at least 8GB of VRAM
 
-## Schema Smoke Test
+### Schema Smoke Test
 
 The MCP schema smoke test verifies that tool schemas load correctly and do not enforce overly strict `additionalProperties` defaults.
 
@@ -387,9 +391,81 @@ npm -w @foundry-mcp/server run build
 npm run test:mcp:schema
 ```
 
-## Support & Development
+### Support & Development
 
 - **Issues**: Report bugs on [GitHub Issues](https://github.com/Niclasp1501/ninjos-foundry-mcp/issues)
 - **YouTube Channel**: [Subscribe for updates and tutorials](https://www.youtube.com/channel/UCVrSC-FzuAk5AgvfboJj0WA)
 - **Documentation**: Built with TypeScript, comprehensive documentation included
 - **License**: MIT License (Additional Third Party licenses are included for bundled components for the installers)
+
+---
+
+## 🇩🇪 Deutsch
+
+Foundry VTT im Gespräch mit Claude bedienen: Szenen bauen, Journale und Questreihen
+schreiben, Figuren und NSC anlegen, Kompendien verwalten, Würfelwürfe anfordern.
+
+### Zwei Hälften, und du brauchst beide
+
+**Das Foundry-Modul allein tut nichts.** Es ist eine Brücke, und eine Brücke braucht
+beide Ufer:
+
+| Teil                         | Läuft                                     | Aufgabe                                              |
+| ---------------------------- | ----------------------------------------- | ---------------------------------------------------- |
+| **Das Modul** (dieses Paket) | in Foundry, im Browser des Spielleiters   | führt die Aufträge gegen deine Welt aus              |
+| **Der MCP-Server**           | auf dem PC des Spielleiters, neben Claude | bietet Claude die Werkzeuge an und reicht sie weiter |
+
+Beide stammen aus **demselben Release** und tragen **dieselbe Version**. Ein alter
+Server kann mit einem neuen Modul nicht sprechen. Installierst du nur eine Hälfte,
+passiert schlicht nichts: Foundry meldet „MCP Server not found", oder Claude zeigt gar
+keine Foundry-Werkzeuge.
+
+Alles ist **nur für den Spielleiter**. Spieler bekommen keinen Zugriff, und **Löschen ist
+ab Werk überall abgeschaltet** — es muss je Dokumentart ausdrücklich freigegeben werden.
+
+### Einrichten
+
+**Schritt 1 — das Foundry-Modul.** In Foundry unter _Add-on-Module → Modul installieren_
+diese Manifest-Adresse einfügen, installieren, dann in deiner Welt **Ninjo's Foundry MCP**
+anhaken:
+
+```
+https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/latest/download/module.json
+```
+
+**Schritt 2 — der MCP-Server auf deinem PC.** Den Installer für dein System aus den
+[Releases](https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/latest) laden. Er
+richtet den Server ein und meldet ihn bei Claude Desktop an. Danach Claude Desktop neu
+starten.
+
+**Schritt 3 — Welt laden.** Das Modul verbindet sich aus dem Browser zum Server auf deinem
+PC. Stehen beide Hälften, sieht Claude die Foundry-Werkzeuge.
+
+Voraussetzungen: Foundry VTT v13 oder v14, Claude Desktop, und Windows oder macOS für die
+Installer (Node.js 18+, wenn du selbst baust).
+
+### Was das Modul kann
+
+- **Szenen** anlegen, ändern, aus einer Weltsicherung bergen, in Ordner einsortieren,
+  Journale daran hängen
+- **Journale und Questreihen** schreiben, durchsuchen, mit NSC verknüpfen
+- **Figuren und NSC** bauen, auch aus Kompendien, mit Rechtevergabe an Spieler
+- **Kompendien** anlegen, befüllen, sortieren, sperren — gedacht zum Archivieren
+  fertig gespielter Abschnitte
+- **Wiedergabelisten und Zufallstabellen** setzen
+- **Würfelwürfe** bei einzelnen Spielern anfordern
+- **Rechte je Dokumentart** in drei Stufen: nur lesen, anlegen und ändern, oder
+  zusätzlich löschen
+
+Unterstützt werden D&D 5e, Pathfinder 2e, DSA 5, Cosmere RPG, WFRP 4e und Mongoose
+Traveller 2e. Die meisten Werkzeuge arbeiten systemunabhängig.
+
+### Herkunft
+
+Dies ist ein eigenständiger Fork von
+[adambdooley/foundry-vtt-mcp](https://github.com/adambdooley/foundry-vtt-mcp) von Adam
+Dooley, verwendet unter der MIT-Lizenz — siehe [LICENSE](LICENSE). Er tritt **nicht** als
+Ersatz des Ursprungsprojekts auf.
+
+Die ausführliche Beschreibung aller Werkzeuge, der Einstellungen und der Arbeit mit großen
+importierten Abenteuern steht weiter oben im englischen Teil.

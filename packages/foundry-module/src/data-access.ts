@@ -3799,6 +3799,62 @@ export class FoundryDataAccess {
   }
 
   /**
+   * NINJO: Liefert den Index eines einzelnen Kompendiums.
+   *
+   * Der Server rief diese Abfrage schon auf, das Modul hatte sie nie registriert —
+   * die DSA5-Archetypensuche lief deshalb in ihr eigenes try/catch und gab stumm
+   * eine leere Liste zurueck. Gefunden am 30.08.2026 durch scripts/abfragen-pruefen.mjs.
+   *
+   * Wichtig: Foundry nimmt in den Index nur auf, was in `fields` steht. Wer auf ein
+   * nicht angefordertes Feld filtert, bekommt kein leeres Feld, sondern gar nichts —
+   * genau die Falle, in der die Archetypensuche sass. Zusatzfelder muessen deshalb
+   * ausdruecklich angefordert werden, mit Punktschreibweise wie
+   * `system.details.species.value`.
+   */
+  async getPackIndex(params: any) {
+    const { packId, fields, limit } = params || {};
+    if (!packId) {
+      throw new Error('getPackIndex: packId fehlt');
+    }
+
+    const pack = (game.packs as any).get(packId);
+    if (!pack) {
+      throw new Error(`getPackIndex: Kompendium "${packId}" nicht gefunden`);
+    }
+
+    const angefordert =
+      Array.isArray(fields) && fields.length
+        ? Array.from(new Set(['name', 'img', 'type', ...fields]))
+        : ['name', 'img', 'type'];
+
+    let packIndex: any;
+    try {
+      packIndex = await (pack as any).getIndex({ fields: angefordert });
+    } catch {
+      // Fallback: aeltere Foundry-API ohne Feldauswahl
+      packIndex = await (pack as any).getIndex();
+    }
+
+    const indexSource =
+      packIndex && typeof packIndex.values === 'function' ? packIndex : (pack as any).index;
+    const eintraege = Array.from((indexSource as any).values());
+
+    // Grosse Antworten reissen den Datenkanal (siehe restore-scene). Ein
+    // Kompendium mit tausenden Eintraegen wird deshalb gedeckelt.
+    const grenze = Number.isFinite(limit) ? Math.max(1, Math.min(Number(limit), 5000)) : 5000;
+    const gekuerzt = eintraege.slice(0, grenze);
+
+    if (eintraege.length > gekuerzt.length) {
+      console.warn(
+        `[${this.moduleId}] getPackIndex: "${packId}" hat ${eintraege.length} Eintraege, ` +
+          `es werden ${gekuerzt.length} zurueckgegeben`
+      );
+    }
+
+    return this.sanitizeData(gekuerzt);
+  }
+
+  /**
    * Sanitize data to remove sensitive information and make it JSON-safe
    */
   private sanitizeData(data: any): any {

@@ -1,7 +1,37 @@
-## v0.11.0 (2026-08-30)
+## v14.2608.1 (2026-08-30)
 
-Preparing this fork for submission to the Foundry package registry. Two things had
-to change: the module identity, and how the origin of the code is credited.
+Preparing this fork for submission to the Foundry package registry.
+
+### Versioning changed to `<foundry-major>.<YYMM>.<patch>`
+
+This project used semantic versioning inherited from upstream, while every other
+module in this workshop uses the Foundry-targeted scheme: `14` is the Foundry major
+version, `2608` the year and month, and the patch restarts at `1` each month. Tags
+carry a `v` prefix. `scripts/version-pruefen.mjs` enforces it and refuses a release
+whose tag does not match the manifest — the drift it guards against has already
+happened elsewhere, where an August release went out numbered as November.
+
+### Both halves now ship from one tag
+
+The module and the MCP server talk over roughly a hundred query names that exist
+only as strings; nothing checks them. On 2026-08-30 a rebuild of the server alone
+broke that contract silently, and it took a while to notice. Two consequences:
+
+- **`scripts/abfragen-pruefen.mjs`** compares the queries the server calls against
+  those the module registers and fails the release if one is missing. It found
+  `getPackIndex` immediately — see below.
+- A tag `v*` now builds **both** artefacts from the same commit: `module.json` and
+  `module.zip` for Foundry, and the PC installers. The module release additionally
+  submits to the Foundry catalogue when `PACKAGE_TOKEN` is present, and says so in
+  the log when it is not.
+
+### Fixed: `list-dsa5-archetypes` silently returned nothing
+
+The server called `getPackIndex`, which the module never registered. The call sat
+inside a `try/catch` that only logged a warning, so the tool answered with an empty
+list instead of an error. The query now exists, and it takes an explicit `fields`
+list — Foundry only puts requested fields into an index, so the DSA5 filters were
+reading properties that were never loaded.
 
 ### Breaking: the module id is now `ninjos-foundry-mcp`
 

@@ -1,6 +1,6 @@
 {
   "name": "ninjos-foundry-mcp",
-  "version": "0.11.0",
+  "version": "14.2608.1",
   "description": "Bedient Foundry VTT über das Model Context Protocol",
   "private": true,
   "workspaces": [
@@ -28,7 +28,10 @@
     "audit:unused": "npx knip",
     "audit:circular": "npx madge --circular --extensions ts packages/mcp-server/src packages/foundry-module/src shared/src",
     "size:analyze": "npm run bundle:server && npx esbuild-analyzer packages/mcp-server/dist/backend.bundle.cjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "pruefen:abfragen": "node scripts/abfragen-pruefen.mjs",
+    "pruefen:version": "node scripts/version-pruefen.mjs",
+    "pruefen": "npm run pruefen:abfragen && npm run pruefen:version"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

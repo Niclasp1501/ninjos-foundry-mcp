@@ -2,7 +2,7 @@
   "id": "ninjos-foundry-mcp",
   "title": "Ninjo's Foundry MCP",
   "description": "Bedient Foundry VTT über das Model Context Protocol. Szenen anlegen, ändern und aus einer Sicherung bergen, Journale und Questreihen schreiben, Figuren und NSC bauen, Kompendien anlegen und archivieren, Wiedergabelisten und Zufallstabellen setzen, Würfelwürfe anfordern. Rechte lassen sich je Dokumentart abstufen, Löschen ist ab Werk überall aus. Deutsche und englische Oberfläche. — Drive Foundry VTT from an AI model through the Model Context Protocol: scenes, journals, actors, compendiums, playlists, roll tables and dice requests, with per-document-type permissions and GM-only access.",
-  "version": "0.11.0",
+  "version": "14.2608.1",
   "compatibility": {
     "minimum": "13",
     "verified": "14",
@@ -34,8 +34,8 @@
     }
   ],
   "socket": true,
-  "manifest": "https://raw.githubusercontent.com/Niclasp1501/ninjos-foundry-mcp/main/packages/foundry-module/module.json",
-  "download": "https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/latest/download/ninjos-foundry-mcp.zip",
+  "manifest": "https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/latest/download/module.json",
+  "download": "https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/latest/download/module.zip",
   "protected": false,
   "coreTranslation": false,
   "library": false,
