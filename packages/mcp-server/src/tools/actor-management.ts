@@ -248,7 +248,7 @@ export class ActorManagementTools {
         )
       : actors;
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.createActors', {
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.createActors', {
       actors: normalizedActors,
       folder,
     });
@@ -283,7 +283,7 @@ export class ActorManagementTools {
         )
       : updates;
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.updateActors', {
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.updateActors', {
       updates: normalizedUpdates,
     });
 
@@ -301,7 +301,7 @@ export class ActorManagementTools {
 
     this.logger.info('Deleting actors', { count: ids.length });
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.deleteActors', { ids });
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.deleteActors', { ids });
 
     return result;
   }
@@ -330,7 +330,7 @@ export class ActorManagementTools {
       count: itemUpdates.length,
     });
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.updateActorItems', {
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.updateActorItems', {
       actorIdentifier,
       itemUpdates,
     });
@@ -353,7 +353,7 @@ export class ActorManagementTools {
       count: itemIds.length,
     });
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.deleteActorItems', {
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.deleteActorItems', {
       actorIdentifier,
       itemIds,
     });

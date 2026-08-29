@@ -1,5 +1,5 @@
 {
-  "foundry-mcp-bridge": {
+  "ninjos-foundry-mcp": {
     "settings": {
       "enabled": {
         "name": "Verbindung · MCP-Brücke aktivieren",
@@ -191,6 +191,9 @@
       "groupSystem": "Aus dem Spielsystem",
       "savedAll": "Jedes entsperrte Kompendium ist freigegeben.",
       "savedSome": "{count} Kompendien freigegeben."
+    },
+    "migration": {
+      "uebernommen": "{anzahl} Einstellungen aus der bisherigen Modulkennung übernommen."
     }
   }
 }

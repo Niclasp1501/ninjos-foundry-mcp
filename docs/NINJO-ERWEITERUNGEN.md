@@ -108,7 +108,7 @@ npm run build:server      # MCP-Server
 ```
 
 Danach die geänderten Dateien aus `packages/foundry-module/dist` auf den
-Foundry-Server nach `Data/modules/foundry-mcp-bridge/dist` kopieren.
+Foundry-Server nach `Data/modules/ninjos-foundry-mcp/dist` kopieren.
 
 **Wichtig:** `settings.js` auf dem Server **nicht** überschreiben, dort steckt
 die eigene Eindeutschung (Sicherung liegt als `settings.js.en.bak` daneben).

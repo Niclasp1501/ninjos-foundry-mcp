@@ -1,8 +1,8 @@
 {
-  "id": "foundry-mcp-bridge",
-  "title": "Ninjo's Foundry MCP Bridge",
-  "description": "Eigene Fassung der Foundry-MCP-Bruecke. Zusaetzlich zur Vorlage: Szenen- und Wiedergabelistenverwaltung, Zufallstabellen, Notizen auf Szenen, Rechte je Dokumentart und deutsche Oberflaeche. Connect Foundry VTT to AI models through MCP protocol. Enable AI-powered actor creation, intelligent compendium search, campaign analysis, and interactive dice roll coordination. Supports Claude, local LLMs, and future AI models with comprehensive GM-only security.",
-  "version": "0.9.0",
+  "id": "ninjos-foundry-mcp",
+  "title": "Ninjo's Foundry MCP",
+  "description": "Bedient Foundry VTT über das Model Context Protocol. Szenen anlegen, ändern und aus einer Sicherung bergen, Journale und Questreihen schreiben, Figuren und NSC bauen, Kompendien anlegen und archivieren, Wiedergabelisten und Zufallstabellen setzen, Würfelwürfe anfordern. Rechte lassen sich je Dokumentart abstufen, Löschen ist ab Werk überall aus. Deutsche und englische Oberfläche. — Drive Foundry VTT from an AI model through the Model Context Protocol: scenes, journals, actors, compendiums, playlists, roll tables and dice requests, with per-document-type permissions and GM-only access.",
+  "version": "0.11.0",
   "compatibility": {
     "minimum": "13",
     "verified": "14",
@@ -10,16 +10,15 @@
   },
   "authors": [
     {
-      "name": "Adam Dooley",
-      "email": "adambriandooley@gmail.com",
-      "url": "https://github.com/adambdooley"
+      "name": "Niclas Pflug (Ninjo)",
+      "url": "https://github.com/Niclasp1501"
     }
   ],
-  "url": "https://github.com/adambdooley/foundry-vtt-mcp",
-  "bugs": "https://github.com/adambdooley/foundry-vtt-mcp/issues",
-  "changelog": "https://github.com/adambdooley/foundry-vtt-mcp/releases",
-  "readme": "https://github.com/adambdooley/foundry-vtt-mcp/blob/master/README.md",
-  "license": "https://github.com/adambdooley/foundry-vtt-mcp/blob/master/LICENSE",
+  "url": "https://github.com/Niclasp1501/ninjos-foundry-mcp",
+  "bugs": "https://github.com/Niclasp1501/ninjos-foundry-mcp/issues",
+  "changelog": "https://github.com/Niclasp1501/ninjos-foundry-mcp/blob/main/CHANGELOG.md",
+  "readme": "https://github.com/Niclasp1501/ninjos-foundry-mcp/blob/main/README.md",
+  "license": "https://github.com/Niclasp1501/ninjos-foundry-mcp/blob/main/LICENSE",
   "esmodules": ["dist/main.js"],
   "styles": ["styles/module.css", "styles/enhanced-creature-index.css", "styles/ninjo-menu.css"],
   "languages": [
@@ -35,8 +34,8 @@
     }
   ],
   "socket": true,
-  "manifest": "https://raw.githubusercontent.com/adambdooley/foundry-vtt-mcp/master/packages/foundry-module/module.json",
-  "download": "https://github.com/adambdooley/foundry-vtt-mcp/releases/latest/download/foundry-vtt-mcp.zip",
+  "manifest": "https://raw.githubusercontent.com/Niclasp1501/ninjos-foundry-mcp/main/packages/foundry-module/module.json",
+  "download": "https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/latest/download/ninjos-foundry-mcp.zip",
   "protected": false,
   "coreTranslation": false,
   "library": false,

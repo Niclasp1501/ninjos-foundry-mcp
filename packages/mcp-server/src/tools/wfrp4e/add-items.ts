@@ -121,7 +121,7 @@ export class WFRP4eAddItemsTools {
     const { actor, items } = parsed.data;
     this.logger.info('Adding WFRP4e items', { actor, count: items.length });
     try {
-      return await this.foundryClient.query('foundry-mcp-bridge.addWfrp4eItems', { actor, items });
+      return await this.foundryClient.query('ninjos-foundry-mcp.addWfrp4eItems', { actor, items });
     } catch (error) {
       this.logger.error('Failed to add WFRP4e items', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };

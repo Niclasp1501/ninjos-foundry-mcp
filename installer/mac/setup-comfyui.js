@@ -338,7 +338,7 @@ function installFoundryModule() {
 
   log(`✅ Foundry VTT detected at ${foundryPath}`);
 
-  const modulePath = path.join(foundryPath, 'foundry-mcp-bridge');
+  const modulePath = path.join(foundryPath, 'ninjos-foundry-mcp');
   if (fs.existsSync(path.join(modulePath, 'module.json'))) {
     log('✅ Module already installed\n');
     return true;
@@ -399,7 +399,7 @@ async function main() {
   log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   log('Next steps:');
   log('1. Restart Claude Desktop');
-  log('2. Open Foundry VTT and enable "Foundry MCP Bridge" module');
+  log('2. Open Foundry VTT and enable "Ninjo\'s Foundry MCP" module');
   log('3. In Claude, you can now generate AI battlemaps!');
   log('');
   log('To test: Ask Claude to "generate a forest clearing battlemap"');

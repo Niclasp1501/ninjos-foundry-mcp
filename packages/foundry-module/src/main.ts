@@ -7,7 +7,7 @@ import { ComfyUIManager } from './comfyui-manager.js';
 // Connection control now handled through settings menu
 
 /**
- * Main Foundry MCP Bridge Module Class
+ * Main Ninjo's Foundry MCP Module Class
  */
 class FoundryMCPBridge {
   private settings: ModuleSettings;
@@ -39,7 +39,7 @@ class FoundryMCPBridge {
    */
   async initialize(): Promise<void> {
     try {
-      console.log(`[${MODULE_ID}] Initializing Foundry MCP Bridge...`);
+      console.log(`[${MODULE_ID}] Initializing Ninjo's Foundry MCP...`);
 
       // Register module settings
       this.settings.registerSettings();
@@ -57,7 +57,7 @@ class FoundryMCPBridge {
       console.log(`[${MODULE_ID}] Module initialized successfully`);
     } catch (error) {
       console.error(`[${MODULE_ID}] Failed to initialize:`, error);
-      ui.notifications.error('Failed to initialize Foundry MCP Bridge');
+      ui.notifications.error("Failed to initialize Ninjo's Foundry MCP");
       throw error;
     }
   }
@@ -74,6 +74,11 @@ class FoundryMCPBridge {
       }
 
       console.log(`[${MODULE_ID}] Foundry ready, checking bridge status...`);
+
+      // Einstellungen aus der alten Modulkennung uebernehmen, bevor irgendein
+      // Wert gelesen wird — sonst startet eine bestehende Welt mit Standardwerten
+      // und verbindet sich womoeglich gar nicht erst.
+      await this.settings.uebernehmeAlteEinstellungen();
 
       // Connection control now handled through settings menu
 
@@ -230,7 +235,7 @@ class FoundryMCPBridge {
 
           if (!lastShown || new Date(lastShown).getTime() < thirtySecondsAgo) {
             ui.notifications?.warn(
-              'MCP Server not found. Install it from https://github.com/adambdooley/foundry-vtt-mcp'
+              'MCP Server not found. Install it from https://github.com/Niclasp1501/ninjos-foundry-mcp'
             );
 
             // Remember when we showed this notification
@@ -516,7 +521,7 @@ Hooks.once('ready', async () => {
 
     // Register socket listener for roll state management (after game.user is available)
 
-    game.socket?.on('module.foundry-mcp-bridge', async data => {
+    game.socket?.on('module.ninjos-foundry-mcp', async data => {
       try {
         // Handle ChatMessage update requests (GM only)
         if (data.type === 'requestMessageUpdate' && data.buttonId && data.messageId) {

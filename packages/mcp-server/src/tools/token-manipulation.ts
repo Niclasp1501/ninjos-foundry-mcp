@@ -194,7 +194,7 @@ export class TokenManipulationTools {
     this.logger.info('Moving token', { tokenId, x, y, animate });
 
     try {
-      const result = await this.foundryClient.query('foundry-mcp-bridge.move-token', {
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.move-token', {
         tokenId,
         x,
         y,
@@ -239,7 +239,7 @@ export class TokenManipulationTools {
     this.logger.info('Updating token', { tokenId, updates });
 
     try {
-      const result = await this.foundryClient.query('foundry-mcp-bridge.update-token', {
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.update-token', {
         tokenId,
         updates,
       });
@@ -270,7 +270,7 @@ export class TokenManipulationTools {
     this.logger.info('Deleting tokens', { count: tokenIds.length, tokenIds });
 
     try {
-      const result = await this.foundryClient.query('foundry-mcp-bridge.delete-tokens', {
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.delete-tokens', {
         tokenIds,
       });
 
@@ -303,7 +303,7 @@ export class TokenManipulationTools {
     this.logger.info('Getting token details', { tokenId });
 
     try {
-      const tokenData = await this.foundryClient.query('foundry-mcp-bridge.get-token-details', {
+      const tokenData = await this.foundryClient.query('ninjos-foundry-mcp.get-token-details', {
         tokenId,
       });
 
@@ -382,7 +382,7 @@ export class TokenManipulationTools {
     this.logger.info('Toggling token condition', { tokenId, conditionId, active });
 
     try {
-      const result = await this.foundryClient.query('foundry-mcp-bridge.toggle-token-condition', {
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.toggle-token-condition', {
         tokenId,
         conditionId,
         active,
@@ -410,7 +410,7 @@ export class TokenManipulationTools {
 
     try {
       const result = await this.foundryClient.query(
-        'foundry-mcp-bridge.get-available-conditions',
+        'ninjos-foundry-mcp.get-available-conditions',
         {}
       );
 

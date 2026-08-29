@@ -7423,7 +7423,7 @@ export class FoundryDataAccess {
 
         // Send socket request to GM
         if (game.socket) {
-          game.socket.emit('module.foundry-mcp-bridge', {
+          game.socket.emit('module.ninjos-foundry-mcp', {
             type: 'requestMessageUpdate',
             buttonId,
             userId,
@@ -8335,7 +8335,7 @@ export class FoundryDataAccess {
       let description = '';
       if (type === 'Actor') {
         if (folderName === 'Foundry MCP Creatures') {
-          description = 'Creatures and monsters created via Foundry MCP Bridge';
+          description = "Creatures and monsters created via Ninjo's Foundry MCP";
         } else {
           description = `NPCs and creatures related to: ${folderName}`;
         }
@@ -8352,7 +8352,7 @@ export class FoundryDataAccess {
         sort: 0,
         parent: null,
         flags: {
-          'foundry-mcp-bridge': {
+          'ninjos-foundry-mcp': {
             mcpGenerated: true,
             createdAt: new Date().toISOString(),
             questContext: type === 'JournalEntry' ? folderName : undefined,
@@ -8463,7 +8463,7 @@ export class FoundryDataAccess {
         folder: parentId,
         sort: 0,
         flags: {
-          'foundry-mcp-bridge': {
+          'ninjos-foundry-mcp': {
             mcpGenerated: true,
             createdAt: new Date().toISOString(),
           },
@@ -10568,7 +10568,7 @@ export class FoundryDataAccess {
             resolvedTargetNames.push(actor.name);
           } else {
             console.warn(
-              `[foundry-mcp-bridge] No token found on scene for actor "${actor.name}" (self)`
+              `[ninjos-foundry-mcp] No token found on scene for actor "${actor.name}" (self)`
             );
           }
           continue;
@@ -10586,14 +10586,14 @@ export class FoundryDataAccess {
           tokenIds.push(targetToken.id);
           resolvedTargetNames.push(targetToken.name || targetToken.actor?.name || targetIdentifier);
         } else {
-          console.warn(`[foundry-mcp-bridge] Target not found: "${targetIdentifier}"`);
+          console.warn(`[ninjos-foundry-mcp] Target not found: "${targetIdentifier}"`);
         }
       }
 
       // Set targets using Foundry's targeting system
       if (tokenIds.length > 0 && game.user) {
         await (game.user as any).updateTokenTargets(tokenIds);
-        console.log(`[foundry-mcp-bridge] Set targets: ${resolvedTargetNames.join(', ')}`);
+        console.log(`[ninjos-foundry-mcp] Set targets: ${resolvedTargetNames.join(', ')}`);
       }
     }
 
@@ -10627,23 +10627,23 @@ export class FoundryDataAccess {
 
         // Fire and forget - don't await, as dialogs block the promise
         itemAny.use(useOptions).catch((err: Error) => {
-          console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+          console.error(`[ninjos-foundry-mcp] Error using item ${item.name}:`, err);
         });
       } else if (typeof itemAny.toChat === 'function') {
         // PF2e and some other systems use toChat
         if (typeof itemAny.toMessage === 'function') {
           itemAny.toMessage(undefined, { create: true }).catch((err: Error) => {
-            console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+            console.error(`[ninjos-foundry-mcp] Error using item ${item.name}:`, err);
           });
         } else {
           itemAny.toChat().catch((err: Error) => {
-            console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+            console.error(`[ninjos-foundry-mcp] Error using item ${item.name}:`, err);
           });
         }
       } else if (typeof itemAny.roll === 'function') {
         // Some items have a roll method
         itemAny.roll().catch((err: Error) => {
-          console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+          console.error(`[ninjos-foundry-mcp] Error using item ${item.name}:`, err);
         });
       } else if (systemId === 'dsa5') {
         // DSA5 specific handling
@@ -10655,11 +10655,11 @@ export class FoundryDataAccess {
         ) {
           if (typeof itemAny.postItem === 'function') {
             itemAny.postItem().catch((err: Error) => {
-              console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+              console.error(`[ninjos-foundry-mcp] Error using item ${item.name}:`, err);
             });
           } else if (typeof itemAny.setupEffect === 'function') {
             itemAny.setupEffect().catch((err: Error) => {
-              console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+              console.error(`[ninjos-foundry-mcp] Error using item ${item.name}:`, err);
             });
           } else {
             // Fallback: create a chat message describing the item
@@ -10673,7 +10673,7 @@ export class FoundryDataAccess {
         } else {
           if (typeof itemAny.postItem === 'function') {
             itemAny.postItem().catch((err: Error) => {
-              console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+              console.error(`[ninjos-foundry-mcp] Error using item ${item.name}:`, err);
             });
           }
         }

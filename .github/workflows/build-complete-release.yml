@@ -8,7 +8,7 @@ on:
       - feature/nsis-installer
   pull_request:
     branches:
-      - master
+      - main
   workflow_dispatch:
     inputs:
       version:
@@ -123,14 +123,14 @@ jobs:
         # Create ZIP excluding hidden files and node_modules
         $compress = @{
           Path = Get-ChildItem -Path "." -Exclude ".*", "node_modules"
-          DestinationPath = "..\..\foundry-vtt-mcp.zip"
+          DestinationPath = "..\..\ninjos-foundry-mcp.zip"
           CompressionLevel = "Optimal"
         }
         Compress-Archive @compress -Force
         
         # Verify ZIP was created
-        if (Test-Path "..\..\foundry-vtt-mcp.zip") {
-          $size = (Get-Item "..\..\foundry-vtt-mcp.zip").Length / 1KB
+        if (Test-Path "..\..\ninjos-foundry-mcp.zip") {
+          $size = (Get-Item "..\..\ninjos-foundry-mcp.zip").Length / 1KB
           Write-Host "✓ Foundry module ZIP created ($([math]::Round($size, 1)) KB)"
         } else {
           Write-Host "❌ Foundry module ZIP creation failed"
@@ -180,7 +180,7 @@ jobs:
           "3. Configure Claude Desktop to connect to this server",
           "4. Install the MCP Bridge module in Foundry VTT",
           "",
-          "For full documentation visit: https://github.com/adambdooley/foundry-vtt-mcp",
+          "For full documentation visit: https://github.com/Niclasp1501/ninjos-foundry-mcp",
           "",
           "Version: ${{ env.PACKAGE_VERSION }}"
         )
@@ -189,14 +189,14 @@ jobs:
         # Create the ZIP
         $compress = @{
           Path = $standalonePath
-          DestinationPath = "foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip"
+          DestinationPath = "ninjos-foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip"
           CompressionLevel = "Optimal"
         }
         Compress-Archive @compress -Force
         
         # Verify and clean up
-        if (Test-Path "foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip") {
-          $size = (Get-Item "foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip").Length / 1KB
+        if (Test-Path "ninjos-foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip") {
+          $size = (Get-Item "ninjos-foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip").Length / 1KB
           Write-Host "✓ Standalone MCP server ZIP created ($([math]::Round($size, 1)) KB)"
         } else {
           Write-Host "❌ Standalone MCP server ZIP creation failed"
@@ -222,7 +222,7 @@ jobs:
     - name: Upload installer as artifact
       uses: actions/upload-artifact@v6
       with:
-        name: foundry-mcp-server-installer-${{ env.PACKAGE_VERSION }}
+        name: ninjos-foundry-mcp-server-installer-${{ env.PACKAGE_VERSION }}
         path: installer/build/FoundryMCPServer-Setup-${{ env.PACKAGE_VERSION }}.exe
         retention-days: 30
 
@@ -336,7 +336,7 @@ jobs:
     - name: Upload Mac DMG as artifact
       uses: actions/upload-artifact@v6
       with:
-        name: foundry-mcp-server-dmg-${{ env.PACKAGE_VERSION }}
+        name: ninjos-foundry-mcp-server-dmg-${{ env.PACKAGE_VERSION }}
         path: installer/build/FoundryMCPServer-${{ env.PACKAGE_VERSION }}.dmg
         retention-days: 30
 
@@ -378,21 +378,21 @@ jobs:
     - name: Download Windows installer artifact
       uses: actions/download-artifact@v6
       with:
-        name: foundry-mcp-server-installer-${{ env.PACKAGE_VERSION }}
+        name: ninjos-foundry-mcp-server-installer-${{ env.PACKAGE_VERSION }}
         path: installer/build/
 
     - name: Download Mac DMG artifact
       uses: actions/download-artifact@v6
       with:
-        name: foundry-mcp-server-dmg-${{ env.PACKAGE_VERSION }}
+        name: ninjos-foundry-mcp-server-dmg-${{ env.PACKAGE_VERSION }}
         path: installer/build/
 
     - name: Create Foundry Module ZIP
       run: |
         cd packages/foundry-module
-        zip -r ../../foundry-vtt-mcp.zip . -x ".*" -x "node_modules/*"
+        zip -r ../../ninjos-foundry-mcp.zip . -x ".*" -x "node_modules/*"
         cd ../..
-        ls -lh foundry-vtt-mcp.zip
+        ls -lh ninjos-foundry-mcp.zip
 
     - name: Create Standalone MCP Server ZIP
       run: |
@@ -431,14 +431,14 @@ jobs:
         3. Configure Claude Desktop to connect to this server
         4. Install the MCP Bridge module in Foundry VTT
 
-        For full documentation visit: https://github.com/adambdooley/foundry-vtt-mcp
+        For full documentation visit: https://github.com/Niclasp1501/ninjos-foundry-mcp
 
         Version: ${{ env.PACKAGE_VERSION }}
         EOF
 
-        zip -r foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip standalone-mcp-server
+        zip -r ninjos-foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip standalone-mcp-server
         rm -rf standalone-mcp-server
-        ls -lh foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip
+        ls -lh ninjos-foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
@@ -467,13 +467,13 @@ jobs:
           - To uninstall: Double-click `Uninstall.tool` from the DMG
 
           **Manual Installation (All Platforms):**
-          - Download `foundry-mcp-server-${{ github.ref_name }}.zip`
+          - Download `ninjos-foundry-mcp-server-${{ github.ref_name }}.zip`
           - Extract and run with Node.js 18+
           - Manual Claude Desktop configuration required
 
           **Foundry VTT Users:**
           - Install directly from Foundry's module browser
-          - Or use manifest: `https://raw.githubusercontent.com/adambdooley/foundry-vtt-mcp/master/packages/foundry-module/module.json`
+          - Or use manifest: `https://raw.githubusercontent.com/Niclasp1501/ninjos-foundry-mcp/main/packages/foundry-module/module.json`
 
           ### Quick Start
           1. Choose your installation method above
@@ -493,12 +493,12 @@ jobs:
           - Enhanced creature index for instant monster searches
           - AI-powered battlemap generation with ComfyUI integration
 
-          For full documentation, visit: https://github.com/adambdooley/foundry-vtt-mcp
+          For full documentation, visit: https://github.com/Niclasp1501/ninjos-foundry-mcp
         files: |
           installer/build/FoundryMCPServer-Setup-${{ env.PACKAGE_VERSION }}.exe
           installer/build/FoundryMCPServer-${{ env.PACKAGE_VERSION }}.dmg
-          foundry-vtt-mcp.zip
-          foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip
+          ninjos-foundry-mcp.zip
+          ninjos-foundry-mcp-server-${{ env.PACKAGE_VERSION }}.zip
           packages/foundry-module/module.json
         generate_release_notes: true
         draft: false
@@ -512,8 +512,8 @@ jobs:
         PACKAGE_ID=$(node -p "require('./packages/foundry-module/module.json').id")
         VERSION="${{ env.PACKAGE_VERSION }}"
         VERSION="${VERSION#v}"  # Remove v prefix
-        MANIFEST_URL="https://github.com/adambdooley/foundry-vtt-mcp/releases/download/${{ github.ref_name }}/module.json"
-        RELEASE_NOTES_URL="https://github.com/adambdooley/foundry-vtt-mcp/releases/tag/${{ github.ref_name }}"
+        MANIFEST_URL="https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/download/${{ github.ref_name }}/module.json"
+        RELEASE_NOTES_URL="https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/tag/${{ github.ref_name }}"
 
         MINIMUM=$(node -p "require('./packages/foundry-module/module.json').compatibility.minimum")
         VERIFIED=$(node -p "require('./packages/foundry-module/module.json').compatibility.verified")

@@ -1,3 +1,49 @@
+## v0.11.0 (2026-08-30)
+
+Preparing this fork for submission to the Foundry package registry. Two things had
+to change: the module identity, and how the origin of the code is credited.
+
+### Breaking: the module id is now `ninjos-foundry-mcp`
+
+The old id `foundry-mcp-bridge` belongs to the upstream project and is already
+taken in the Foundry package registry, so this fork could never have been
+submitted under it. Foundry treats the rename as a **new module**: after updating,
+enable "Ninjo's Foundry MCP" in Module Management once, and rename the module
+directory on the server to match the new id.
+
+- **Settings are carried over automatically** on the first world start
+  (`uebernehmeAlteEinstellungen()` in `settings.ts`). Server address, the
+  permission matrix and the list of writable compendiums survive the rename. The
+  step never overwrites a value already set under the new id, so it is safe to run
+  on every start.
+- **The MCP server has to be restarted.** The query prefix between server and
+  module changed with the id; an old server and a new module do not talk to each
+  other.
+- Lost in the rename, both expendable: the audit log, and the roll buttons under
+  chat messages that already exist. Scenes, journals, actors and campaign status
+  do not hang on the module id.
+
+### Attribution
+
+This is a fork of [adambdooley/foundry-vtt-mcp](https://github.com/adambdooley/foundry-vtt-mcp)
+by Adam Dooley, used under the MIT license. The manifest, the installers and the
+release workflow still carried his name, his e-mail address and — more seriously —
+his manifest and download URLs, which would have updated users of this fork onto
+the original project.
+
+- Manifest, download, issue and changelog URLs now point at this repository
+- `authors` names the maintainer of this fork. The upstream author is credited in
+  the LICENSE and in the README instead, which is what the MIT license asks for.
+- **The module ZIP now ships a LICENSE.** It is built from
+  `packages/foundry-module/`, so the file at the repository root never reached the
+  distributed module — the MIT notice was missing from every copy handed out.
+- The title is "Ninjo's Foundry MCP", clearly apart from the registered
+  "Foundry MCP Bridge"
+- Versions across the workspace were inconsistent (0.9.0 / 0.8.2 against a
+  CHANGELOG at 0.10.0) and are now aligned
+
+---
+
 ## v0.10.0 (2026-08-28)
 
 Scene management. Until now the bridge could list, switch and AI-generate scenes,

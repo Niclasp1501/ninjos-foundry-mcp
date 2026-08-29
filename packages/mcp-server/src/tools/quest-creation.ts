@@ -281,7 +281,7 @@ export class QuestCreationTools {
       const questContent = this.generateQuestContent(request);
 
       // Create journal entry via Foundry client
-      const result = await this.foundryClient.query('foundry-mcp-bridge.createJournalEntry', {
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.createJournalEntry', {
         name: request.questTitle,
         content: questContent,
         additionalPages: request.additionalPages,
@@ -319,7 +319,7 @@ export class QuestCreationTools {
       const request = requestSchema.parse(args);
 
       // Get journal content first
-      const journalResult = await this.foundryClient.query('foundry-mcp-bridge.getJournalContent', {
+      const journalResult = await this.foundryClient.query('ninjos-foundry-mcp.getJournalContent', {
         journalId: request.journalId,
       });
 
@@ -336,7 +336,7 @@ export class QuestCreationTools {
 
       // Update journal with NPC link
       const updateResult = await this.foundryClient.query(
-        'foundry-mcp-bridge.updateJournalContent',
+        'ninjos-foundry-mcp.updateJournalContent',
         {
           journalId: request.journalId,
           content: updatedContent,
@@ -380,7 +380,7 @@ export class QuestCreationTools {
       // If creating a new page, skip the read-modify-write cycle
       if (request.newPageName) {
         const formattedContent = this.formatNewPageContent(request.newContent, request.updateType);
-        const result = await this.foundryClient.query('foundry-mcp-bridge.updateJournalContent', {
+        const result = await this.foundryClient.query('ninjos-foundry-mcp.updateJournalContent', {
           journalId: request.journalId,
           content: formattedContent,
           newPageName: request.newPageName,
@@ -404,7 +404,7 @@ export class QuestCreationTools {
       let currentContent: string;
       if (request.pageId) {
         const pageResult = await this.foundryClient.query(
-          'foundry-mcp-bridge.getJournalPageContent',
+          'ninjos-foundry-mcp.getJournalPageContent',
           {
             journalId: request.journalId,
             pageId: request.pageId,
@@ -416,7 +416,7 @@ export class QuestCreationTools {
         currentContent = pageResult.content;
       } else {
         const currentJournal = await this.foundryClient.query(
-          'foundry-mcp-bridge.getJournalContent',
+          'ninjos-foundry-mcp.getJournalContent',
           {
             journalId: request.journalId,
           }
@@ -448,7 +448,7 @@ export class QuestCreationTools {
       }
 
       // Update the journal
-      const result = await this.foundryClient.query('foundry-mcp-bridge.updateJournalContent', {
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.updateJournalContent', {
         journalId: request.journalId,
         content: updatedContent,
         pageId: request.pageId,
@@ -470,7 +470,7 @@ export class QuestCreationTools {
       let verifyContent: string;
       if (request.pageId) {
         const verifyResult = await this.foundryClient.query(
-          'foundry-mcp-bridge.getJournalPageContent',
+          'ninjos-foundry-mcp.getJournalPageContent',
           {
             journalId: request.journalId,
             pageId: request.pageId,
@@ -479,7 +479,7 @@ export class QuestCreationTools {
         verifyContent = verifyResult?.content || '';
       } else {
         const verifyResult = await this.foundryClient.query(
-          'foundry-mcp-bridge.getJournalContent',
+          'ninjos-foundry-mcp.getJournalContent',
           {
             journalId: request.journalId,
           }
@@ -537,7 +537,7 @@ export class QuestCreationTools {
       // Mode: Read a specific page
       if (request.journalId && request.pageId) {
         const pageResult = await this.foundryClient.query(
-          'foundry-mcp-bridge.getJournalPageContent',
+          'ninjos-foundry-mcp.getJournalPageContent',
           {
             journalId: request.journalId,
             pageId: request.pageId,
@@ -561,7 +561,7 @@ export class QuestCreationTools {
       // Mode: Read a specific journal (first page + page manifest)
       if (request.journalId) {
         const journalContent = await this.foundryClient.query(
-          'foundry-mcp-bridge.getJournalContent',
+          'ninjos-foundry-mcp.getJournalContent',
           {
             journalId: request.journalId,
             offset: request.offset,
@@ -591,7 +591,7 @@ export class QuestCreationTools {
       }
 
       // Mode: List all journals
-      const journals = await this.foundryClient.query('foundry-mcp-bridge.listJournals', {});
+      const journals = await this.foundryClient.query('ninjos-foundry-mcp.listJournals', {});
 
       if (!journals || journals.error) {
         throw new Error('Failed to retrieve journals');
@@ -608,7 +608,7 @@ export class QuestCreationTools {
       if (request.includeContent) {
         for (const journal of filteredJournals) {
           try {
-            const content = await this.foundryClient.query('foundry-mcp-bridge.getJournalContent', {
+            const content = await this.foundryClient.query('ninjos-foundry-mcp.getJournalContent', {
               journalId: journal.id,
             });
             journal.contentPreview = content?.content?.substring(0, 150) + '...' || '';
@@ -643,7 +643,7 @@ export class QuestCreationTools {
       const request = requestSchema.parse(args);
 
       // Get all journals (now includes page metadata)
-      const journals = await this.foundryClient.query('foundry-mcp-bridge.listJournals', {});
+      const journals = await this.foundryClient.query('ninjos-foundry-mcp.listJournals', {});
 
       if (!journals || journals.error) {
         throw new Error('Failed to retrieve journals');
@@ -677,7 +677,7 @@ export class QuestCreationTools {
             if (page.type !== 'text') continue;
             try {
               const pageContent = await this.foundryClient.query(
-                'foundry-mcp-bridge.getJournalPageContent',
+                'ninjos-foundry-mcp.getJournalPageContent',
                 {
                   journalId: journal.id,
                   pageId: page.id,

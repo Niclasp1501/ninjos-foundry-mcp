@@ -173,7 +173,7 @@ export class DSA5CharacterCreator {
     try {
       // First, get the full archetype data
       const archetypeData = await this.foundryClient.query(
-        'foundry-mcp-bridge.getCompendiumDocumentFull',
+        'ninjos-foundry-mcp.getCompendiumDocumentFull',
         {
           packId: archetypePackId,
           documentId: archetypeId,
@@ -189,7 +189,7 @@ export class DSA5CharacterCreator {
 
       // Create the character actor in Foundry
       const result = await this.foundryClient.query(
-        'foundry-mcp-bridge.createActorFromCompendium',
+        'ninjos-foundry-mcp.createActorFromCompendium',
         {
           packId: archetypePackId,
           itemId: archetypeId,
@@ -237,7 +237,7 @@ export class DSA5CharacterCreator {
 
     try {
       // Get all available packs or specific pack
-      const packs = await this.foundryClient.query('foundry-mcp-bridge.getAvailablePacks');
+      const packs = await this.foundryClient.query('ninjos-foundry-mcp.getAvailablePacks');
 
       // Filter for DSA5 character packs
       const characterPacks = packs.filter(
@@ -250,7 +250,7 @@ export class DSA5CharacterCreator {
       // Get archetypes from each pack
       for (const pack of characterPacks) {
         try {
-          const packIndex = await this.foundryClient.query('foundry-mcp-bridge.getPackIndex', {
+          const packIndex = await this.foundryClient.query('ninjos-foundry-mcp.getPackIndex', {
             packId: pack.id,
           });
 

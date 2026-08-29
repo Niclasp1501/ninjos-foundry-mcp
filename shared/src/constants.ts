@@ -3,8 +3,8 @@
 /**
  * Module constants
  */
-export const MODULE_ID = 'foundry-mcp-bridge';
-export const MODULE_TITLE = 'Foundry MCP Bridge';
+export const MODULE_ID = 'ninjos-foundry-mcp';
+export const MODULE_TITLE = "Ninjo's Foundry MCP";
 
 /**
  * Socket event names

@@ -14,9 +14,9 @@ export class ModuleSettings {
 
     // Enhanced Creature Index submenu
     (game.settings as any).registerMenu(this.moduleId, 'enhancedIndexMenu', {
-      name: 'foundry-mcp-bridge.menus.enhancedIndexMenu.name',
-      label: 'foundry-mcp-bridge.menus.enhancedIndexMenu.label',
-      hint: 'foundry-mcp-bridge.menus.enhancedIndexMenu.hint',
+      name: 'ninjos-foundry-mcp.menus.enhancedIndexMenu.name',
+      label: 'ninjos-foundry-mcp.menus.enhancedIndexMenu.label',
+      hint: 'ninjos-foundry-mcp.menus.enhancedIndexMenu.hint',
       icon: 'fas fa-search-plus',
       type: class extends FormApplication {
         static get defaultOptions() {
@@ -65,9 +65,9 @@ export class ModuleSettings {
 
     // NINJO-ERWEITERUNG: Kompendien zum Anhaken freigeben
     (game.settings as any).registerMenu(this.moduleId, 'compendiumAccessMenu', {
-      name: 'foundry-mcp-bridge.compendiumAccess.name',
-      label: 'foundry-mcp-bridge.compendiumAccess.label',
-      hint: 'foundry-mcp-bridge.compendiumAccess.hint',
+      name: 'ninjos-foundry-mcp.compendiumAccess.name',
+      label: 'ninjos-foundry-mcp.compendiumAccess.label',
+      hint: 'ninjos-foundry-mcp.compendiumAccess.hint',
       icon: 'fas fa-book-open',
       type: class extends FormApplication {
         static get defaultOptions() {
@@ -155,9 +155,9 @@ export class ModuleSettings {
 
     // Map Generation Service submenu
     (game.settings as any).registerMenu(this.moduleId, 'mapGenerationSettings', {
-      name: 'foundry-mcp-bridge.menus.mapGenerationSettings.name',
-      label: 'foundry-mcp-bridge.menus.mapGenerationSettings.label',
-      hint: 'foundry-mcp-bridge.menus.mapGenerationSettings.hint',
+      name: 'ninjos-foundry-mcp.menus.mapGenerationSettings.name',
+      label: 'ninjos-foundry-mcp.menus.mapGenerationSettings.label',
+      hint: 'ninjos-foundry-mcp.menus.mapGenerationSettings.hint',
       icon: 'fas fa-cogs',
       type: class extends FormApplication {
         static get defaultOptions() {
@@ -285,8 +285,8 @@ export class ModuleSettings {
     // ============================================================================
 
     game.settings.register(this.moduleId, 'enabled', {
-      name: 'foundry-mcp-bridge.settings.enabled.name',
-      hint: 'foundry-mcp-bridge.settings.enabled.hint',
+      name: 'ninjos-foundry-mcp.settings.enabled.name',
+      hint: 'ninjos-foundry-mcp.settings.enabled.hint',
       scope: 'world',
       config: true,
       type: Boolean,
@@ -295,23 +295,23 @@ export class ModuleSettings {
     });
 
     game.settings.register(this.moduleId, 'connectionType', {
-      name: 'foundry-mcp-bridge.settings.connectionType.name',
-      hint: 'foundry-mcp-bridge.settings.connectionType.hint',
+      name: 'ninjos-foundry-mcp.settings.connectionType.name',
+      hint: 'ninjos-foundry-mcp.settings.connectionType.hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        auto: 'foundry-mcp-bridge.settings.connectionType.choices.auto',
-        webrtc: 'foundry-mcp-bridge.settings.connectionType.choices.webrtc',
-        websocket: 'foundry-mcp-bridge.settings.connectionType.choices.websocket',
+        auto: 'ninjos-foundry-mcp.settings.connectionType.choices.auto',
+        webrtc: 'ninjos-foundry-mcp.settings.connectionType.choices.webrtc',
+        websocket: 'ninjos-foundry-mcp.settings.connectionType.choices.websocket',
       },
       default: 'auto',
       onChange: this.onConnectionChange.bind(this),
     });
 
     game.settings.register(this.moduleId, 'serverHost', {
-      name: 'foundry-mcp-bridge.settings.serverHost.name',
-      hint: 'foundry-mcp-bridge.settings.serverHost.hint',
+      name: 'ninjos-foundry-mcp.settings.serverHost.name',
+      hint: 'ninjos-foundry-mcp.settings.serverHost.hint',
       scope: 'world',
       config: true,
       type: String,
@@ -320,8 +320,8 @@ export class ModuleSettings {
     });
 
     game.settings.register(this.moduleId, 'serverPort', {
-      name: 'foundry-mcp-bridge.settings.serverPort.name',
-      hint: 'foundry-mcp-bridge.settings.serverPort.hint',
+      name: 'ninjos-foundry-mcp.settings.serverPort.name',
+      hint: 'ninjos-foundry-mcp.settings.serverPort.hint',
       scope: 'world',
       config: false,
       type: Number,
@@ -334,8 +334,8 @@ export class ModuleSettings {
     // ============================================================================
 
     game.settings.register(this.moduleId, 'allowWriteOperations', {
-      name: 'foundry-mcp-bridge.settings.allowWriteOperations.name',
-      hint: 'foundry-mcp-bridge.settings.allowWriteOperations.hint',
+      name: 'ninjos-foundry-mcp.settings.allowWriteOperations.name',
+      hint: 'ninjos-foundry-mcp.settings.allowWriteOperations.hint',
       scope: 'world',
       config: true,
       type: Boolean,
@@ -355,78 +355,78 @@ export class ModuleSettings {
     // ============================================================================
 
     game.settings.register(this.moduleId, 'permScenes', {
-      name: 'foundry-mcp-bridge.settings.permScenes.name',
-      hint: 'foundry-mcp-bridge.settings.permScenes.hint',
+      name: 'ninjos-foundry-mcp.settings.permScenes.name',
+      hint: 'ninjos-foundry-mcp.settings.permScenes.hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        read: 'foundry-mcp-bridge.settings.permScenes.choices.read',
-        write: 'foundry-mcp-bridge.settings.permScenes.choices.write',
-        full: 'foundry-mcp-bridge.settings.permScenes.choices.full',
+        read: 'ninjos-foundry-mcp.settings.permScenes.choices.read',
+        write: 'ninjos-foundry-mcp.settings.permScenes.choices.write',
+        full: 'ninjos-foundry-mcp.settings.permScenes.choices.full',
       },
       default: 'write',
     });
 
     game.settings.register(this.moduleId, 'permPlaylists', {
-      name: 'foundry-mcp-bridge.settings.permPlaylists.name',
-      hint: 'foundry-mcp-bridge.settings.permPlaylists.hint',
+      name: 'ninjos-foundry-mcp.settings.permPlaylists.name',
+      hint: 'ninjos-foundry-mcp.settings.permPlaylists.hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        read: 'foundry-mcp-bridge.settings.permPlaylists.choices.read',
-        write: 'foundry-mcp-bridge.settings.permPlaylists.choices.write',
-        full: 'foundry-mcp-bridge.settings.permPlaylists.choices.full',
+        read: 'ninjos-foundry-mcp.settings.permPlaylists.choices.read',
+        write: 'ninjos-foundry-mcp.settings.permPlaylists.choices.write',
+        full: 'ninjos-foundry-mcp.settings.permPlaylists.choices.full',
       },
       default: 'write',
     });
 
     game.settings.register(this.moduleId, 'permJournals', {
-      name: 'foundry-mcp-bridge.settings.permJournals.name',
-      hint: 'foundry-mcp-bridge.settings.permJournals.hint',
+      name: 'ninjos-foundry-mcp.settings.permJournals.name',
+      hint: 'ninjos-foundry-mcp.settings.permJournals.hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        read: 'foundry-mcp-bridge.settings.permJournals.choices.read',
-        write: 'foundry-mcp-bridge.settings.permJournals.choices.write',
-        full: 'foundry-mcp-bridge.settings.permJournals.choices.full',
+        read: 'ninjos-foundry-mcp.settings.permJournals.choices.read',
+        write: 'ninjos-foundry-mcp.settings.permJournals.choices.write',
+        full: 'ninjos-foundry-mcp.settings.permJournals.choices.full',
       },
       default: 'write',
     });
 
     game.settings.register(this.moduleId, 'permRollTables', {
-      name: 'foundry-mcp-bridge.settings.permRollTables.name',
-      hint: 'foundry-mcp-bridge.settings.permRollTables.hint',
+      name: 'ninjos-foundry-mcp.settings.permRollTables.name',
+      hint: 'ninjos-foundry-mcp.settings.permRollTables.hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        read: 'foundry-mcp-bridge.settings.permRollTables.choices.read',
-        write: 'foundry-mcp-bridge.settings.permRollTables.choices.write',
-        full: 'foundry-mcp-bridge.settings.permRollTables.choices.full',
+        read: 'ninjos-foundry-mcp.settings.permRollTables.choices.read',
+        write: 'ninjos-foundry-mcp.settings.permRollTables.choices.write',
+        full: 'ninjos-foundry-mcp.settings.permRollTables.choices.full',
       },
       default: 'write',
     });
 
     game.settings.register(this.moduleId, 'permActors', {
-      name: 'foundry-mcp-bridge.settings.permActors.name',
-      hint: 'foundry-mcp-bridge.settings.permActors.hint',
+      name: 'ninjos-foundry-mcp.settings.permActors.name',
+      hint: 'ninjos-foundry-mcp.settings.permActors.hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        read: 'foundry-mcp-bridge.settings.permActors.choices.read',
-        write: 'foundry-mcp-bridge.settings.permActors.choices.write',
-        full: 'foundry-mcp-bridge.settings.permActors.choices.full',
+        read: 'ninjos-foundry-mcp.settings.permActors.choices.read',
+        write: 'ninjos-foundry-mcp.settings.permActors.choices.write',
+        full: 'ninjos-foundry-mcp.settings.permActors.choices.full',
       },
       default: 'write',
     });
 
     game.settings.register(this.moduleId, 'writableCompendiums', {
-      name: 'foundry-mcp-bridge.settings.writableCompendiums.name',
-      hint: 'foundry-mcp-bridge.settings.writableCompendiums.hint',
+      name: 'ninjos-foundry-mcp.settings.writableCompendiums.name',
+      hint: 'ninjos-foundry-mcp.settings.writableCompendiums.hint',
       scope: 'world',
       config: false, // NINJO: wird ueber das Menue "Kompendien freigeben" gepflegt
       type: String,
@@ -434,29 +434,29 @@ export class ModuleSettings {
     });
 
     game.settings.register(this.moduleId, 'permCompendiums', {
-      name: 'foundry-mcp-bridge.settings.permCompendiums.name',
-      hint: 'foundry-mcp-bridge.settings.permCompendiums.hint',
+      name: 'ninjos-foundry-mcp.settings.permCompendiums.name',
+      hint: 'ninjos-foundry-mcp.settings.permCompendiums.hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        read: 'foundry-mcp-bridge.settings.permCompendiums.choices.read',
-        write: 'foundry-mcp-bridge.settings.permCompendiums.choices.write',
-        full: 'foundry-mcp-bridge.settings.permCompendiums.choices.full',
+        read: 'ninjos-foundry-mcp.settings.permCompendiums.choices.read',
+        write: 'ninjos-foundry-mcp.settings.permCompendiums.choices.write',
+        full: 'ninjos-foundry-mcp.settings.permCompendiums.choices.full',
       },
       default: 'write',
     });
 
     game.settings.register(this.moduleId, 'permFolders', {
-      name: 'foundry-mcp-bridge.settings.permFolders.name',
-      hint: 'foundry-mcp-bridge.settings.permFolders.hint',
+      name: 'ninjos-foundry-mcp.settings.permFolders.name',
+      hint: 'ninjos-foundry-mcp.settings.permFolders.hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        read: 'foundry-mcp-bridge.settings.permFolders.choices.read',
-        write: 'foundry-mcp-bridge.settings.permFolders.choices.write',
-        full: 'foundry-mcp-bridge.settings.permFolders.choices.full',
+        read: 'ninjos-foundry-mcp.settings.permFolders.choices.read',
+        write: 'ninjos-foundry-mcp.settings.permFolders.choices.write',
+        full: 'ninjos-foundry-mcp.settings.permFolders.choices.full',
       },
       default: 'write',
     });
@@ -466,8 +466,8 @@ export class ModuleSettings {
     // ============================================================================
 
     game.settings.register(this.moduleId, 'maxActorsPerRequest', {
-      name: 'foundry-mcp-bridge.settings.maxActorsPerRequest.name',
-      hint: 'foundry-mcp-bridge.settings.maxActorsPerRequest.hint',
+      name: 'ninjos-foundry-mcp.settings.maxActorsPerRequest.name',
+      hint: 'ninjos-foundry-mcp.settings.maxActorsPerRequest.hint',
       scope: 'world',
       config: true,
       type: Number,
@@ -500,7 +500,7 @@ export class ModuleSettings {
     // Map Generation Service settings (configured via submenu only)
     // ComfyUI always runs on localhost:31411 (same machine as MCP server)
     game.settings.register(this.moduleId, 'mapGenAutoStart', {
-      name: 'foundry-mcp-bridge.settings.mapGenAutoStart.name',
+      name: 'ninjos-foundry-mcp.settings.mapGenAutoStart.name',
       scope: 'world',
       config: true, // NINJO: im Hauptmenue sichtbar, nicht nur im Untermenue
       type: Boolean,
@@ -508,15 +508,15 @@ export class ModuleSettings {
     });
 
     game.settings.register(this.moduleId, 'mapGenQuality', {
-      name: 'foundry-mcp-bridge.settings.mapGenQuality.name',
-      hint: 'foundry-mcp-bridge.settings.mapGenQuality.hint',
+      name: 'ninjos-foundry-mcp.settings.mapGenQuality.name',
+      hint: 'ninjos-foundry-mcp.settings.mapGenQuality.hint',
       scope: 'world',
       config: false, // Hidden from main config, accessible via submenu only
       type: String,
       choices: {
-        low: 'foundry-mcp-bridge.settings.mapGenQuality.choices.low',
-        medium: 'foundry-mcp-bridge.settings.mapGenQuality.choices.medium',
-        high: 'foundry-mcp-bridge.settings.mapGenQuality.choices.high',
+        low: 'ninjos-foundry-mcp.settings.mapGenQuality.choices.low',
+        medium: 'ninjos-foundry-mcp.settings.mapGenQuality.choices.medium',
+        high: 'ninjos-foundry-mcp.settings.mapGenQuality.choices.high',
       },
       default: 'low',
     });
@@ -526,8 +526,8 @@ export class ModuleSettings {
     // ============================================================================
 
     game.settings.register(this.moduleId, 'enableNotifications', {
-      name: 'foundry-mcp-bridge.settings.enableNotifications.name',
-      hint: 'foundry-mcp-bridge.settings.enableNotifications.hint',
+      name: 'ninjos-foundry-mcp.settings.enableNotifications.name',
+      hint: 'ninjos-foundry-mcp.settings.enableNotifications.hint',
       scope: 'world',
       config: true,
       type: Boolean,
@@ -535,8 +535,8 @@ export class ModuleSettings {
     });
 
     game.settings.register(this.moduleId, 'autoReconnectEnabled', {
-      name: 'foundry-mcp-bridge.settings.autoReconnectEnabled.name',
-      hint: 'foundry-mcp-bridge.settings.autoReconnectEnabled.hint',
+      name: 'ninjos-foundry-mcp.settings.autoReconnectEnabled.name',
+      hint: 'ninjos-foundry-mcp.settings.autoReconnectEnabled.hint',
       scope: 'world',
       config: true,
       type: Boolean,
@@ -544,8 +544,8 @@ export class ModuleSettings {
     });
 
     game.settings.register(this.moduleId, 'heartbeatInterval', {
-      name: 'foundry-mcp-bridge.settings.heartbeatInterval.name',
-      hint: 'foundry-mcp-bridge.settings.heartbeatInterval.hint',
+      name: 'ninjos-foundry-mcp.settings.heartbeatInterval.name',
+      hint: 'ninjos-foundry-mcp.settings.heartbeatInterval.hint',
       scope: 'world',
       config: true,
       type: Number,
@@ -617,7 +617,7 @@ export class ModuleSettings {
       /* NINJO: Hier stand der Hinweistext der Einstellung als Grundlage. Seit die
        * Beschriftungen ueber die Sprachdateien laufen, steht dort aber der
        * Schluessel und nicht der uebersetzte Text. Das Anhaengen des Status machte
-       * ihn unaufloesbar, im Menue erschien "foundry-mcp-bridge.settings.enabled.hint".
+       * ihn unaufloesbar, im Menue erschien "ninjos-foundry-mcp.settings.enabled.hint".
        * Deshalb wird der Grundtext jetzt ausdruecklich uebersetzt. */
       const basis = game.i18n.localize(`${this.moduleId}.settings.enabled.hint`);
       const label = game.i18n.localize(`${this.moduleId}.status.label`);
@@ -812,5 +812,101 @@ export class ModuleSettings {
     }
 
     ui.notifications.info('MCP Bridge settings have been reset to defaults');
+  }
+
+  /**
+   * Übernimmt die Einstellungen aus der alten Modulkennung `foundry-mcp-bridge`.
+   *
+   * Warum das nötig ist: Foundry speichert Einstellungen unter dem Namensraum der
+   * Modulkennung. Mit der Umbenennung auf `ninjos-foundry-mcp` sieht Foundry ein
+   * neues Modul, und alles Gespeicherte bestehender Welten hängt weiter am alten
+   * Namen — Serveradresse, Rechtematrix und die Liste der freigegebenen Kompendien
+   * wären sonst weg und müssten von Hand neu gesetzt werden.
+   *
+   * Der Schritt ist bewusst so gebaut, dass er bei jedem Weltstart erneut laufen
+   * darf: Er überschreibt keinen Wert, der unter der neuen Kennung bereits
+   * gespeichert ist, und rührt den alten Namensraum nicht an.
+   */
+  async uebernehmeAlteEinstellungen(): Promise<number> {
+    const ALTE_KENNUNG = 'foundry-mcp-bridge';
+
+    // Nur der Spielleiter darf Welteinstellungen schreiben
+    if (!game.user?.isGM) return 0;
+
+    let uebernommen = 0;
+
+    for (const bereich of ['world', 'client'] as const) {
+      const speicher = (game.settings as any).storage?.get(bereich);
+      if (!speicher) continue;
+
+      // Der Weltspeicher ist eine Sammlung von Setting-Dokumenten, der
+      // Client-Speicher ist der localStorage. Beide werden anders gelesen.
+      let eintraege: Array<{ key: string; value: string }> = [];
+      try {
+        eintraege =
+          bereich === 'world'
+            ? Array.from(speicher as any).map((s: any) => ({ key: s.key, value: s.value }))
+            : Object.keys(speicher)
+                .filter(k => k.startsWith(`${ALTE_KENNUNG}.`))
+                .map(k => ({ key: k, value: speicher.getItem(k) }));
+      } catch (fehler) {
+        console.warn(`[${MODULE_ID}] Speicher "${bereich}" nicht lesbar:`, fehler);
+        continue;
+      }
+
+      for (const eintrag of eintraege) {
+        if (!eintrag.key?.startsWith(`${ALTE_KENNUNG}.`)) continue;
+        const schluessel = eintrag.key.slice(ALTE_KENNUNG.length + 1);
+
+        // Nur übernehmen, was es unter der neuen Kennung auch wirklich gibt.
+        // Verwaiste Schlüssel aus älteren Fassungen fallen damit weg.
+        if (!(game.settings as any).settings.has(`${this.moduleId}.${schluessel}`)) continue;
+
+        // Einen bereits gesetzten Wert nicht antasten
+        if (this.hatGespeichertenWert(bereich, schluessel)) continue;
+
+        try {
+          // Foundry legt Werte als JSON ab. Ältere Stände speicherten manche
+          // Zeichenketten roh, deshalb der Rückfall auf den unveränderten Wert.
+          let wert: unknown;
+          try {
+            wert = JSON.parse(eintrag.value);
+          } catch {
+            wert = eintrag.value;
+          }
+          await game.settings.set(this.moduleId, schluessel, wert as any);
+          uebernommen++;
+        } catch (fehler) {
+          console.warn(`[${MODULE_ID}] Einstellung "${schluessel}" nicht übernommen:`, fehler);
+        }
+      }
+    }
+
+    if (uebernommen > 0) {
+      console.log(`[${MODULE_ID}] ${uebernommen} Einstellungen aus "${ALTE_KENNUNG}" übernommen`);
+      ui.notifications?.info(
+        game.i18n.format(`${MODULE_ID}.migration.uebernommen`, { anzahl: uebernommen })
+      );
+    }
+
+    return uebernommen;
+  }
+
+  /**
+   * Liegt für diesen Schlüssel unter der neuen Kennung schon ein Wert im Speicher?
+   * Ein registrierter Standardwert zählt dabei nicht — nur wirklich Gespeichertes.
+   */
+  private hatGespeichertenWert(bereich: 'world' | 'client', schluessel: string): boolean {
+    const speicher = (game.settings as any).storage?.get(bereich);
+    if (!speicher) return false;
+
+    const vollerSchluessel = `${this.moduleId}.${schluessel}`;
+    try {
+      return bereich === 'world'
+        ? Array.from(speicher as any).some((s: any) => s.key === vollerSchluessel)
+        : speicher.getItem(vollerSchluessel) !== null;
+    } catch {
+      return false;
+    }
   }
 }

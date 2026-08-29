@@ -205,7 +205,7 @@ export class SceneTools {
     this.logger.info('Creating scene', { name: params.name, background: params.background });
 
     try {
-      const result = await this.foundryClient.query('foundry-mcp-bridge.createScene', params);
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.createScene', params);
 
       const lines = [
         `Szene angelegt: ${result.name}`,
@@ -244,7 +244,7 @@ export class SceneTools {
     this.logger.info('Updating scene', { scene: params.sceneIdentifier });
 
     try {
-      const result = await this.foundryClient.query('foundry-mcp-bridge.updateScene', params);
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.updateScene', params);
       return {
         content: [
           {
@@ -274,7 +274,7 @@ export class SceneTools {
     this.logger.info('Restoring scene', { file: params.jsonPath, index: params.index });
 
     try {
-      const r = await this.foundryClient.query('foundry-mcp-bridge.restoreScene', params);
+      const r = await this.foundryClient.query('ninjos-foundry-mcp.restoreScene', params);
       return {
         content: [
           {
@@ -298,7 +298,7 @@ export class SceneTools {
 
   async handleListSceneFolders(): Promise<any> {
     try {
-      const result = await this.foundryClient.query('foundry-mcp-bridge.listSceneFolders');
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.listSceneFolders');
       const folders = result?.folders || [];
 
       if (!folders.length) {
@@ -324,7 +324,7 @@ export class SceneTools {
     this.logger.info('Deleting scene', params);
 
     try {
-      const result = await this.foundryClient.query('foundry-mcp-bridge.deleteScene', params);
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.deleteScene', params);
       return { content: [{ type: 'text', text: `Szene "${result.name}" geloescht.` }] };
     } catch (error) {
       this.logger.error('Failed to delete scene', { error });
@@ -347,7 +347,7 @@ export class SceneTools {
     this.logger.info('Getting current scene information', { includeTokens, includeHidden });
 
     try {
-      const sceneData = await this.foundryClient.query('foundry-mcp-bridge.getActiveScene');
+      const sceneData = await this.foundryClient.query('ninjos-foundry-mcp.getActiveScene');
 
       this.logger.debug('Successfully retrieved scene data', {
         sceneId: sceneData.id,
@@ -368,7 +368,7 @@ export class SceneTools {
     this.logger.info('Getting world information');
 
     try {
-      const worldData = await this.foundryClient.query('foundry-mcp-bridge.getWorldInfo');
+      const worldData = await this.foundryClient.query('ninjos-foundry-mcp.getWorldInfo');
 
       this.logger.debug('Successfully retrieved world data', {
         worldId: worldData.id,

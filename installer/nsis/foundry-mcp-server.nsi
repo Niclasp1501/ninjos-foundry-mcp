@@ -63,10 +63,10 @@ RequestExecutionLevel user
 
 VIProductVersion "${VERSION_BASE}.0"
 VIAddVersionKey "ProductName" "Foundry MCP Server"
-VIAddVersionKey "CompanyName" "Foundry MCP Bridge"
+VIAddVersionKey "CompanyName" "Ninjo's Foundry MCP"
 VIAddVersionKey "FileDescription" "AI-powered campaign management with map generation for Foundry VTT"
 VIAddVersionKey "FileVersion" "${VERSION_BASE}.0"
-VIAddVersionKey "LegalCopyright" "© 2024 Foundry MCP Bridge"
+VIAddVersionKey "LegalCopyright" "(c) 2026 Niclas Pflug"
 
 ;--------------------------------
 ; Interface Configuration
@@ -76,7 +76,7 @@ VIAddVersionKey "LegalCopyright" "© 2024 Foundry MCP Bridge"
 
 ; Welcome page
 !define MUI_WELCOMEPAGE_TITLE "Foundry MCP Server Setup"
-!define MUI_WELCOMEPAGE_TEXT "This wizard will install Foundry MCP Server, which enables AI-powered campaign management and battlemap generation for Foundry VTT using Claude Desktop.$\r$\n$\r$\nOptionally install the Foundry MCP Bridge module and ComfyUI for AI-powered map generation directly to your system for seamless setup.$\r$\n$\r$\nClick Next to continue."
+!define MUI_WELCOMEPAGE_TEXT "This wizard will install Foundry MCP Server, which enables AI-powered campaign management and battlemap generation for Foundry VTT using Claude Desktop.$\r$\n$\r$\nOptionally install the Ninjo's Foundry MCP module and ComfyUI for AI-powered map generation directly to your system for seamless setup.$\r$\n$\r$\nClick Next to continue."
 
 ; Directory page
 !define MUI_DIRECTORYPAGE_TEXT_TOP "Choose the folder where you want to install Foundry MCP Server."
@@ -219,7 +219,7 @@ FunctionEnd
 ;--------------------------------
 ; Helper Functions
 Function OpenGitHub
-  ExecShell "open" "https://github.com/adambdooley/foundry-vtt-mcp"
+  ExecShell "open" "https://github.com/Niclasp1501/ninjos-foundry-mcp"
 FunctionEnd
 
 Function DownloadComfyUIModels
@@ -802,7 +802,7 @@ Section "Foundry MCP Server" SecMain
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\FoundryMCPServer" "DisplayName" "Foundry MCP Server"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\FoundryMCPServer" "UninstallString" "$INSTDIR\Uninstall.exe"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\FoundryMCPServer" "DisplayIcon" "$INSTDIR\icon.ico"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\FoundryMCPServer" "Publisher" "Foundry MCP Bridge"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\FoundryMCPServer" "Publisher" "Ninjo's Foundry MCP"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\FoundryMCPServer" "DisplayVersion" "0.5.0"
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\FoundryMCPServer" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\FoundryMCPServer" "NoRepair" 1
@@ -851,7 +851,7 @@ SectionEnd
 
 ;--------------------------------
 ; Foundry Module Installation Section
-Section "Foundry MCP Bridge" SecFoundryModule
+Section "Ninjo's Foundry MCP" SecFoundryModule
   ; This section is checked by default
   ; Set estimated size: Compiled JS + assets + templates (~5MB)
   SectionSetSize ${SecFoundryModule} 5120
@@ -864,28 +864,28 @@ Section "Foundry MCP Bridge" SecFoundryModule
   StrCmp $FoundryPath "" module_skipped module_install
   
   module_install:
-  DetailPrint "Installing Foundry MCP Bridge Module to: $FoundryPath\foundry-mcp-bridge"
+  DetailPrint "Installing Ninjo's Foundry MCP Module to: $FoundryPath\ninjos-foundry-mcp"
   
   ; Check if module already exists
-  IfFileExists "$FoundryPath\foundry-mcp-bridge\module.json" existing_module new_install
+  IfFileExists "$FoundryPath\ninjos-foundry-mcp\module.json" existing_module new_install
   
   existing_module:
   DetailPrint "Existing module installation found - updating files..."
   Goto do_install
   
   new_install:
-  DetailPrint "Installing fresh Foundry MCP Bridge module..."
+  DetailPrint "Installing fresh Ninjo's Foundry MCP module..."
   
   do_install:
   ; Create module directory
-  CreateDirectory "$FoundryPath\foundry-mcp-bridge"
-  SetOutPath "$FoundryPath\foundry-mcp-bridge"
+  CreateDirectory "$FoundryPath\ninjos-foundry-mcp"
+  SetOutPath "$FoundryPath\ninjos-foundry-mcp"
   SetOverwrite on
   
   ; Copy all module files
   File /r "foundry-module\*"
   
-  DetailPrint "Foundry MCP Bridge Module installed successfully"
+  DetailPrint "Ninjo's Foundry MCP Module installed successfully"
   Goto module_done
   
   module_skipped:
@@ -1141,7 +1141,7 @@ SectionEnd
 ; Section Descriptions
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "The core Foundry MCP Server that connects Claude Desktop to Foundry VTT. Includes Node.js runtime and MCP server. Required component (~32MB)."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecFoundryModule} "Install the Foundry MCP Bridge module directly to your Foundry VTT for seamless AI-powered campaign management. Includes compiled JavaScript, templates, and assets (~5MB)."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecFoundryModule} "Install the Ninjo's Foundry MCP module directly to your Foundry VTT for seamless AI-powered campaign management. Includes compiled JavaScript, templates, and assets (~5MB)."
   !insertmacro MUI_DESCRIPTION_TEXT ${SecComfyUI} "Optional AI battlemap generation (~15.7GB total). Includes ComfyUI, Python runtime, SDXL models, and PyTorch."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
@@ -1185,7 +1185,7 @@ Section "Uninstall"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\FoundryMCPServer"
   
   ; Ask about Foundry module removal
-  MessageBox MB_YESNO "Do you want to remove the Foundry MCP Bridge module from your Foundry VTT installation?$\r$\n$\r$\n(This will not affect your worlds, actors, or other Foundry data)" IDYES remove_foundry_module IDNO skip_foundry_removal
+  MessageBox MB_YESNO "Do you want to remove the Ninjo's Foundry MCP module from your Foundry VTT installation?$\r$\n$\r$\n(This will not affect your worlds, actors, or other Foundry data)" IDYES remove_foundry_module IDNO skip_foundry_removal
   
   remove_foundry_module:
   DetailPrint "Checking for Foundry module installation..."
@@ -1193,16 +1193,16 @@ Section "Uninstall"
   StrCmp $un.FoundryPath "" foundry_not_found remove_foundry_files
   
   remove_foundry_files:
-  DetailPrint "Removing Foundry MCP Bridge module from: $un.FoundryPath"
-  RMDir /r "$un.FoundryPath\foundry-mcp-bridge"
-  IfFileExists "$un.FoundryPath\foundry-mcp-bridge" foundry_removal_failed foundry_removal_success
+  DetailPrint "Removing Ninjo's Foundry MCP module from: $un.FoundryPath"
+  RMDir /r "$un.FoundryPath\ninjos-foundry-mcp"
+  IfFileExists "$un.FoundryPath\ninjos-foundry-mcp" foundry_removal_failed foundry_removal_success
   
   foundry_removal_failed:
   DetailPrint "Warning: Could not completely remove Foundry module files"
   Goto skip_foundry_removal
   
   foundry_removal_success:
-  DetailPrint "Foundry MCP Bridge module removed successfully"
+  DetailPrint "Ninjo's Foundry MCP module removed successfully"
   Goto skip_foundry_removal
   
   foundry_not_found:
@@ -1235,35 +1235,35 @@ Function un.DetectFoundryModule
   
   ; Check primary location
   StrCpy $un.FoundryPath "$LOCALAPPDATA\FoundryVTT\Data\modules"
-  IfFileExists "$un.FoundryPath\foundry-mcp-bridge\module.json" foundry_module_found
+  IfFileExists "$un.FoundryPath\ninjos-foundry-mcp\module.json" foundry_module_found
   
   ; Check secondary location
   StrCpy $un.FoundryPath "$APPDATA\FoundryVTT\Data\modules"
-  IfFileExists "$un.FoundryPath\foundry-mcp-bridge\module.json" foundry_module_found
+  IfFileExists "$un.FoundryPath\ninjos-foundry-mcp\module.json" foundry_module_found
   
   ; Check environment variable
   ReadEnvStr $0 "FOUNDRY_VTT_DATA_PATH"
   StrCmp $0 "" manual_search
   StrCpy $un.FoundryPath "$0\Data\modules"
-  IfFileExists "$un.FoundryPath\foundry-mcp-bridge\module.json" foundry_module_found
+  IfFileExists "$un.FoundryPath\ninjos-foundry-mcp\module.json" foundry_module_found
   
   manual_search:
   ; Ask user to locate Foundry installation
-  MessageBox MB_YESNO "Foundry MCP Bridge module not found automatically.$\r$\n$\r$\nWould you like to browse for your Foundry User Data folder to remove the module?" IDYES browse_for_foundry IDNO module_not_found
+  MessageBox MB_YESNO "Ninjo's Foundry MCP module not found automatically.$\r$\n$\r$\nWould you like to browse for your Foundry User Data folder to remove the module?" IDYES browse_for_foundry IDNO module_not_found
   
   browse_for_foundry:
   nsDialogs::SelectFolderDialog "Select Foundry VTT User Data Folder" "$LOCALAPPDATA"
   Pop $0
   StrCmp $0 CANCEL module_not_found
   StrCpy $un.FoundryPath "$0\Data\modules"
-  IfFileExists "$un.FoundryPath\foundry-mcp-bridge\module.json" foundry_module_found
+  IfFileExists "$un.FoundryPath\ninjos-foundry-mcp\module.json" foundry_module_found
   
   module_not_found:
   StrCpy $un.FoundryPath ""
   Return
   
   foundry_module_found:
-  DetailPrint "Found Foundry module at: $un.FoundryPath\foundry-mcp-bridge"
+  DetailPrint "Found Foundry module at: $un.FoundryPath\ninjos-foundry-mcp"
 FunctionEnd
 
 Function un.GetClaudeConfigPath

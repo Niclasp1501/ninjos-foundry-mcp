@@ -298,7 +298,7 @@ export class NinjoCampaignTools {
     const schema = z.object({ includeSounds: z.boolean().optional() });
     const params = schema.parse(args ?? {});
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.listPlaylists', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.listPlaylists', params);
 
     if (!result?.playlists?.length) {
       return { content: [{ type: 'text', text: 'Keine Wiedergabelisten in der Welt.' }] };
@@ -327,7 +327,7 @@ export class NinjoCampaignTools {
     this.logger.info('Importing from compendium', params);
 
     const result = await this.foundryClient.query(
-      'foundry-mcp-bridge.importFromCompendium',
+      'ninjos-foundry-mcp.importFromCompendium',
       params
     );
 
@@ -349,7 +349,7 @@ export class NinjoCampaignTools {
     });
     const params = schema.parse(args);
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.setScenePlaylist', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.setScenePlaylist', params);
 
     const text = result.playlist
       ? `Szene "${result.scene}": Wiedergabeliste "${result.playlist}"${
@@ -361,7 +361,7 @@ export class NinjoCampaignTools {
   }
 
   async handleListRollTables(): Promise<any> {
-    const result = await this.foundryClient.query('foundry-mcp-bridge.listRollTables');
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.listRollTables');
 
     if (!result?.tables?.length) {
       return { content: [{ type: 'text', text: 'Keine Zufallstabellen in der Welt.' }] };
@@ -393,7 +393,7 @@ export class NinjoCampaignTools {
     const params = schema.parse(args);
     this.logger.info('Creating roll table', { name: params.name });
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.createRollTable', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.createRollTable', params);
 
     return {
       content: [
@@ -418,7 +418,7 @@ export class NinjoCampaignTools {
     });
     const params = schema.parse(args);
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.createSceneNote', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.createSceneNote', params);
 
     return {
       content: [
@@ -431,7 +431,7 @@ export class NinjoCampaignTools {
   }
 
   async handleGetPermissions(): Promise<any> {
-    const result = await this.foundryClient.query('foundry-mcp-bridge.getPermissions');
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.getPermissions');
 
     const head = result.writeOperationsEnabled
       ? 'Schreiben ist grundsaetzlich erlaubt.'
@@ -455,19 +455,19 @@ export class NinjoCampaignTools {
   async handleDeletePlaylist(args: any): Promise<any> {
     const schema = z.object({ playlistId: z.string().min(1) });
     const params = schema.parse(args);
-    const result = await this.foundryClient.query('foundry-mcp-bridge.deletePlaylist', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.deletePlaylist', params);
     return { content: [{ type: 'text', text: `Wiedergabeliste "${result.name}" geloescht.` }] };
   }
 
   async handleDeleteRollTable(args: any): Promise<any> {
     const schema = z.object({ tableId: z.string().min(1) });
     const params = schema.parse(args);
-    const result = await this.foundryClient.query('foundry-mcp-bridge.deleteRollTable', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.deleteRollTable', params);
     return { content: [{ type: 'text', text: `Zufallstabelle "${result.name}" geloescht.` }] };
   }
 
   async handleListCompendiums(): Promise<any> {
-    const result = await this.foundryClient.query('foundry-mcp-bridge.listCompendiums');
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.listCompendiums');
     const packs = result?.compendiums ?? [];
 
     if (!packs.length) {
@@ -498,7 +498,7 @@ export class NinjoCampaignTools {
     const params = schema.parse(args);
     this.logger.info('Creating compendium', params);
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.createCompendium', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.createCompendium', params);
     return {
       content: [
         {
@@ -517,7 +517,7 @@ export class NinjoCampaignTools {
     const params = schema.parse(args);
     this.logger.info('Deleting compendium', { pack: params.packId });
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.deleteCompendium', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.deleteCompendium', params);
     return {
       content: [
         {
@@ -539,7 +539,7 @@ export class NinjoCampaignTools {
     const params = schema.parse(args);
     this.logger.info('Exporting to compendium', { pack: params.packId });
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.exportToCompendium', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.exportToCompendium', params);
 
     const neu: string[] = result.exported ?? [];
     const ersetzt: string[] = result.replaced ?? [];
@@ -567,7 +567,7 @@ export class NinjoCampaignTools {
     const schema = z.object({ packId: z.string().min(1), locked: z.boolean() });
     const params = schema.parse(args);
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.setCompendiumLock', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.setCompendiumLock', params);
     return {
       content: [
         {
@@ -587,7 +587,7 @@ export class NinjoCampaignTools {
     });
     const params = schema.parse(args);
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.organizeCompendium', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.organizeCompendium', params);
     return {
       content: [
         {
@@ -604,7 +604,7 @@ export class NinjoCampaignTools {
     const schema = z.object({ sceneIdentifier: z.string().min(1) });
     const params = schema.parse(args);
 
-    const result = await this.foundryClient.query('foundry-mcp-bridge.refreshSceneThumb', params);
+    const result = await this.foundryClient.query('ninjos-foundry-mcp.refreshSceneThumb', params);
 
     return {
       content: [

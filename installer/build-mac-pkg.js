@@ -267,7 +267,7 @@ const foundryPostinstall = `#!/bin/bash
 
 ${resolveUserSnippet}
 
-echo "Installing Foundry MCP Bridge module..."
+echo "Installing Ninjo's Foundry MCP module..."
 
 MODULE_SOURCE="/Applications/FoundryMCPServer.app/Contents/Resources/foundry-module"
 
@@ -283,7 +283,7 @@ FOUNDRY_PATHS=(
 INSTALLED=0
 for FOUNDRY_PATH in "\${FOUNDRY_PATHS[@]}"; do
   if [ -d "$FOUNDRY_PATH" ]; then
-    MODULE_DEST="$FOUNDRY_PATH/foundry-mcp-bridge"
+    MODULE_DEST="$FOUNDRY_PATH/ninjos-foundry-mcp"
     rm -rf "$MODULE_DEST"
     if cp -R "$MODULE_SOURCE" "$MODULE_DEST"; then
       chown -R "$CURRENT_USER:staff" "$MODULE_DEST"
@@ -437,7 +437,7 @@ const welcomeHTML = `<!DOCTYPE html>
 <head><meta charset="UTF-8"></head>
 <body>
 <h1>Welcome to Foundry MCP Server ${VERSION}</h1>
-<p>This installer will set up the Foundry MCP Bridge to connect Claude Desktop with your Foundry VTT game.</p>
+<p>This installer will set up the Ninjo's Foundry MCP to connect Claude Desktop with your Foundry VTT game.</p>
 <h2>Components:</h2>
 <ul>
 <li><strong>MCP Server</strong> (Required) - Core server and Claude Desktop integration</li>
@@ -457,17 +457,17 @@ const conclusionHTML = `<!DOCTYPE html>
 <h2>Next Steps:</h2>
 <ol>
 <li>Restart Claude Desktop</li>
-<li>Launch Foundry VTT and enable "Foundry MCP Bridge" in Module Management</li>
+<li>Launch Foundry VTT and enable "Ninjo's Foundry MCP" in Module Management</li>
 <li>Start chatting with Claude about your Foundry world!</li>
 </ol>
-<p>Documentation: <a href="https://github.com/adambdooley/foundry-vtt-mcp">github.com/adambdooley/foundry-vtt-mcp</a></p>
+<p>Documentation: <a href="https://github.com/Niclasp1501/ninjos-foundry-mcp">github.com/Niclasp1501/ninjos-foundry-mcp</a></p>
 </body>
 </html>
 `;
 
 const licenseTxt = `MIT License
 
-Copyright (c) 2024-2026 Adam Dooley
+Copyright (c) 2026 Niclas Pflug — based on foundry-vtt-mcp, Copyright (c) 2025 Adam Dooley (MIT)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -519,7 +519,7 @@ const distributionXML = `<?xml version="1.0" encoding="utf-8"?>
     <choice id="core" visible="true" enabled="false" selected="true" title="MCP Server" description="Core Foundry MCP Server and Claude Desktop integration (Required, ~5MB)">
         <pkg-ref id="com.foundry-mcp.core"/>
     </choice>
-    <choice id="foundryModule" visible="true" enabled="true" start_selected="true" title="Foundry MCP Bridge" description="Foundry VTT module for Claude integration (~5MB)">
+    <choice id="foundryModule" visible="true" enabled="true" start_selected="true" title="Ninjo's Foundry MCP" description="Foundry VTT module for Claude integration (~5MB)">
         <pkg-ref id="com.foundry-mcp.foundry-module"/>
     </choice>
     <choice id="comfyui" visible="true" enabled="true" start_selected="true" title="ComfyUI AI Map Generation" description="AI-powered battlemap generation. Downloads Python, ComfyUI, PyTorch, and AI models (~15GB total, 20-30 min install time)">

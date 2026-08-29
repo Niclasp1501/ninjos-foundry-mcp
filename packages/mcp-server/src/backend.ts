@@ -1022,7 +1022,7 @@ async function processMapGenerationInBackend(
 
     let uploadResult: any;
     try {
-      uploadResult = await foundryClient.query('foundry-mcp-bridge.upload-generated-map', {
+      uploadResult = await foundryClient.query('ninjos-foundry-mcp.upload-generated-map', {
         filename: filename,
         imageData: base64Image,
       });

@@ -1,5 +1,5 @@
 {
-  "foundry-mcp-bridge": {
+  "ninjos-foundry-mcp": {
     "settings": {
       "enabled": {
         "name": "Connection · Enable MCP Bridge",
@@ -191,6 +191,9 @@
       "groupSystem": "From the game system",
       "savedAll": "Every unlocked compendium is allowed.",
       "savedSome": "{count} compendiums allowed."
+    },
+    "migration": {
+      "uebernommen": "Carried over {anzahl} settings from the previous module id."
     }
   }
 }

@@ -157,7 +157,7 @@ export class ActorCreationTools {
 
       // Create the actors via Foundry module using exact pack/item IDs
       const result = await this.foundryClient.query(
-        'foundry-mcp-bridge.createActorFromCompendium',
+        'ninjos-foundry-mcp.createActorFromCompendium',
         {
           packId,
           itemId,
@@ -207,7 +207,7 @@ export class ActorCreationTools {
 
     try {
       const fullEntry = await this.foundryClient.query(
-        'foundry-mcp-bridge.getCompendiumDocumentFull',
+        'ninjos-foundry-mcp.getCompendiumDocumentFull',
         {
           packId,
           documentId: entryId,

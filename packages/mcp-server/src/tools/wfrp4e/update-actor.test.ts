@@ -38,7 +38,7 @@ describe('WFRP4eUpdateActorTools.handleUpdateActor', () => {
     const result = await tools.handleUpdateActor(args);
 
     expect(result).toEqual({ success: true });
-    expect(query).toHaveBeenCalledWith('foundry-mcp-bridge.updateWfrp4eActor', {
+    expect(query).toHaveBeenCalledWith('ninjos-foundry-mcp.updateWfrp4eActor', {
       actor: 'Tylo',
       characteristics: undefined,
       wounds: undefined,

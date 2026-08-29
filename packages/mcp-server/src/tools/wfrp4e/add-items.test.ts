@@ -41,7 +41,7 @@ describe('WFRP4eAddItemsTools.handleAddItems', () => {
     const result = await tools.handleAddItems(args);
 
     expect(result).toEqual({ success: true });
-    expect(query).toHaveBeenCalledWith('foundry-mcp-bridge.addWfrp4eItems', {
+    expect(query).toHaveBeenCalledWith('ninjos-foundry-mcp.addWfrp4eItems', {
       actor: 'Greta',
       items: args.items,
     });

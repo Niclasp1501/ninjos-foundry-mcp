@@ -26,7 +26,7 @@ interface WFRP4eExtractionResult {
 export class WFRP4eIndexBuilder implements IndexBuilder {
   private moduleId: string;
 
-  constructor(moduleId: string = 'foundry-mcp-bridge') {
+  constructor(moduleId: string = 'ninjos-foundry-mcp') {
     this.moduleId = moduleId;
   }
 

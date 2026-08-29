@@ -495,7 +495,7 @@ export class DnD5eAddFeatureTool {
       }
 
       const result = await this.foundryClient.query(
-        'foundry-mcp-bridge.addPassiveFeatureToActor',
+        'ninjos-foundry-mcp.addPassiveFeatureToActor',
         parsed
       );
 
@@ -582,7 +582,7 @@ export class DnD5eAddFeatureTool {
       }
 
       const result = await this.foundryClient.query(
-        'foundry-mcp-bridge.addSaveFeatureToActor',
+        'ninjos-foundry-mcp.addSaveFeatureToActor',
         parsed
       );
 
@@ -712,7 +712,7 @@ export class DnD5eAddFeatureTool {
         );
       }
 
-      const result = await this.foundryClient.query('foundry-mcp-bridge.addAttackToActor', {
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.addAttackToActor', {
         ...parsed,
         effectiveAbility,
       });
@@ -847,7 +847,7 @@ export class DnD5eAddFeatureTool {
         );
       }
 
-      const result = await this.foundryClient.query('foundry-mcp-bridge.addAttackWithSaveToActor', {
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.addAttackWithSaveToActor', {
         ...parsed,
         effectiveAbility,
       });
@@ -948,7 +948,7 @@ export class DnD5eAddFeatureTool {
         );
       }
 
-      const result = await this.foundryClient.query('foundry-mcp-bridge.addAuraToActor', parsed);
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.addAuraToActor', parsed);
 
       this.logger.info('Aura feature added successfully', {
         actorId: result.actor?.id,
@@ -1032,7 +1032,7 @@ export class DnD5eAddFeatureTool {
         );
       }
 
-      const result = await this.foundryClient.query('foundry-mcp-bridge.setActorSpellcasting', {
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.setActorSpellcasting', {
         ...parsed,
         effectiveAbility,
       });
@@ -1103,7 +1103,7 @@ export class DnD5eAddFeatureTool {
         );
       }
 
-      const result = await this.foundryClient.query('foundry-mcp-bridge.addSpellsToActor', parsed);
+      const result = await this.foundryClient.query('ninjos-foundry-mcp.addSpellsToActor', parsed);
 
       this.logger.info('Spells import complete', {
         actorId: result.actor?.id,

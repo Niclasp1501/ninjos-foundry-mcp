@@ -158,7 +158,7 @@ export class MacInstaller {
   }
 
   /**
-   * Install Foundry MCP Bridge module
+   * Install Ninjo's Foundry MCP module
    */
   async installFoundryModule(): Promise<{ success: boolean; message: string }> {
     this.updateProgress({
@@ -177,7 +177,7 @@ export class MacInstaller {
       };
     }
 
-    const moduleDestPath = path.join(foundryModulesPath, 'foundry-mcp-bridge');
+    const moduleDestPath = path.join(foundryModulesPath, 'ninjos-foundry-mcp');
 
     // Check if module already exists
     if (fs.existsSync(path.join(moduleDestPath, 'module.json'))) {
@@ -192,7 +192,7 @@ export class MacInstaller {
       this.updateProgress({
         stage: 'installing_foundry_module',
         progress: 50,
-        message: 'Installing Foundry MCP Bridge module...',
+        message: "Installing Ninjo's Foundry MCP module...",
       });
 
       // Find the bundled module (should be in Resources)

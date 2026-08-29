@@ -2,15 +2,16 @@
 
 Connect Foundry VTT to Claude for AI-powered campaign management through the Model Context Protocol (MCP).
 
-> Built on [adambdooley/foundry-vtt-mcp](https://github.com/adambdooley/foundry-vtt-mcp) (MIT),
-> extended with clean journal editing, tooling for large imported adventures, and token art —
-> see [CHANGELOG](CHANGELOG.md) and _Working with large imported adventures_ below.
-> Upstream install links in this file point at the original project; this repository is built
-> from source (`npm install && npm run build`). It currently supports Dungeons and Dragons Fifth Edition, Pathfinder Second Edition, Das Schwarze Augen Fifth Edition, Cosmere RPG System, Warhammer Fantasy Roleplay 4th Edition, & Mongoose Traveller 2nd Edition. The majority of MCP tools are system agnostic or have features that are aware of the system it is working with, excluding some DSA 5 specific tools.
+> Built on [adambdooley/foundry-vtt-mcp](https://github.com/adambdooley/foundry-vtt-mcp) by Adam Dooley,
+> used under the MIT license — see [LICENSE](LICENSE). This is an independent fork, not a replacement
+> for the original project. Added here: scene management including restore-from-backup, compendium
+> management, per-document-type permissions, a German interface, clean journal editing, tooling for
+> large imported adventures, and token art — see [CHANGELOG](CHANGELOG.md).
+> It currently supports Dungeons and Dragons Fifth Edition, Pathfinder Second Edition, Das Schwarze Augen Fifth Edition, Cosmere RPG System, Warhammer Fantasy Roleplay 4th Edition, & Mongoose Traveller 2nd Edition. The majority of MCP tools are system agnostic or have features that are aware of the system it is working with, excluding some DSA 5 specific tools.
 
 ## Overview
 
-The Foundry MCP Bridge enables natural AI conversations with your Foundry VTT game data:
+The Ninjo's Foundry MCP enables natural AI conversations with your Foundry VTT game data:
 
 - **Quest Creation**: [Create quests from prompts that incorporate what exists in your world and journals](https://www.youtube.com/watch?v=NqyB_z2AKME)
 - **Character Management**: Query character stats, abilities, and information
@@ -33,24 +34,24 @@ The Foundry MCP Bridge enables natural AI conversations with your Foundry VTT ga
 
 [Video guide for Windows Installer](https://youtu.be/Se04A21wrbE)
 
-1. Download the latest `FoundryMCPServer-Setup-vx.x.x.exe` from [Releases](https://github.com/adambdooley/foundry-vtt-mcp/releases)
+1. Download the latest `FoundryMCPServer-Setup-vx.x.x.exe` from [Releases](https://github.com/Niclasp1501/ninjos-foundry-mcp/releases)
 2. Run the installer - it will:
    - Install the MCP server with bundled Node.js runtime
    - Configure the Claude Desktop MCP server settings
    - Optionally install the Foundry module and ComfyUI Map Generation to your VTT installation
    - Choose Cuda version for your GPU type during install
 3. Restart Claude Desktop
-4. Enable "Foundry MCP Bridge" in your Foundry Module Management
+4. Enable "Ninjo's Foundry MCP" in your Foundry Module Management
 
 ### Option 2: Mac Installer
 
-1.  Download the latest `FoundryMCPServer-vx.x.x.dmg` from [Releases](https://github.com/adambdooley/foundry-vtt-mcp/releases)
+1.  Download the latest `FoundryMCPServer-vx.x.x.dmg` from [Releases](https://github.com/Niclasp1501/ninjos-foundry-mcp/releases)
 2.  Run the package installer inside the dmg - it will:
     - Open DMG and double-click the PKG installer
     - Configure the Claude Desktop MCP server settings
     - Optionally install the Foundry module and ComfyUI Map Generation to your Foundry VTT installation
 3.  Restart Claude Desktop
-4.  Enable "Foundry MCP Bridge" in your Foundry Module Management
+4.  Enable "Ninjo's Foundry MCP" in your Foundry Module Management
 
 ### Option 3: Manual Installation
 
@@ -58,16 +59,16 @@ The Foundry MCP Bridge enables natural AI conversations with your Foundry VTT ga
 
 1. Open Foundry VTT (v13 or v14)
 2. Select install module in the Foundry Add-ons menu
-3. At the bottom of the window, add the Manifest URL as: https://github.com/adambdooley/foundry-vtt-mcp/blob/master/packages/foundry-module/module.json and click install
-4. Enable "Foundry MCP Bridge" in Module Management
-   - **Do not change the module ID or folder name.** The MCP backend and the Claude integration both expect the module to live in a directory called `foundry-mcp-bridge`. Renaming the ID in `module.json` breaks socket routing and stops Claude from seeing the backend.
+3. At the bottom of the window, add the Manifest URL as: https://raw.githubusercontent.com/Niclasp1501/ninjos-foundry-mcp/main/packages/foundry-module/module.json and click install
+4. Enable "Ninjo's Foundry MCP" in Module Management
+   - **Do not change the module ID or folder name.** The MCP backend and the Claude integration both expect the module to live in a directory called `ninjos-foundry-mcp`. Renaming the ID in `module.json` breaks socket routing and stops Claude from seeing the backend.
 
 #### Install the MCP Server
 
 ```bash
 # Clone repository
-git clone https://github.com/adambdooley/foundry-vtt-mcp.git
-cd foundry-vtt-mcp
+git clone https://github.com/Niclasp1501/ninjos-foundry-mcp.git
+cd ninjos-foundry-mcp
 
 # Install dependencies and build
 npm install
@@ -84,7 +85,7 @@ Add this to your Claude Desktop configuration (claude_desktop_config.json) file:
   "mcpServers": {
     "foundry-mcp": {
       "command": "node",
-      "args": ["path/to/foundry-vtt-mcp/packages/mcp-server/dist/index.js"],
+      "args": ["path/to/ninjos-foundry-mcp/packages/mcp-server/dist/index.js"],
       "env": {
         "FOUNDRY_HOST": "localhost",
         "FOUNDRY_PORT": "31415"
@@ -135,7 +136,7 @@ Once connected, ask Claude Desktop:
 - **GM-Only**: MCP Bridge only connects to Game Master users
 - **Map Generation**: A portable ComfyUI backend that generates battlemaps from prompts
 - **Remote Connections**: WebRTC connections initiated through browser (Tested with Google Chrome) to MCP server and ComfyUI
-- **Windows and Mac Installers** Automated installation of Foundry MCP Server for Claude Dekstop, Foundry MCP Bridge Foundry VTT Module, and ComfyUI backend with dependencies
+- **Windows and Mac Installers** Automated installation of Foundry MCP Server for Claude Dekstop, Ninjo's Foundry MCP Foundry VTT Module, and ComfyUI backend with dependencies
 
 ## MCP Tools
 
@@ -329,7 +330,7 @@ named differently in chapter 3 than in chapter 11.
 - **Websocket Server Host** IP Address of Claude Desktop MCP Server location. Only used for local network websocket connections. Remote Servers use WebRT. Defaults to localhost.
 - **Allow Write Operations** This will prevent Claude from making any changes to world content and restrict it to reading only
 - **Max Actors Per Request** This is a failsafe to stop a massive amount of actors being created from one single request. It does not limit the amount of characters being created by multiple requests
-- **Show Connection Messages** This can turn off the banner messages for connections for Foundry MCP Bridge
+- **Show Connection Messages** This can turn off the banner messages for connections for Ninjo's Foundry MCP
 - **Auto-Reconnect on Disconnect** Will automatically attempt to reconnect if the connection is lost
 - **Connection Check Frequency** How often it will check connection status
 
@@ -345,7 +346,7 @@ named differently in chapter 3 than in chapter 11.
 
 <img width="489" height="779" alt="image" src="https://github.com/user-attachments/assets/a43d3a3d-266f-41c9-b40a-236d14cfcba9" />
 
-- **Service Status** There are three buttons for Check Status, Start Service, and Stop Service. These buttons help monitor and control the connection from the Foundry MCP Bridge to the ComfyUI backend which is started by the Claude Desktop application.
+- **Service Status** There are three buttons for Check Status, Start Service, and Stop Service. These buttons help monitor and control the connection from the Ninjo's Foundry MCP to the ComfyUI backend which is started by the Claude Desktop application.
 - **Auto-start Map Generation Service** Controls whether ComfyUI service connection is automatically connected at startup of the Foundry world.
 - **Generation Quality** Controls the quality of the maps generated by the SDXL checkpoints wiht ComfyUI. Low uses 8 steps of generation, Medium uses 20 steps of generation, and High uses 35 steps. The D&D Battlemaps SDXL Upscale v1.0 Checkpoint used in this image generation recommends using 35 steps but on low end GPUs or GPUs with out CUDA, this generation will take several minutes. These options can give you a trade off to have maps generated faster at the expense of quality.
 
@@ -388,7 +389,7 @@ npm run test:mcp:schema
 
 ## Support & Development
 
-- **Issues**: Report bugs on [GitHub Issues](https://github.com/adambdooley/foundry-vtt-mcp/issues)
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/Niclasp1501/ninjos-foundry-mcp/issues)
 - **YouTube Channel**: [Subscribe for updates and tutorials](https://www.youtube.com/channel/UCVrSC-FzuAk5AgvfboJj0WA)
 - **Documentation**: Built with TypeScript, comprehensive documentation included
 - **License**: MIT License (Additional Third Party licenses are included for bundled components for the installers)

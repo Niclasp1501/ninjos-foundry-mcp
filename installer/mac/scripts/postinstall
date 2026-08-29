@@ -174,7 +174,7 @@ echo "Optional:"
 echo "- Check settings in Foundry MCP Bridge module"
 echo "- View install log: $USER_HOME/foundry-mcp-install.log"
 echo ""
-echo "Documentation: https://github.com/adambdooley/foundry-vtt-mcp"
+echo "Documentation: https://github.com/Niclasp1501/ninjos-foundry-mcp"
 echo ""
 
 exit 0

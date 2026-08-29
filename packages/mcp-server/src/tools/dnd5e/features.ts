@@ -117,7 +117,7 @@ export class DnD5eFeaturesFromCompendiumTools {
       }
 
       const result = await this.foundryClient.query(
-        'foundry-mcp-bridge.addFeaturesFromCompendium',
+        'ninjos-foundry-mcp.addFeaturesFromCompendium',
         parsed
       );
 

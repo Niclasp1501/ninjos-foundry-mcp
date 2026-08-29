@@ -32,7 +32,7 @@ export async function detectGameSystem(
   }
 
   try {
-    const worldInfo = await foundryClient.query('foundry-mcp-bridge.getWorldInfo');
+    const worldInfo = await foundryClient.query('ninjos-foundry-mcp.getWorldInfo');
     // In Foundry v13+, worldInfo.system is an object { id, version }.
     // In older versions it may be a plain string. Handle both.
     const systemRaw = worldInfo.system;

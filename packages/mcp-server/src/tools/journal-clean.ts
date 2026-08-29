@@ -397,7 +397,7 @@ export class JournalCleanTools {
     pages: Array<{ name: string; html: string }>;
   }): Promise<any> {
     const pages = (args.pages || []).map(p => ({ name: p.name, content: p.html }));
-    return await this.foundryClient.query('foundry-mcp-bridge.createCleanJournal', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.createCleanJournal', {
       name: args.name,
       folderName: args.folderName,
       pages,
@@ -405,7 +405,7 @@ export class JournalCleanTools {
   }
 
   async handleSetPage(args: { journalId: string; pageId: string; html: string }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.updateJournalContent', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.updateJournalContent', {
       journalId: args.journalId,
       pageId: args.pageId,
       content: args.html,
@@ -413,7 +413,7 @@ export class JournalCleanTools {
   }
 
   async handleAddPage(args: { journalId: string; name: string; html: string }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.updateJournalContent', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.updateJournalContent', {
       journalId: args.journalId,
       newPageName: args.name,
       content: args.html,
@@ -421,20 +421,20 @@ export class JournalCleanTools {
   }
 
   async handleDeletePage(args: { journalId: string; pageId: string }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.deleteJournalPage', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.deleteJournalPage', {
       journalId: args.journalId,
       pageId: args.pageId,
     });
   }
 
   async handleDelete(args: { journalId: string }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.deleteJournalEntry', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.deleteJournalEntry', {
       journalId: args.journalId,
     });
   }
 
   async handleRenameJournal(args: { journalId: string; newName: string }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.renameJournal', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.renameJournal', {
       journalId: args.journalId,
       newName: args.newName,
     });
@@ -449,7 +449,7 @@ export class JournalCleanTools {
     ringScale?: number;
     ringColor?: string;
   }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.setActorToken', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.setActorToken', {
       actorIdentifier: args.actorIdentifier,
       tokenImg: args.tokenImg,
       portraitImg: args.portraitImg,
@@ -467,7 +467,7 @@ export class JournalCleanTools {
     preferPacks?: string[];
     dryRun?: boolean;
   }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.refreshActorItemsFromSource', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.refreshActorItemsFromSource', {
       actorIdentifier: args.actorIdentifier,
       fields: args.fields,
       namePacks: args.namePacks,
@@ -482,7 +482,7 @@ export class JournalCleanTools {
     pageId?: string;
     pageName?: string;
   }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.setJournalPageFromFile', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.setJournalPageFromFile', {
       journalId: args.journalId,
       path: args.path,
       pageId: args.pageId,
@@ -495,7 +495,7 @@ export class JournalCleanTools {
     pageId: string;
     html: string;
   }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.appendJournalPageContent', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.appendJournalPageContent', {
       journalId: args.journalId,
       pageId: args.pageId,
       html: args.html,
@@ -509,7 +509,7 @@ export class JournalCleanTools {
     deleteOriginal?: boolean;
     namePrefix?: string;
   }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.splitJournalPage', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.splitJournalPage', {
       journalId: args.journalId,
       pageId: args.pageId,
       level: args.level,
@@ -524,7 +524,7 @@ export class JournalCleanTools {
     collections?: string[];
     dryRun?: boolean;
   }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.rewriteWorldPaths', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.rewriteWorldPaths', {
       from: args.from,
       to: args.to,
       collections: args.collections,
@@ -539,7 +539,7 @@ export class JournalCleanTools {
     localPrefix: string;
     dryRun?: boolean;
   }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.rewriteJournalImages', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.rewriteJournalImages', {
       journalId: args.journalId,
       pageId: args.pageId,
       urlPattern: args.urlPattern,
@@ -555,7 +555,7 @@ export class JournalCleanTools {
     itemPacks?: string[];
     dryRun?: boolean;
   }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.linkJournalTags', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.linkJournalTags', {
       journalId: args.journalId,
       pageId: args.pageId,
       actorPacks: args.actorPacks,
@@ -569,7 +569,7 @@ export class JournalCleanTools {
     newName: string;
     type?: string;
   }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.renameFolder', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.renameFolder', {
       folderName: args.folderName,
       newName: args.newName,
       type: args.type,
@@ -581,7 +581,7 @@ export class JournalCleanTools {
     type?: string;
     deleteContents?: boolean;
   }): Promise<any> {
-    return await this.foundryClient.query('foundry-mcp-bridge.deleteFolder', {
+    return await this.foundryClient.query('ninjos-foundry-mcp.deleteFolder', {
       folderName: args.folderName,
       type: args.type,
       deleteContents: args.deleteContents,
