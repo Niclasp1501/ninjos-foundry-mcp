@@ -90,43 +90,78 @@ export class ModuleSettings {
 
           const packs = Array.from((game.packs as any) ?? []) as any[];
 
-          const gruppen: Record<string, any> = {
-            world: {
-              label: game.i18n.localize(`${MODULE_ID}.compendiumAccess.groupWorld`),
-              packs: [],
-            },
-            module: {
-              label: game.i18n.localize(`${MODULE_ID}.compendiumAccess.groupModule`),
-              packs: [],
-            },
-            system: {
-              label: game.i18n.localize(`${MODULE_ID}.compendiumAccess.groupSystem`),
-              packs: [],
-            },
+          // NINJO: Ein Block je Herkunft, und bei Modulen je Modul.
+          //
+          // Vorher gab es nur drei Bloecke - Welt, Module, System. Alle
+          // Modul-Kompendien lagen in einem Topf und dort nach Beschriftung
+          // sortiert, wodurch "BBMM Journal", "Bestiarium" aus ninjo-kompendium
+          // und "Klassen" aus dnd-players-handbook durcheinander standen. Wer ein
+          // bestimmtes Modul freigeben will, sucht sich die Eintraege dann
+          // zusammen. Jetzt traegt jedes Modul seinen eigenen Block mit seinem
+          // Titel.
+          const gruppen = new Map<string, any>();
+
+          const gruppeHolen = (schluessel: string, beschriftung: string, ordnung: number) => {
+            if (!gruppen.has(schluessel)) {
+              gruppen.set(schluessel, { label: beschriftung, ordnung, packs: [] });
+            }
+            return gruppen.get(schluessel);
           };
 
           for (const p of packs) {
             const art = (p.metadata?.packageType as string) || 'module';
-            const ziel = gruppen[art] ?? gruppen.module;
+            const herkunft = (p.metadata?.packageName as string) || '';
             const id = p.collection as string;
+
+            let ziel;
+            if (art === 'world') {
+              ziel = gruppeHolen(
+                'world',
+                game.i18n.localize(`${MODULE_ID}.compendiumAccess.groupWorld`),
+                0
+              );
+            } else if (art === 'system') {
+              ziel = gruppeHolen(
+                'system',
+                game.i18n.localize(`${MODULE_ID}.compendiumAccess.groupSystem`),
+                2
+              );
+            } else {
+              // Der Titel des Moduls statt seiner Kennung: "Ninjos Kompendium"
+              // liest sich besser als "ninjo-kompendium". Ist das Modul nicht
+              // auffindbar, bleibt die Kennung als Notnagel.
+              const modul = (game.modules as any)?.get?.(herkunft);
+              const titel = modul?.title || herkunft || id;
+              ziel = gruppeHolen(`module:${herkunft}`, titel, 1);
+            }
+
             ziel.packs.push({
               id,
               label: p.metadata?.label ?? p.title ?? id,
               type: p.documentName,
               entries: p.index?.size ?? 0,
               locked: p.locked === true,
-              selected:
-                freigegeben.includes(id) || freigegeben.includes(p.metadata?.packageName as string),
+              selected: freigegeben.includes(id) || freigegeben.includes(herkunft),
             });
           }
 
-          for (const g of Object.values(gruppen) as any[]) {
-            g.packs.sort((a: any, b: any) => a.label.localeCompare(b.label));
+          const sortiert = Array.from(gruppen.values())
+            .filter((g: any) => g.packs.length)
+            // Erst die eigene Welt, dann die Module nach Titel, zuletzt das
+            // Spielsystem. Was einem selbst gehoert, steht oben.
+            .sort((a: any, b: any) =>
+              a.ordnung !== b.ordnung
+                ? a.ordnung - b.ordnung
+                : String(a.label).localeCompare(String(b.label))
+            );
+
+          for (const g of sortiert) {
+            g.packs.sort((a: any, b: any) => String(a.label).localeCompare(String(b.label)));
           }
 
           return {
             allowAllUnlocked: freigegeben.length === 0,
-            groups: Object.values(gruppen).filter((g: any) => g.packs.length),
+            groups: sortiert,
           };
         }
 
