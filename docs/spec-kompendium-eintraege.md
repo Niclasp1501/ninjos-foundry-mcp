@@ -134,3 +134,47 @@ ssh foundry-server "cd /home/foundry/foundryuserdata/Data/modules && \
 **Prüfen lässt sich am besten so:** In ein frisch angelegtes Welt-Kompendium
 exportieren, dort löschen und leeren, Zählwerte vergleichen. Erst danach an
 `ninjo-kompendium` gehen.
+
+---
+
+## Durchsicht vom 30.08.2026
+
+Alle Tatsachenbehauptungen oben wurden gegen den Quelltext geprüft und stimmen:
+die `packageType`-Sperre in `deleteCompendium` ([data-access.ts:9737]), der
+`confirmLabel`-Riegel, das Entsperren mit Wiederherstellung im `finally`, und vor
+allem die Lücke selbst — es gibt nirgends ein Löschen einzelner Einträge.
+
+Drei Ergänzungen für die Umsetzung:
+
+**1. Die Werkzeugnamen brechen das Muster.** Alle zwölf vorhandenen
+Kompendium-Werkzeuge stehen Verb zuerst: `list-compendiums`, `delete-compendium`,
+`set-compendium-lock`, `export-to-compendium`. Also:
+
+| statt                       | besser                      |
+| --------------------------- | --------------------------- |
+| `compendium-list-entries`   | `list-compendium-entries`   |
+| `compendium-delete-entries` | `delete-compendium-entries` |
+| `compendium-clear`          | `clear-compendium`          |
+
+**2. Punkt 1 gibt es zur Hälfte schon.** Seit dem 30.08.2026 hat das Modul
+`getPackIndex` — genau „nur den Index lesen, nicht die vollen Dokumente", mit
+Feldauswahl in Punktschreibweise und einer Deckelung bei 5000 Einträgen. Das
+gehört **erweitert** (um `folderName`, `namePattern`, `offset`, `total`,
+`hasMore`), nicht durch einen zweiten Indexleser ersetzt. Die Deckelung dabei
+beibehalten: Ein Pack mit 1857 Journalen darf den Datenkanal nicht sprengen.
+
+**3. Löschen ist ab Werk abgeschaltet.** `assertAllowed('Compendiums', 'delete')`
+ist richtig, heißt aber: Ohne `permCompendiums: full` in den Moduleinstellungen
+tun die neuen Werkzeuge nichts. Das gehört **in die Werkzeugbeschreibung**, sonst
+sieht die Verweigerung nach einem Fehler aus statt nach einer Einstellung.
+
+### Nebenbefund, bereits behoben
+
+Beim Prüfen fiel auf, dass `exportToCompendium` und `organizeCompendium` die
+Freigabeliste nur dann abfragten, wenn das Pack **gesperrt** war und
+`unlockIfNeeded` fehlte. Ein entsperrtes Kompendium wurde nie gegen die Liste
+gehalten — wer unter „Kompendien freigeben" den Schreibzugriff einschränkte, wurde
+beim Export übergangen. `deleteCompendium` prüfte von jeher bedingungslos.
+
+Beide prüfen jetzt immer. Die Sperre selbst bleibt dabei wie dokumentiert: Eine
+gefüllte Freigabeliste sticht sie, und `unlockIfNeeded` löst sie für den Vorgang.

@@ -9606,7 +9606,11 @@ export class FoundryDataAccess {
    * hinterlegen. Ist sie gefuellt, gilt nur, was darin steht. Ist sie leer,
    * zaehlt allein die Sperre.
    */
-  private assertCompendiumFreigegeben(pack: any, packId: string): void {
+  private assertCompendiumFreigegeben(
+    pack: any,
+    packId: string,
+    optionen: { entsperrenErlaubt?: boolean } = {}
+  ): void {
     let liste = '';
     try {
       liste = (game.settings?.get(this.moduleId, 'writableCompendiums') as string) || '';
@@ -9633,7 +9637,10 @@ export class FoundryDataAccess {
       return;
     }
 
-    if (pack.locked === true) {
+    // NINJO: Ruft der Aufrufer mit entsperrenErlaubt, hat er das Loesen der Sperre
+    // ausdruecklich verlangt (unlockIfNeeded) und stellt sie danach wieder her.
+    // Dann ist die Sperre kein Hindernis mehr - die Freigabeliste oben aber sehr wohl.
+    if (!optionen.entsperrenErlaubt && pack.locked === true) {
       throw new Error(
         `"${packId}" ist gesperrt. Entweder in Foundry entsperren, oder unlockIfNeeded ` +
           `setzen, damit die Sperre nur fuer diesen Vorgang geloest und danach ` +
@@ -9813,9 +9820,16 @@ export class FoundryDataAccess {
     }
 
     const warLocked = pack.locked === true;
-    if (warLocked && !request.unlockIfNeeded) {
-      this.assertCompendiumFreigegeben(pack, request.packId);
-    }
+
+    // NINJO: Die Freigabeliste gilt immer, nicht nur bei gesperrten Kompendien.
+    // Vorher stand die Pruefung in einem `if (warLocked && !unlockIfNeeded)` - ein
+    // entsperrtes Pack wurde damit nie gegen die Liste gehalten, und wer unter
+    // "Kompendien freigeben" den Schreibzugriff einschraenkte, wurde hier
+    // uebergangen. deleteCompendium prueft bedingungslos, diese beiden nicht.
+    this.assertCompendiumFreigegeben(pack, request.packId, {
+      entsperrenErlaubt: request.unlockIfNeeded === true,
+    });
+
     if (warLocked) {
       await pack.configure({ locked: false });
     }
@@ -9910,9 +9924,16 @@ export class FoundryDataAccess {
     if (!pack) throw new Error(`Kompendium "${request.packId}" nicht gefunden`);
 
     const warLocked = pack.locked === true;
-    if (warLocked && !request.unlockIfNeeded) {
-      this.assertCompendiumFreigegeben(pack, request.packId);
-    }
+
+    // NINJO: Die Freigabeliste gilt immer, nicht nur bei gesperrten Kompendien.
+    // Vorher stand die Pruefung in einem `if (warLocked && !unlockIfNeeded)` - ein
+    // entsperrtes Pack wurde damit nie gegen die Liste gehalten, und wer unter
+    // "Kompendien freigeben" den Schreibzugriff einschraenkte, wurde hier
+    // uebergangen. deleteCompendium prueft bedingungslos, diese beiden nicht.
+    this.assertCompendiumFreigegeben(pack, request.packId, {
+      entsperrenErlaubt: request.unlockIfNeeded === true,
+    });
+
     if (warLocked) {
       await pack.configure({ locked: false });
     }
