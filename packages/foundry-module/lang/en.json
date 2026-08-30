@@ -180,7 +180,7 @@
       "hint": "Decides which compendiums the AI model may edit.",
       "window": "Writable compendiums",
       "title": "Writable compendiums",
-      "intro": "Decides which compendiums the AI model may create, fill and organise. Locked compendiums stay protected even when ticked: the lock is only lifted for a single operation when explicitly asked for, and restored afterwards.",
+      "intro": "Decides which compendiums the AI model may create, fill and organise. A tick means: work on this one is allowed. If it is locked, the lock is lifted for the single operation and restored afterwards. Anything left unticked stays untouched, even when unlocked. With nothing ticked at all, only the lock counts: every unlocked compendium may then be edited.",
       "allowAll": "Allow every unlocked compendium.",
       "allowAllHint": "The simplest setting. Unlocking something means you want to work on it.",
       "listTitle": "Or pick individually",

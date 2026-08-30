@@ -165,14 +165,38 @@ export class ModuleSettings {
           };
         }
 
-        async _updateObject(_event: Event, formData: any): Promise<void> {
-          // Alles erlauben heisst: leere Liste, dann zaehlt nur die Sperre
-          if (formData?.__allowAllUnlocked === true) {
-            await game.settings.set(MODULE_ID, 'writableCompendiums', '');
-            ui.notifications?.info(game.i18n.localize(`${MODULE_ID}.compendiumAccess.savedAll`));
-            return;
-          }
+        // NINJO: Die beiden Angaben schliessen einander aus, das Formular liess
+        // sie aber gleichzeitig setzen. Wer unten Kompendien anhakte und den
+        // Haken oben stehen liess, verlor seine Auswahl beim Speichern
+        // kommentarlos - _updateObject sieht "alles erlauben" zuerst und kehrt
+        // zurueck, bevor es die Auswahl ueberhaupt liest. Beim naechsten Oeffnen
+        // war nichts angehakt, ohne dass irgendwo stand, warum.
+        //
+        // Deshalb hier: Beides gleichzeitig geht nicht mehr. Wer ein Kompendium
+        // anhakt, meint eine Auswahl; wer oben anhakt, meint alle.
+        activateListeners(html: JQuery) {
+          super.activateListeners(html);
 
+          const alle = html.find('input[name="__allowAllUnlocked"]');
+          const packs = html.find('input[name^="pack."]');
+          const liste = html.find('.mcp-pack-list');
+
+          const dimmen = () => liste.toggleClass('mcp-dimmed', alle.prop('checked') === true);
+
+          alle.on('change', () => {
+            if (alle.prop('checked')) packs.prop('checked', false);
+            dimmen();
+          });
+
+          packs.on('change', function (this: HTMLInputElement) {
+            if (this.checked) alle.prop('checked', false);
+            dimmen();
+          });
+
+          dimmen();
+        }
+
+        async _updateObject(_event: Event, formData: any): Promise<void> {
           // NINJO: Die Haken heissen in der Vorlage "pack.<kennung>", und eine
           // Pack-Kennung enthaelt selbst einen Punkt ("ninjo-kompendium.presets").
           // Foundry entfaltet Feldnamen mit Punkten zu verschachtelten Objekten,
@@ -194,6 +218,17 @@ export class ModuleSettings {
           const gewaehlt = Object.entries(flach)
             .filter(([k, v]) => k.startsWith('pack.') && v === true)
             .map(([k]) => k.slice('pack.'.length));
+
+          // Eine getroffene Auswahl sticht "alles erlauben". Frueher stand die
+          // Pruefung auf __allowAllUnlocked ganz oben und kehrte sofort zurueck -
+          // wer unten anhakte und den Haken oben stehen liess, verlor die Auswahl
+          // kommentarlos. Umgekehrt ist es richtig: Wer einzelne Kompendien
+          // benennt, hat sich etwas dabei gedacht.
+          if (!gewaehlt.length && formData?.__allowAllUnlocked === true) {
+            await game.settings.set(MODULE_ID, 'writableCompendiums', '');
+            ui.notifications?.info(game.i18n.localize(`${MODULE_ID}.compendiumAccess.savedAll`));
+            return;
+          }
 
           await game.settings.set(MODULE_ID, 'writableCompendiums', gewaehlt.join(', '));
           ui.notifications?.info(

@@ -9634,6 +9634,16 @@ export class FoundryDataAccess {
             `entsperrte Kompendium bearbeitet werden darf.`
         );
       }
+      // NINJO: Steht das Pack auf der Liste, ist die Sperre kein Hindernis mehr -
+      // die Pruefung unten wird bewusst uebersprungen. Ein Haken im Fenster
+      // "Kompendien freigeben" heisst: an diesem Kompendium darf gearbeitet
+      // werden. Die Sperre loesen die Aufrufer dann fuer den einzelnen Vorgang
+      // und setzen sie im finally wieder.
+      //
+      // Der Fenstertext behauptete bis zum 30.08.2026 das Gegenteil ("Gesperrte
+      // Kompendien bleiben auch dann geschuetzt, wenn sie angehakt sind"). Das
+      // war nie das Verhalten und ist berichtigt: Wer freigibt, will damit
+      // arbeiten.
       return;
     }
 

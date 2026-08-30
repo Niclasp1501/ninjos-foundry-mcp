@@ -180,7 +180,7 @@
       "hint": "Legt fest, welche Kompendien das KI-Modell bearbeiten darf.",
       "window": "Kompendien freigeben",
       "title": "Kompendien freigeben",
-      "intro": "Hier wird festgelegt, welche Kompendien das KI-Modell anlegen, befüllen und sortieren darf. Gesperrte Kompendien bleiben auch dann geschützt, wenn sie angehakt sind: Die Sperre wird für einen Vorgang nur dann gelöst, wenn das ausdrücklich verlangt wird, und danach wiederhergestellt.",
+      "intro": "Hier wird festgelegt, welche Kompendien das KI-Modell anlegen, befüllen und sortieren darf. Ein Haken heißt: An diesem Kompendium darf gearbeitet werden. Ist es gesperrt, wird die Sperre für den einzelnen Vorgang gelöst und danach wieder gesetzt. Ohne Haken bleibt ein Kompendium unangetastet, auch wenn es entsperrt ist. Ist gar nichts angehakt, zählt allein die Sperre: Dann darf jedes entsperrte Kompendium bearbeitet werden.",
       "allowAll": "Jedes entsperrte Kompendium freigeben.",
       "allowAllHint": "Die einfachste Einstellung. Wer entsperrt, will daran arbeiten.",
       "listTitle": "Oder einzeln auswählen",
