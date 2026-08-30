@@ -9777,6 +9777,87 @@ export class FoundryDataAccess {
   }
 
   /**
+   * NINJO: Die Eintraege eines Kompendiums auflisten.
+   *
+   * listCompendiums liefert nur Zaehlwerte. Wer wissen will, was in einem Pack
+   * liegt - etwa um zu pruefen, ob ein Archiv den erwarteten Stand hat -, hatte
+   * bisher keinen Weg dorthin.
+   *
+   * Gelesen wird nur der Index, nie die vollen Dokumente. Ein Pack mit 1857
+   * Journalen wuerde den Datenkanal sonst sprengen (siehe restore-scene).
+   * Zusaetzlich wird geblaettert: hoechstens 1000 Eintraege je Aufruf.
+   *
+   * Reines Lesen, deshalb keine Pruefung ueber assertAllowed - Lesen ist auf
+   * jeder Rechtestufe erlaubt, und die Freigabeliste regelt das Schreiben.
+   */
+  async listCompendiumEntries(request: {
+    packId: string;
+    namePattern?: string;
+    folderName?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<any> {
+    this.validateFoundryState();
+
+    const pack: any = game.packs?.get(request.packId);
+    if (!pack) throw new Error(`Kompendium "${request.packId}" nicht gefunden`);
+
+    let packIndex: any;
+    try {
+      packIndex = await pack.getIndex({ fields: ['name', 'type', 'folder'] });
+    } catch {
+      // Fallback: aeltere Foundry-API ohne Feldauswahl
+      packIndex = await pack.getIndex();
+    }
+    const quelle = packIndex && typeof packIndex.values === 'function' ? packIndex : pack.index;
+    let eintraege = Array.from((quelle as any).values()) as any[];
+
+    // Ordner liegen im Index nur als Kennung. Fuer die Anzeige und den Filter
+    // wird der Name gebraucht.
+    const ordnerNamen = new Map<string, string>();
+    for (const ordner of (pack.folders ?? []) as any[]) {
+      ordnerNamen.set(ordner.id, ordner.name);
+    }
+
+    if (request.folderName) {
+      const gesucht = request.folderName.trim().toLowerCase();
+      eintraege = eintraege.filter(
+        e => (ordnerNamen.get(e.folder) ?? '').toLowerCase() === gesucht
+      );
+    }
+
+    if (request.namePattern) {
+      const teil = request.namePattern.trim().toLowerCase();
+      eintraege = eintraege.filter(e => (e.name ?? '').toLowerCase().includes(teil));
+    }
+
+    eintraege.sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? '')));
+
+    const gesamt = eintraege.length;
+    const versatz = Math.max(0, Number(request.offset) || 0);
+    const grenze = Math.min(Math.max(1, Number(request.limit) || 200), 1000);
+    const ausschnitt = eintraege.slice(versatz, versatz + grenze);
+
+    return {
+      packId: request.packId,
+      label: pack.metadata?.label ?? request.packId,
+      documentType: pack.documentName,
+      packageType: pack.metadata?.packageType ?? 'module',
+      locked: pack.locked === true,
+      total: gesamt,
+      returned: ausschnitt.length,
+      offset: versatz,
+      hasMore: versatz + ausschnitt.length < gesamt,
+      entries: ausschnitt.map(e => ({
+        id: e._id ?? e.id,
+        name: e.name ?? null,
+        type: e.type ?? null,
+        folder: ordnerNamen.get(e.folder) ?? null,
+      })),
+    };
+  }
+
+  /**
    * Sammlung der Welt zu einer Dokumentart holen.
    */
   private weltSammlung(documentType: string): any {

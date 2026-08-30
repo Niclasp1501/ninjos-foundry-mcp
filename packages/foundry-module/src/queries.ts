@@ -67,6 +67,11 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.listCompendiums`] = this.handleListCompendiums.bind(this);
     CONFIG.queries[`${modulePrefix}.createCompendium`] = this.handleCreateCompendium.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteCompendium`] = this.handleDeleteCompendium.bind(this);
+    // NINJO: Eintraege eines Kompendiums auflisten. Reines Lesen.
+    CONFIG.queries[`${modulePrefix}.listCompendiumEntries`] =
+      this.handleListCompendiumEntries.bind(this);
+    CONFIG.queries[`${modulePrefix}.list-compendium-entries`] =
+      this.handleListCompendiumEntries.bind(this);
     CONFIG.queries[`${modulePrefix}.exportToCompendium`] = this.handleExportToCompendium.bind(this);
     CONFIG.queries[`${modulePrefix}.setCompendiumLock`] = this.handleSetCompendiumLock.bind(this);
     CONFIG.queries[`${modulePrefix}.organizeCompendium`] = this.handleOrganizeCompendium.bind(this);
@@ -920,6 +925,25 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to create compendium: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleListCompendiumEntries(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data?.packId) throw new Error('packId is required');
+      return await this.dataAccess.listCompendiumEntries({
+        packId: data.packId,
+        namePattern: data.namePattern,
+        folderName: data.folderName,
+        limit: data.limit,
+        offset: data.offset,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to list compendium entries: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

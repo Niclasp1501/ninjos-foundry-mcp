@@ -206,6 +206,38 @@ export class NinjoCampaignTools {
         },
       },
       {
+        name: 'list-compendium-entries',
+        description:
+          'List what actually sits inside a compendium — ids, names, types and folders. list-compendiums only gives counts, so this is the way to check whether an archive holds what it should, to find duplicates, or to get the ids needed for any later work. Reads the index only, never the full documents, and pages through at most 1000 entries per call. Read-only: it changes nothing and works regardless of the permission level.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            packId: {
+              type: 'string',
+              description:
+                'Compendium id, e.g. world.archiv-salzmarsch or ninjo-kompendium.presets',
+            },
+            namePattern: {
+              type: 'string',
+              description: 'Only entries whose name contains this text (case-insensitive)',
+            },
+            folderName: {
+              type: 'string',
+              description: 'Only entries sitting in this folder inside the compendium',
+            },
+            limit: {
+              type: 'number',
+              description: 'How many entries to return, default 200, at most 1000',
+            },
+            offset: {
+              type: 'number',
+              description: 'Skip this many entries — use with hasMore to page through a large pack',
+            },
+          },
+          required: ['packId'],
+        },
+      },
+      {
         name: 'delete-compendium',
         description:
           'Remove a world compendium and everything in it. This cannot be undone, so it is off by default: the module setting for compendiums has to stand on "create, edit and delete". The exact label must be passed as confirmLabel. Compendiums belonging to a module or to the game system cannot be removed this way.',
@@ -504,6 +536,52 @@ export class NinjoCampaignTools {
         {
           type: 'text',
           text: `Kompendium "${result.label}" angelegt (${result.type})\nId: ${result.id}`,
+        },
+      ],
+    };
+  }
+
+  async handleListCompendiumEntries(args: any): Promise<any> {
+    const schema = z.object({
+      packId: z.string().min(1),
+      namePattern: z.string().optional(),
+      folderName: z.string().optional(),
+      limit: z.number().int().positive().max(1000).optional(),
+      offset: z.number().int().min(0).optional(),
+    });
+    const params = schema.parse(args);
+    this.logger.info('Listing compendium entries', { pack: params.packId });
+
+    const result = await this.foundryClient.query(
+      'ninjos-foundry-mcp.listCompendiumEntries',
+      params
+    );
+
+    const kopf =
+      `Kompendium "${result.label}" (${result.documentType}, ${result.packageType}` +
+      `${result.locked ? ', gesperrt' : ''}): ${result.total} Eintraege` +
+      (result.total !== result.returned
+        ? `, davon ${result.returned} ab Position ${result.offset}`
+        : '');
+
+    const zeilen = result.entries.map(
+      (e: any) =>
+        `  ${e.name ?? '(ohne Namen)'}${e.type ? ` [${e.type}]` : ''}` +
+        `${e.folder ? ` — Ordner: ${e.folder}` : ''}  ${e.id}`
+    );
+
+    // Der Hinweis auf hasMore gehoert in den Text, nicht nur ins Feld: Sonst
+    // wird eine erste Seite fuer den ganzen Bestand gehalten - derselbe
+    // Fehlschluss, der beim Export schon einmal einen fertigen Stand verwarf.
+    const fuss = result.hasMore
+      ? `\n\nEs gibt weitere Eintraege. Naechste Seite mit offset: ${result.offset + result.returned}`
+      : '';
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `${kopf}\n\n${zeilen.join('\n')}${fuss}`,
         },
       ],
     };
