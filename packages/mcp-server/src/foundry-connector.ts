@@ -4,6 +4,35 @@ import { Logger } from './logger.js';
 import { Config } from './config.js';
 import { WebRTCPeer } from './webrtc-peer.js';
 
+/**
+ * NINJO: Wie lange auf eine Antwort des Moduls gewartet wird.
+ *
+ * Die meisten Abfragen sind in Millisekunden durch. Einige arbeiten aber ueber
+ * hunderte Dokumente und brauchen Minuten - fuer die war die alte Frist von zehn
+ * Sekunden schlicht falsch gewaehlt. Sie stehen hier namentlich, damit nicht
+ * pauschal jede Abfrage minutenlang haengen kann, wenn das Modul wirklich
+ * abgestuerzt ist.
+ */
+const LANGE_ABFRAGEN: Record<string, number> = {
+  exportToCompendium: 600000, // 902 Szenen gemessen: rund 135 s
+  deleteCompendiumEntries: 300000,
+  restoreScene: 300000,
+  worldRewritePaths: 300000,
+  rebuildEnhancedCreatureIndex: 600000,
+  getEnhancedCreatureIndex: 120000,
+  listCompendiumEntries: 60000, // ein Pack mit 1857 Eintraegen braucht spuerbar
+  createActors: 120000,
+  importFromCompendium: 120000,
+};
+
+const STANDARD_FRIST = Number(process.env.FOUNDRY_QUERY_TIMEOUT || 30000);
+
+function zeitgrenzeFuer(method: string): number {
+  // Der Name kommt als "ninjos-foundry-mcp.exportToCompendium" herein
+  const kurz = method.includes('.') ? method.slice(method.lastIndexOf('.') + 1) : method;
+  return LANGE_ABFRAGEN[kurz] ?? STANDARD_FRIST;
+}
+
 export interface FoundryConnectorOptions {
   config: Config['foundry'];
   logger: Logger;
@@ -375,11 +404,24 @@ export class FoundryConnector {
       connectionType: this.activeConnectionType,
     });
 
+    // NINJO: Die Frist war fest auf 10 Sekunden verdrahtet. Ein Export von 902
+    // Szenen dauert rund 135 Sekunden - der Aufruf gab also nach 10 Sekunden auf,
+    // waehrend das Modul im Browser weiterarbeitete. Der Vorgang wurde fertig,
+    // nur wusste das niemand mehr. Genau daraus entstand am 30.08.2026 der
+    // Fehlschluss, ein fertiger Export sei fehlgeschlagen.
+    const frist = zeitgrenzeFuer(method);
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pendingQueries.delete(queryId);
-        reject(new Error(`Query timeout: ${method}`));
-      }, 10000); // 10 second timeout
+        reject(
+          new Error(
+            `Query timeout: ${method} (nach ${Math.round(frist / 1000)}s). ` +
+              `Der Vorgang laeuft im Modul weiter und wird womoeglich fertig - das Ergebnis ` +
+              `deshalb nachzaehlen, nicht aus dieser Meldung schliessen.`
+          )
+        );
+      }, frist);
 
       this.pendingQueries.set(queryId, { resolve, reject, timeout });
 

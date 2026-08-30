@@ -732,6 +732,17 @@ export class NinjoCampaignTools {
     if (result.skipped?.length) {
       zeilen.push(`Uebersprungen: ${result.skipped.join(', ')}`);
     }
+    // Der ernste Fall: Beim Ersetzen war der alte Eintrag schon entfernt, das
+    // Neuschreiben schlug dann fehl. Das gehoert deutlich heraus und nicht unter
+    // "uebersprungen", denn hier fehlt womoeglich ein Stand.
+    if (result.verloren?.length) {
+      zeilen.push(
+        `\nACHTUNG - beim Ersetzen abgebrochen (${result.verloren.length}): ` +
+          `${result.verloren.join(', ')}\n` +
+          `Bei diesen Eintraegen wurde der bisherige Stand entfernt, der neue aber nicht ` +
+          `geschrieben. Mit list-compendium-entries nachsehen und gezielt erneut sichern.`
+      );
+    }
 
     return { content: [{ type: 'text', text: zeilen.join('\n') }] };
   }

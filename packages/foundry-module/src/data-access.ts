@@ -10035,7 +10035,13 @@ export class FoundryDataAccess {
     names?: string[];
     folderName?: string;
     unlockIfNeeded?: boolean;
-  }): Promise<{ pack: string; exported: string[]; replaced: string[]; skipped: string[] }> {
+  }): Promise<{
+    pack: string;
+    exported: string[];
+    replaced: string[];
+    skipped: string[];
+    verloren: string[];
+  }> {
     this.validateFoundryState();
     this.assertAllowed('Compendiums', 'update');
 
@@ -10088,6 +10094,9 @@ export class FoundryDataAccess {
       const exported: string[] = [];
       const replaced: string[] = [];
       const skipped: string[] = [];
+      // NINJO: Eintraege, bei denen das Ersetzen mittendrin scheiterte. Die
+      // gehoeren getrennt gemeldet - dort ist womoeglich der alte Stand weg.
+      const verloren: string[] = [];
 
       for (const doc of kandidaten) {
         // Die Kennung bleibt beim Sichern erhalten. Lag der Eintrag schon im
@@ -10099,13 +10108,54 @@ export class FoundryDataAccess {
           if (warSchonDa) replaced.push(doc.name);
           else exported.push(doc.name);
         } catch (error) {
+          // NINJO: Ist der Eintrag schon da, aktualisiert Foundry ihn ueber einen
+          // Abgleich der eingebetteten Dokumente. Bei Szenen mit Tokens scheitert
+          // das an ActorDelta:
+          //
+          //   TypeError: Cannot read properties of undefined (reading 'createDocument')
+          //     at ActorDeltaField._updateDiff -> TokenDocument._updateDiff -> Scene._updateDiff
+          //
+          // Die verknuepfte Figur existiert im Kompendium nicht, also bricht der
+          // Abgleich ab. Ein Archiv liess sich dadurch nie aktualisieren - jede
+          // Szene mit Tokens landete stumm unter "uebersprungen".
+          //
+          // Ausweg: den alten Eintrag entfernen und frisch schreiben. Damit
+          // entfaellt der Abgleich ganz. Bewusst erst im Fehlerfall, nicht immer:
+          // Fuer alle anderen Dokumentarten funktioniert der normale Weg, und ein
+          // Loeschen waere dort ein unnoetiges Risiko.
+          if (warSchonDa) {
+            try {
+              await (pack as any).documentClass.deleteDocuments([doc.id], {
+                pack: pack.collection,
+              });
+              await pack.importDocument(doc);
+              replaced.push(doc.name);
+              continue;
+            } catch (zweiterFehler) {
+              // Jetzt ist der alte Eintrag womoeglich weg und der neue nicht da.
+              // Das muss deutlich gemeldet werden, nicht nur als "uebersprungen".
+              console.error(
+                `[${this.moduleId}] "${doc.name}": Ersetzen fehlgeschlagen, der bisherige ` +
+                  `Eintrag wurde dabei moeglicherweise entfernt.`,
+                zweiterFehler
+              );
+              verloren.push(doc.name);
+              continue;
+            }
+          }
           console.warn(`[${this.moduleId}] "${doc.name}" nicht gesichert:`, error);
           skipped.push(doc.name);
         }
       }
 
       this.auditLog('exportToCompendium', request, 'success');
-      return { pack: pack.metadata?.label ?? request.packId, exported, replaced, skipped };
+      return {
+        pack: pack.metadata?.label ?? request.packId,
+        exported,
+        replaced,
+        skipped,
+        verloren,
+      };
     } finally {
       if (warLocked) {
         try {
