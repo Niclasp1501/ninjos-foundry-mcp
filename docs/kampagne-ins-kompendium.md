@@ -88,10 +88,29 @@ Unterordner liegen. Ordnernamen sind zudem nicht eindeutig („Room 1", „Camp"
 „1"–„6" gibt es mehrfach). Deshalb: alles auf einmal exportieren und danach
 einsortieren, nicht ordnerweise.
 
-**6. Gleiche Namen werden überschrieben, nicht verdoppelt.**
-Der Export meldet „Vorhandenen Stand ueberschrieben" — alte Fassungen mit
-korrigierten Pfaden werden also von selbst ersetzt. Ein separater Löschschritt
-ist unnötig.
+**6. Niemals über Namen zuordnen — immer über die Id.**
+Der wichtigste Punkt. Der Export **behält die Id** des Weltdokuments bei; ein
+Eintrag im Pack gehört also genau dann zur Welt, wenn `game.journal.get(e._id)`
+etwas liefert. Namen taugen dafür nicht:
+
+- Die Welt selbst hat Dubletten (305 Journalnamen doppelt, 647 Dokumente).
+- Andere Kampagnen im Archiv haben gleichnamige Einträge („Zustände",
+  „Gefahren in der Wildnis", generierte „DontTouch-POI-Teleporter-…").
+
+Beim ersten Durchlauf wurden über den Namensabgleich 32 Journale und 10 Szenen
+**aus fremden Kampagnenordnern in den Strahd-Ordner gezogen**. Sie waren nicht
+verloren, aber verräumt; zurückgeholt nur über die Sicherung. Deshalb:
+
+```js
+const weltIds = new Set([...game.journal].map(j => j.id));
+const upd = [...idx]
+  .filter(e => weltIds.has(e._id))
+  .map(e => ({ _id: e._id, folder: zielId(e._id) }));
+```
+
+**6b. Der Export legt Einträge in gleichnamige Packordner.**
+Ein Weltordner „Regeln" landet im vorhandenen Packordner „Regeln" einer anderen
+Kampagne — auch der ist über die Id-Prüfung hinterher wieder einzufangen.
 
 **7. Szenen mit Token können beim Überschreiben scheitern.**
 Beobachtet: `TypeError: Cannot read properties of undefined (reading
