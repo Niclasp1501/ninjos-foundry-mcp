@@ -31,7 +31,8 @@
     "prepare": "husky",
     "pruefen:abfragen": "node scripts/abfragen-pruefen.mjs",
     "pruefen:version": "node scripts/version-pruefen.mjs",
-    "pruefen": "npm run pruefen:abfragen && npm run pruefen:version"
+    "pruefen": "npm run pruefen:abfragen && npm run pruefen:version",
+    "pruefen:ursprung": "node scripts/ursprung-pruefen.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

@@ -1,0 +1,94 @@
+# Behaelt das Ursprungsprojekt im Auge.
+#
+# Zwischen diesem Fork und adambdooley/foundry-vtt-mcp gibt es keine gemeinsame
+# Historie. Es gibt also keine Anzeige "du bist N Commits hinterher" - Neues faellt
+# dort nur auf, wenn jemand ausdruecklich nachsieht. Der getPackIndex-Fehler war im
+# Ursprung seit dem 22.08.2026 behoben, waehrend wir ihn am 30.08. noch einmal
+# selbst gefunden haben.
+#
+# Laeuft montags und legt eine Aufgabe an, wenn Commits ohne Entscheidung
+# dastehen. Bewusst getrennt vom Bauen und Veroeffentlichen: Neues im Ursprung ist
+# kein Grund, ein Release zu verhindern.
+name: Ursprung beobachten
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # montags 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  abgleich:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ursprung als Fernverweis eintragen
+        run: git remote add upstream https://github.com/adambdooley/foundry-vtt-mcp.git
+
+      - name: Abgleich
+        id: abgleich
+        run: |
+          set +e
+          ausgabe=$(node scripts/ursprung-pruefen.mjs 2>&1)
+          stand=$?
+          echo "$ausgabe"
+          {
+            echo 'bericht<<ENDE'
+            echo "$ausgabe"
+            echo 'ENDE'
+          } >> "$GITHUB_OUTPUT"
+          echo "offen=$stand" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Aufgabe anlegen
+        if: steps.abgleich.outputs.offen != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const bericht = ${{ toJSON(steps.abgleich.outputs.bericht) }};
+            const titel = 'Ursprung durchsehen: neue Commits ohne Entscheidung';
+
+            // Eine offene Aufgabe je Thema genuegt. Gibt es sie schon, wird sie
+            // ergaenzt statt jede Woche eine neue anzulegen.
+            const offene = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'ursprung',
+            });
+
+            const rumpf = [
+              'Im Ursprungsprojekt liegen Commits, die bei uns noch keine Entscheidung haben.',
+              '',
+              '```',
+              bericht,
+              '```',
+              '',
+              'Jeden entscheiden und mit Begruendung in `docs/ursprung-abgleich.md` eintragen —',
+              'auch das Ablehnen. Sonst prueft der naechste dieselben Commits noch einmal.',
+            ].join('\n');
+
+            if (offene.data.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: offene.data[0].number,
+                body: `Stand vom ${new Date().toISOString().slice(0, 10)}:\n\n${rumpf}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: titel,
+                body: rumpf,
+                labels: ['ursprung'],
+              });
+            }
