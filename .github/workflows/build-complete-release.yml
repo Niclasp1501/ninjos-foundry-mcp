@@ -21,6 +21,13 @@ on:
         default: 'false'
         type: boolean
 
+# Ohne diesen Block gilt die Voreinstellung des Repos, und die steht auf "read".
+# Der Schritt "Create GitHub Release" scheiterte deshalb mit "Resource not
+# accessible by integration" - die Installer waren gebaut, kamen aber nicht ans
+# Release. release-modul.yml hatte den Block von Anfang an und lief durch.
+permissions:
+  contents: write
+
 jobs:
   build-nsis:
     runs-on: windows-latest
