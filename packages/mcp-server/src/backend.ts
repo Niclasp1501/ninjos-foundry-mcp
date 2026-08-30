@@ -1668,6 +1668,11 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'delete-compendium-entries':
+                  result = await ninjoCampaignTools.handleDeleteCompendiumEntries(args);
+
+                  break;
+
                 case 'list-compendium-entries':
                   result = await ninjoCampaignTools.handleListCompendiumEntries(args);
 

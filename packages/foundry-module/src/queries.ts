@@ -72,6 +72,11 @@ export class QueryHandlers {
       this.handleListCompendiumEntries.bind(this);
     CONFIG.queries[`${modulePrefix}.list-compendium-entries`] =
       this.handleListCompendiumEntries.bind(this);
+    // NINJO: Gezielt benannte Eintraege entfernen. Kein Leeren.
+    CONFIG.queries[`${modulePrefix}.deleteCompendiumEntries`] =
+      this.handleDeleteCompendiumEntries.bind(this);
+    CONFIG.queries[`${modulePrefix}.delete-compendium-entries`] =
+      this.handleDeleteCompendiumEntries.bind(this);
     CONFIG.queries[`${modulePrefix}.exportToCompendium`] = this.handleExportToCompendium.bind(this);
     CONFIG.queries[`${modulePrefix}.setCompendiumLock`] = this.handleSetCompendiumLock.bind(this);
     CONFIG.queries[`${modulePrefix}.organizeCompendium`] = this.handleOrganizeCompendium.bind(this);
@@ -925,6 +930,26 @@ export class QueryHandlers {
     } catch (error) {
       throw new Error(
         `Failed to create compendium: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleDeleteCompendiumEntries(data: any): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) return { error: 'Access denied', success: false };
+      if (!data?.packId) throw new Error('packId is required');
+      return await this.dataAccess.deleteCompendiumEntries({
+        packId: data.packId,
+        ids: data.ids,
+        names: data.names,
+        unlockIfNeeded: data.unlockIfNeeded,
+        dryRun: data.dryRun,
+        confirmLabel: data.confirmLabel,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to delete compendium entries: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

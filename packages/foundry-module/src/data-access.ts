@@ -9777,6 +9777,154 @@ export class FoundryDataAccess {
   }
 
   /**
+   * NINJO: Einzelne, ausdruecklich benannte Eintraege aus einem Kompendium entfernen.
+   *
+   * Bewusst gezielt: Es wird geloescht, was per Id oder exaktem Namen benannt ist,
+   * sonst nichts. Ein "leere das Pack" gibt es nicht und soll es nicht geben - ein
+   * gewachsenes Archiv auf einen Schlag zu leeren ist nicht umkehrbar, und ein
+   * verwechselter Bezeichner haette das falsche Archiv getroffen.
+   *
+   * Der Riegel dazu steht unten: Trifft die Auswahl zufaellig **alle** Eintraege,
+   * wird zusaetzlich confirmLabel verlangt. Damit laesst sich der Weg nicht ueber
+   * eine vollstaendige Id-Liste doch noch als Leeren benutzen.
+   *
+   * Nicht gefundene Namen werden gemeldet, nicht uebergangen. Mehrdeutige Namen
+   * werden gemeldet, nicht geraten - bei zwei Szenen "Marktplatz" waere jede Wahl
+   * falsch.
+   */
+  async deleteCompendiumEntries(request: {
+    packId: string;
+    ids?: string[];
+    names?: string[];
+    unlockIfNeeded?: boolean;
+    dryRun?: boolean;
+    confirmLabel?: string;
+  }): Promise<any> {
+    this.validateFoundryState();
+    this.assertAllowed('Compendiums', 'delete');
+
+    const pack: any = game.packs?.get(request.packId);
+    if (!pack) throw new Error(`Kompendium "${request.packId}" nicht gefunden`);
+
+    const label = pack.metadata?.label ?? request.packId;
+    const ids = request.ids ?? [];
+    const names = request.names ?? [];
+    if (!ids.length && !names.length) {
+      throw new Error(
+        'Es muss angegeben werden, was entfernt werden soll - ids oder names. ' +
+          'Ein Aufruf ohne Auswahl loescht bewusst nichts.'
+      );
+    }
+
+    this.assertCompendiumFreigegeben(pack, request.packId, {
+      entsperrenErlaubt: request.unlockIfNeeded === true,
+    });
+
+    let packIndex: any;
+    try {
+      packIndex = await pack.getIndex({ fields: ['name'] });
+    } catch {
+      packIndex = await pack.getIndex();
+    }
+    const quelle = packIndex && typeof packIndex.values === 'function' ? packIndex : pack.index;
+    const alle = Array.from((quelle as any).values()) as any[];
+    const kennung = (e: any) => e._id ?? e.id;
+
+    const gefunden = new Map<string, string>(); // Id -> Name
+    const nichtGefunden: string[] = [];
+    const mehrdeutig: Array<{ name: string; ids: string[] }> = [];
+
+    for (const id of ids) {
+      const treffer = alle.find(e => kennung(e) === id);
+      if (treffer) gefunden.set(id, treffer.name ?? '(ohne Namen)');
+      else nichtGefunden.push(id);
+    }
+
+    for (const name of names) {
+      // Exakter Vergleich. Ein Teiltext waere hier gefaehrlich: "Wald" traefe
+      // auch "Waldrand" und "Waldsee".
+      const treffer = alle.filter(e => e.name === name);
+      if (!treffer.length) {
+        nichtGefunden.push(name);
+      } else if (treffer.length > 1) {
+        mehrdeutig.push({ name, ids: treffer.map(kennung) });
+      } else {
+        gefunden.set(kennung(treffer[0]), treffer[0].name ?? '(ohne Namen)');
+      }
+    }
+
+    // Der Riegel gegen das Leeren durch die Hintertuer
+    if (alle.length > 0 && gefunden.size === alle.length) {
+      if ((request.confirmLabel ?? '').trim() !== label) {
+        throw new Error(
+          `Die Auswahl trifft alle ${alle.length} Eintraege von "${label}". Das leert das ` +
+            `Kompendium vollstaendig. Wenn das wirklich gewollt ist, muss confirmLabel genau ` +
+            `"${label}" lauten. Sonst die Auswahl einschraenken.`
+        );
+      }
+    }
+
+    const zuLoeschen = [...gefunden.entries()].map(([id, name]) => ({ id, name }));
+
+    if (request.dryRun) {
+      return {
+        packId: request.packId,
+        label,
+        dryRun: true,
+        deleted: 0,
+        wouldDelete: zuLoeschen.length,
+        entries: zuLoeschen,
+        notFound: nichtGefunden,
+        ambiguous: mehrdeutig,
+        totalInPack: alle.length,
+      };
+    }
+
+    const warLocked = pack.locked === true;
+    if (warLocked) {
+      await pack.configure({ locked: false });
+    }
+
+    let geloescht = 0;
+    try {
+      // In Bloecken loeschen. Eine Liste mit hunderten Ids auf einmal laesst die
+      // Antwort zu gross werden (siehe restore-scene).
+      const blockGroesse = 200;
+      const alleIds = zuLoeschen.map(e => e.id);
+      for (let i = 0; i < alleIds.length; i += blockGroesse) {
+        const block = alleIds.slice(i, i + blockGroesse);
+        await (pack as any).documentClass.deleteDocuments(block, { pack: pack.collection });
+        geloescht += block.length;
+      }
+    } finally {
+      if (warLocked) {
+        try {
+          await pack.configure({ locked: true });
+        } catch (error) {
+          console.warn(`[${this.moduleId}] Sperre nicht wiederhergestellt:`, error);
+        }
+      }
+    }
+
+    this.auditLog(
+      'deleteCompendiumEntries',
+      { packId: request.packId, label, deleted: geloescht, entries: zuLoeschen.map(e => e.name) },
+      'success'
+    );
+
+    return {
+      packId: request.packId,
+      label,
+      dryRun: false,
+      deleted: geloescht,
+      entries: zuLoeschen,
+      notFound: nichtGefunden,
+      ambiguous: mehrdeutig,
+      totalInPack: alle.length - geloescht,
+    };
+  }
+
+  /**
    * NINJO: Die Eintraege eines Kompendiums auflisten.
    *
    * listCompendiums liefert nur Zaehlwerte. Wer wissen will, was in einem Pack

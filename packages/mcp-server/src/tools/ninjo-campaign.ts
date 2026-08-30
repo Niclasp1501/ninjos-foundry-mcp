@@ -238,6 +238,41 @@ export class NinjoCampaignTools {
         },
       },
       {
+        name: 'delete-compendium-entries',
+        description:
+          'Remove named entries from a compendium — by id, or by exact name. Only what is explicitly named is removed; there is deliberately no "empty this pack". Always run with dryRun first: it reports exactly what would go, what was not found, and which names are ambiguous, without touching anything. Names are matched exactly, never as a substring, and an ambiguous name is reported rather than guessed. If the selection happens to cover every entry in the pack, confirmLabel is required as well. Needs the compendium permission on "create, edit and delete".',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            packId: { type: 'string', description: 'Compendium id' },
+            ids: {
+              type: 'array',
+              description: 'Ids of the entries to remove — get them from list-compendium-entries',
+              items: { type: 'string' },
+            },
+            names: {
+              type: 'array',
+              description: 'Exact names, as an alternative to ids. Ambiguous names are reported.',
+              items: { type: 'string' },
+            },
+            unlockIfNeeded: {
+              type: 'boolean',
+              description: 'Lift the lock for this operation only and restore it afterwards',
+            },
+            dryRun: {
+              type: 'boolean',
+              description: 'Report what would happen and change nothing. Use this first.',
+            },
+            confirmLabel: {
+              type: 'string',
+              description:
+                'Only needed when the selection covers every entry in the pack — then it must be the exact label',
+            },
+          },
+          required: ['packId'],
+        },
+      },
+      {
         name: 'delete-compendium',
         description:
           'Remove a world compendium and everything in it. This cannot be undone, so it is off by default: the module setting for compendiums has to stand on "create, edit and delete". The exact label must be passed as confirmLabel. Compendiums belonging to a module or to the game system cannot be removed this way.',
@@ -539,6 +574,66 @@ export class NinjoCampaignTools {
         },
       ],
     };
+  }
+
+  async handleDeleteCompendiumEntries(args: any): Promise<any> {
+    const schema = z.object({
+      packId: z.string().min(1),
+      ids: z.array(z.string()).optional(),
+      names: z.array(z.string()).optional(),
+      unlockIfNeeded: z.boolean().optional(),
+      dryRun: z.boolean().optional(),
+      confirmLabel: z.string().optional(),
+    });
+    const params = schema.parse(args);
+    this.logger.info('Deleting compendium entries', {
+      pack: params.packId,
+      dryRun: params.dryRun === true,
+    });
+
+    const result = await this.foundryClient.query(
+      'ninjos-foundry-mcp.deleteCompendiumEntries',
+      params
+    );
+
+    const teile: string[] = [];
+    if (result.dryRun) {
+      teile.push(
+        `Trockenlauf fuer "${result.label}": ${result.wouldDelete} von ${result.totalInPack} ` +
+          `Eintraegen wuerden entfernt. Es wurde nichts geaendert.`
+      );
+    } else {
+      teile.push(
+        `Aus "${result.label}" entfernt: ${result.deleted} Eintraege. ` +
+          `Im Kompendium verbleiben ${result.totalInPack}.`
+      );
+    }
+
+    if (result.entries?.length) {
+      const zeigen = result.entries.slice(0, 25);
+      teile.push('\n' + zeigen.map((e: any) => `  ${e.name}  ${e.id}`).join('\n'));
+      if (result.entries.length > zeigen.length) {
+        teile.push(`  ... und ${result.entries.length - zeigen.length} weitere`);
+      }
+    }
+
+    // Nicht Gefundenes und Mehrdeutiges gehoert deutlich in die Antwort. Wird es
+    // nur im Feld gemeldet, gilt der Vorgang leicht als vollstaendig erledigt,
+    // obwohl die Haelfte gar nicht getroffen wurde.
+    if (result.notFound?.length) {
+      teile.push(`\nNicht gefunden (${result.notFound.length}): ${result.notFound.join(', ')}`);
+    }
+    if (result.ambiguous?.length) {
+      teile.push(
+        `\nMehrdeutig, deshalb uebergangen:\n` +
+          result.ambiguous
+            .map((m: any) => `  "${m.name}" kommt ${m.ids.length}x vor: ${m.ids.join(', ')}`)
+            .join('\n') +
+          `\nHier ueber ids gehen statt ueber names.`
+      );
+    }
+
+    return { content: [{ type: 'text', text: teile.join('\n') }] };
   }
 
   async handleListCompendiumEntries(args: any): Promise<any> {
