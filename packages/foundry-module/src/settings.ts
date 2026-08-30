@@ -167,13 +167,31 @@ export class ModuleSettings {
 
         async _updateObject(_event: Event, formData: any): Promise<void> {
           // Alles erlauben heisst: leere Liste, dann zaehlt nur die Sperre
-          if (formData.__allowAllUnlocked) {
+          if (formData?.__allowAllUnlocked === true) {
             await game.settings.set(MODULE_ID, 'writableCompendiums', '');
             ui.notifications?.info(game.i18n.localize(`${MODULE_ID}.compendiumAccess.savedAll`));
             return;
           }
 
-          const gewaehlt = Object.entries(formData)
+          // NINJO: Die Haken heissen in der Vorlage "pack.<kennung>", und eine
+          // Pack-Kennung enthaelt selbst einen Punkt ("ninjo-kompendium.presets").
+          // Foundry entfaltet Feldnamen mit Punkten zu verschachtelten Objekten,
+          // bevor diese Methode sie sieht - hier kommt also
+          //
+          //   { pack: { 'ninjo-kompendium': { presets: true } } }
+          //
+          // an und nicht der flache Schluessel. Die frueher hier stehende Suche
+          // nach Schluesseln, die mit "pack." beginnen, fand deshalb nie etwas:
+          // Es wurde stets eine leere Liste gespeichert, und beim naechsten
+          // Oeffnen war jeder Haken wieder weg. Schlimmer noch, eine leere Liste
+          // bedeutet "jedes entsperrte Kompendium ist freigegeben" - die
+          // Einschraenkung fiel damit still zurueck.
+          //
+          // flattenObject macht das Entfalten rueckgaengig. Es ist unschaedlich,
+          // falls Foundry die Daten eines Tages flach uebergibt.
+          const flach = (foundry as any).utils.flattenObject(formData) as Record<string, unknown>;
+
+          const gewaehlt = Object.entries(flach)
             .filter(([k, v]) => k.startsWith('pack.') && v === true)
             .map(([k]) => k.slice('pack.'.length));
 
