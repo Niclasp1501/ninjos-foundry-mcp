@@ -9,6 +9,9 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { ActorManagementTools } from './actor-management.js';
+// Die Kennung aus der Konstanten statt fest im Test. Der uebernommene Test
+// schrieb 'foundry-mcp-bridge' hinein und brach bei der Umbenennung.
+import { MODULE_ID } from '@foundry-mcp/shared';
 
 function makeTools(queryImpl?: (method: string, data: any) => unknown) {
   const query = vi.fn(queryImpl ?? (async () => ({ success: true, created: [] })));
@@ -34,7 +37,7 @@ describe('manage-actors place action', () => {
       placement: 'grid',
       hidden: true,
     });
-    expect(query).toHaveBeenCalledWith('foundry-mcp-bridge.addActorsToScene', {
+    expect(query).toHaveBeenCalledWith(`${MODULE_ID}.addActorsToScene`, {
       actorIds: ['abc', 'def'],
       placement: 'grid',
       hidden: true,
@@ -44,7 +47,7 @@ describe('manage-actors place action', () => {
   it('defaults placement to random and hidden to false', async () => {
     const { tools, query } = makeTools();
     await tools.handleManageActors({ action: 'place', actorIds: ['abc'] });
-    expect(query).toHaveBeenCalledWith('foundry-mcp-bridge.addActorsToScene', {
+    expect(query).toHaveBeenCalledWith(`${MODULE_ID}.addActorsToScene`, {
       actorIds: ['abc'],
       placement: 'random',
       hidden: false,
