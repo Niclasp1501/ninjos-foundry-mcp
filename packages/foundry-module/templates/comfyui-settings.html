@@ -5,27 +5,27 @@
 }}
 <form class="eci-settings mcp-menu">
   <section class="eci-block">
-    <h2 class="eci-title">{{localize "foundry-mcp-bridge.mapgen.title"}}</h2>
-    <p class="eci-note">{{localize "foundry-mcp-bridge.mapgen.intro"}}</p>
+    <h2 class="eci-title">{{localize "ninjos-foundry-mcp.mapgen.title"}}</h2>
+    <p class="eci-note">{{localize "ninjos-foundry-mcp.mapgen.intro"}}</p>
   </section>
 
   <hr class="eci-divider" />
 
   <section class="eci-block">
-    <h3 class="eci-subtitle">{{localize "foundry-mcp-bridge.mapgen.statusTitle"}}</h3>
+    <h3 class="eci-subtitle">{{localize "ninjos-foundry-mcp.mapgen.statusTitle"}}</h3>
     <div class="eci-status-container">
       <div class="eci-status {{connectionStatus}}" id="connection-status">
         <span id="status-text">{{connectionStatusText}}</span>
       </div>
       <div class="eci-controls">
         <button type="button" class="eci-btn check" id="check-status-btn">
-          <i class="fas fa-sync"></i> {{localize "foundry-mcp-bridge.mapgen.check"}}
+          <i class="fas fa-sync"></i> {{localize "ninjos-foundry-mcp.mapgen.check"}}
         </button>
         <button type="button" class="eci-btn start" id="start-service-btn">
-          <i class="fas fa-play"></i> {{localize "foundry-mcp-bridge.mapgen.start"}}
+          <i class="fas fa-play"></i> {{localize "ninjos-foundry-mcp.mapgen.start"}}
         </button>
         <button type="button" class="eci-btn stop" id="stop-service-btn">
-          <i class="fas fa-stop"></i> {{localize "foundry-mcp-bridge.mapgen.stop"}}
+          <i class="fas fa-stop"></i> {{localize "ninjos-foundry-mcp.mapgen.stop"}}
         </button>
       </div>
     </div>
@@ -34,38 +34,38 @@
   <hr class="eci-divider" />
 
   <section class="eci-block eci-settings-block">
-    <h3 class="eci-subtitle">{{localize "foundry-mcp-bridge.mapgen.settingsTitle"}}</h3>
+    <h3 class="eci-subtitle">{{localize "ninjos-foundry-mcp.mapgen.settingsTitle"}}</h3>
 
     <label class="eci-check">
       <input type="checkbox" name="autoStartService" {{#if autoStartService}}checked{{/if}} />
       <span>
-        <strong>{{localize "foundry-mcp-bridge.mapgen.autoStart"}}</strong>
-        {{localize "foundry-mcp-bridge.mapgen.autoStartHint"}}
+        <strong>{{localize "ninjos-foundry-mcp.mapgen.autoStart"}}</strong>
+        {{localize "ninjos-foundry-mcp.mapgen.autoStartHint"}}
       </span>
     </label>
 
     <div class="form-group">
       <label for="mapGenQuality">
-        <strong>{{localize "foundry-mcp-bridge.mapgen.quality"}}</strong>
+        <strong>{{localize "ninjos-foundry-mcp.mapgen.quality"}}</strong>
       </label>
       <select name="mapGenQuality" id="mapGenQuality">
         <option value="low" {{#if (eq mapGenQuality "low")}}selected{{/if}}>
-          {{localize "foundry-mcp-bridge.mapgen.qualityLow"}}
+          {{localize "ninjos-foundry-mcp.mapgen.qualityLow"}}
         </option>
         <option value="medium" {{#if (eq mapGenQuality "medium")}}selected{{/if}}>
-          {{localize "foundry-mcp-bridge.mapgen.qualityMedium"}}
+          {{localize "ninjos-foundry-mcp.mapgen.qualityMedium"}}
         </option>
         <option value="high" {{#if (eq mapGenQuality "high")}}selected{{/if}}>
-          {{localize "foundry-mcp-bridge.mapgen.qualityHigh"}}
+          {{localize "ninjos-foundry-mcp.mapgen.qualityHigh"}}
         </option>
       </select>
-      <p class="notes">{{localize "foundry-mcp-bridge.mapgen.qualityHint"}}</p>
+      <p class="notes">{{localize "ninjos-foundry-mcp.mapgen.qualityHint"}}</p>
     </div>
   </section>
 
   <div class="form-footer">
     <button type="submit" class="eci-btn primary">
-      <i class="fas fa-save"></i> {{localize "foundry-mcp-bridge.common.apply"}}
+      <i class="fas fa-save"></i> {{localize "ninjos-foundry-mcp.common.apply"}}
     </button>
   </div>
 </form>

@@ -7,8 +7,8 @@
 }}
 <form class="eci-settings mcp-menu mcp-compendium-access">
   <section class="eci-block">
-    <h2 class="eci-title">{{localize "foundry-mcp-bridge.compendiumAccess.title"}}</h2>
-    <p class="eci-note">{{localize "foundry-mcp-bridge.compendiumAccess.intro"}}</p>
+    <h2 class="eci-title">{{localize "ninjos-foundry-mcp.compendiumAccess.title"}}</h2>
+    <p class="eci-note">{{localize "ninjos-foundry-mcp.compendiumAccess.intro"}}</p>
   </section>
 
   <hr class="eci-divider" />
@@ -17,8 +17,8 @@
     <label class="eci-check mcp-all-row">
       <input type="checkbox" name="__allowAllUnlocked" {{#if allowAllUnlocked}}checked{{/if}} />
       <span>
-        <strong>{{localize "foundry-mcp-bridge.compendiumAccess.allowAll"}}</strong>
-        {{localize "foundry-mcp-bridge.compendiumAccess.allowAllHint"}}
+        <strong>{{localize "ninjos-foundry-mcp.compendiumAccess.allowAll"}}</strong>
+        {{localize "ninjos-foundry-mcp.compendiumAccess.allowAllHint"}}
       </span>
     </label>
   </section>
@@ -26,7 +26,7 @@
   <hr class="eci-divider" />
 
   <section class="eci-block mcp-pack-list {{#if allowAllUnlocked}}mcp-dimmed{{/if}}">
-    <h3 class="eci-subtitle">{{localize "foundry-mcp-bridge.compendiumAccess.listTitle"}}</h3>
+    <h3 class="eci-subtitle">{{localize "ninjos-foundry-mcp.compendiumAccess.listTitle"}}</h3>
 
     {{#each groups}}
     <div class="mcp-group">
@@ -38,11 +38,11 @@
           <span class="mcp-pack-name">{{this.label}}</span>
           <span class="mcp-pack-meta">
             {{this.type}} · {{this.entries}}
-            {{localize "foundry-mcp-bridge.compendiumAccess.entries"}}
+            {{localize "ninjos-foundry-mcp.compendiumAccess.entries"}}
             {{#if this.locked}}
             ·
             <span class="mcp-tag-locked"
-              >{{localize "foundry-mcp-bridge.compendiumAccess.locked"}}</span
+              >{{localize "ninjos-foundry-mcp.compendiumAccess.locked"}}</span
             >
             {{/if}}
           </span>
@@ -56,7 +56,7 @@
 
   <div class="form-footer">
     <button type="submit" class="eci-btn primary">
-      <i class="fas fa-save"></i> {{localize "foundry-mcp-bridge.common.save"}}
+      <i class="fas fa-save"></i> {{localize "ninjos-foundry-mcp.common.save"}}
     </button>
   </div>
 </form>

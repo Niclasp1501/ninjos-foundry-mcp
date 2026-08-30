@@ -4,24 +4,24 @@
 }}
 <form class="eci-settings mcp-menu">
   <section class="eci-block">
-    <h2 class="eci-title">{{localize "foundry-mcp-bridge.index.title"}}</h2>
-    <p class="eci-note">{{localize "foundry-mcp-bridge.index.intro"}}</p>
+    <h2 class="eci-title">{{localize "ninjos-foundry-mcp.index.title"}}</h2>
+    <p class="eci-note">{{localize "ninjos-foundry-mcp.index.intro"}}</p>
   </section>
 
   <hr class="eci-divider" />
 
   <section class="eci-block">
-    <h3 class="eci-subtitle">{{localize "foundry-mcp-bridge.index.rebuildTitle"}}</h3>
-    <p class="eci-hint">{{localize "foundry-mcp-bridge.index.rebuildHint"}}</p>
+    <h3 class="eci-subtitle">{{localize "ninjos-foundry-mcp.index.rebuildTitle"}}</h3>
+    <p class="eci-hint">{{localize "ninjos-foundry-mcp.index.rebuildHint"}}</p>
     <button type="button" class="eci-btn rebuild-index-btn" data-action="rebuild">
-      <i class="fas fa-rotate"></i> {{localize "foundry-mcp-bridge.index.rebuild"}}
+      <i class="fas fa-rotate"></i> {{localize "ninjos-foundry-mcp.index.rebuild"}}
     </button>
   </section>
 
   <hr class="eci-divider" />
 
   <section class="eci-block eci-settings-block">
-    <h3 class="eci-subtitle">{{localize "foundry-mcp-bridge.index.settingsTitle"}}</h3>
+    <h3 class="eci-subtitle">{{localize "ninjos-foundry-mcp.index.settingsTitle"}}</h3>
 
     <label class="eci-check">
       <input
@@ -30,23 +30,23 @@
         {{#if enableEnhancedCreatureIndex}}checked{{/if}}
       />
       <span>
-        <strong>{{localize "foundry-mcp-bridge.index.enable"}}</strong>
-        {{localize "foundry-mcp-bridge.index.enableHint"}}
+        <strong>{{localize "ninjos-foundry-mcp.index.enable"}}</strong>
+        {{localize "ninjos-foundry-mcp.index.enableHint"}}
       </span>
     </label>
 
     <label class="eci-check">
       <input type="checkbox" name="autoRebuildIndex" {{#if autoRebuildIndex}}checked{{/if}} />
       <span>
-        <strong>{{localize "foundry-mcp-bridge.index.autoRebuild"}}</strong>
-        {{localize "foundry-mcp-bridge.index.autoRebuildHint"}}
+        <strong>{{localize "ninjos-foundry-mcp.index.autoRebuild"}}</strong>
+        {{localize "ninjos-foundry-mcp.index.autoRebuildHint"}}
       </span>
     </label>
   </section>
 
   <div class="form-footer">
     <button type="submit" class="eci-btn primary">
-      <i class="fas fa-save"></i> {{localize "foundry-mcp-bridge.common.save"}}
+      <i class="fas fa-save"></i> {{localize "ninjos-foundry-mcp.common.save"}}
     </button>
   </div>
 </form>
