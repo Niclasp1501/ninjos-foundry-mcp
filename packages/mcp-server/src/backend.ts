@@ -1227,52 +1227,65 @@ async function startBackend(): Promise<void> {
   let mapGenerationJobQueue: any = null;
   let mapGenerationComfyUIClient: any = null;
 
-  try {
-    // Import and initialize job queue and ComfyUI client
-    const { JobQueue } = await import('./job-queue.js');
-    const { ComfyUIClient } = await import('./comfyui-client.js');
+  // NINJO: Ist der Kartengenerator aus, wird gar nichts davon angelegt - kein
+  // Auftragsspeicher, kein ComfyUI-Client, kein Autostart. Vorher wurde der
+  // Client auch im ausgeschalteten Zustand erzeugt; das war inkonsequent, denn
+  // "aus" soll heissen, dass nichts hochkommt.
+  const kartengeneratorAn = config.comfyui?.enabled === true;
 
-    mapGenerationJobQueue = new JobQueue({ logger });
-
-    // Initialize ComfyUI client - always runs locally on same machine as MCP server
-    mapGenerationComfyUIClient = new ComfyUIClient({
-      logger,
-      config: {
-        port: config.comfyui?.port || 31411,
-        // NINJO: Ohne diesen Schalter verband der Client sofort und versuchte es
-        // bei Fehlschlag endlos alle fuenf Sekunden weiter - auch auf Rechnern
-        // ohne ComfyUI, was der Normalfall ist.
-        enabled: config.comfyui?.enabled === true,
-      },
-    });
-
+  if (!kartengeneratorAn) {
     logger.info(
-      config.comfyui?.enabled === true
-        ? 'Kartengenerator bereit (ComfyUI auf localhost:31411)'
-        : 'Kartengenerator abgeschaltet - COMFYUI_ENABLED=true schaltet ihn ein'
+      'Kartengenerator ist abgeschaltet: keine ComfyUI-Bestandteile, keine ' +
+        'Kartenwerkzeuge. COMFYUI_ENABLED=true schaltet ihn ein.'
     );
+  } else {
+    try {
+      // Import and initialize job queue and ComfyUI client
+      const { JobQueue } = await import('./job-queue.js');
+      const { ComfyUIClient } = await import('./comfyui-client.js');
 
-    // Auto-start ComfyUI if installed and autoStart is enabled
-    if (
-      config.comfyui?.enabled === true &&
-      mapGenerationComfyUIClient &&
-      (mapGenerationComfyUIClient as any).config?.autoStart
-    ) {
-      const isInstalled = await (mapGenerationComfyUIClient as any).checkInstallation();
-      if (isInstalled) {
-        logger.info('Auto-starting ComfyUI service...');
-        try {
-          await (mapGenerationComfyUIClient as any).startService();
-          logger.info('ComfyUI service auto-started successfully');
-        } catch (error) {
-          logger.warn('Failed to auto-start ComfyUI service', { error });
+      mapGenerationJobQueue = new JobQueue({ logger });
+
+      // Initialize ComfyUI client - always runs locally on same machine as MCP server
+      mapGenerationComfyUIClient = new ComfyUIClient({
+        logger,
+        config: {
+          port: config.comfyui?.port || 31411,
+          // NINJO: Ohne diesen Schalter verband der Client sofort und versuchte es
+          // bei Fehlschlag endlos alle fuenf Sekunden weiter - auch auf Rechnern
+          // ohne ComfyUI, was der Normalfall ist.
+          enabled: config.comfyui?.enabled === true,
+        },
+      });
+
+      logger.info(
+        config.comfyui?.enabled === true
+          ? 'Kartengenerator bereit (ComfyUI auf localhost:31411)'
+          : 'Kartengenerator abgeschaltet - COMFYUI_ENABLED=true schaltet ihn ein'
+      );
+
+      // Auto-start ComfyUI if installed and autoStart is enabled
+      if (
+        config.comfyui?.enabled === true &&
+        mapGenerationComfyUIClient &&
+        (mapGenerationComfyUIClient as any).config?.autoStart
+      ) {
+        const isInstalled = await (mapGenerationComfyUIClient as any).checkInstallation();
+        if (isInstalled) {
+          logger.info('Auto-starting ComfyUI service...');
+          try {
+            await (mapGenerationComfyUIClient as any).startService();
+            logger.info('ComfyUI service auto-started successfully');
+          } catch (error) {
+            logger.warn('Failed to auto-start ComfyUI service', { error });
+          }
+        } else {
+          logger.info('ComfyUI not installed, skipping auto-start');
         }
-      } else {
-        logger.info('ComfyUI not installed, skipping auto-start');
       }
+    } catch (error) {
+      logger.warn('Failed to initialize map generation components', { error });
     }
-  } catch (error) {
-    logger.warn('Failed to initialize map generation components', { error });
   }
 
   // Set up global ComfyUI message handlers for WebSocket messages from Foundry BEFORE creating map tools
@@ -1431,6 +1444,9 @@ async function startBackend(): Promise<void> {
     backendComfyUIHandlers: (globalThis as any).backendComfyUIHandlers,
   });
 
+  /** NINJO: Die Werkzeuge, die wirklich ComfyUI brauchen. */
+  const KARTENWERKZEUGE = ['generate-map', 'check-map-status', 'cancel-map-job'];
+
   const allTools = [
     ...characterTools.getToolDefinitions(),
 
@@ -1464,8 +1480,24 @@ async function startBackend(): Promise<void> {
 
     ...tokenManipulationTools.getToolDefinitions(),
 
-    ...mapGenerationTools.getToolDefinitions(),
+    // NINJO: Bei abgeschaltetem Kartengenerator werden die Kartenwerkzeuge gar
+    // nicht erst angeboten. Ein Werkzeug anzubieten, das nur eine Fehlermeldung
+    // zurueckgibt, kostet das Modell nur Versuche.
+    //
+    // Gefiltert wird namentlich und nicht ueber den ganzen Satz: map-generation.ts
+    // liefert ausser den drei Kartenwerkzeugen auch list-scenes und switch-scene.
+    // Die haben mit Karten nichts zu tun und gehoeren eigentlich nach scene.ts -
+    // wuerde man den Satz als Ganzes weglassen, fehlten sie bei abgeschaltetem
+    // Generator, und das Modell koennte keine Szene mehr auflisten oder wechseln.
+    ...mapGenerationTools
+      .getToolDefinitions()
+      .filter((t: any) => kartengeneratorAn || !KARTENWERKZEUGE.includes(t.name)),
   ];
+
+  logger.info(
+    `${allTools.length} Werkzeuge angeboten` +
+      (kartengeneratorAn ? '' : ' (Kartengenerator abgeschaltet)')
+  );
 
   // Start Foundry connector (owns app port 31415)
 
