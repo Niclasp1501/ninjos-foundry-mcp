@@ -42,6 +42,12 @@ const ConfigSchema = z.object({
       }),
   }),
   comfyui: z.object({
+    // NINJO: Ab Werk aus. Der Client oeffnete seine Verbindung frueher schon im
+    // Konstruktor und versuchte es nach jedem Fehlschlag alle fuenf Sekunden neu -
+    // endlos. Wer ComfyUI nicht installiert hat, und das ist der Normalfall, bekam
+    // damit im Sekundentakt Fehler ins Protokoll. Eine Protokolldatei war so auf
+    // 18 MB angewachsen.
+    enabled: z.boolean().default(false),
     // ComfyUI always runs locally on the same machine as the MCP server
     port: z.number().min(1024).max(65535).default(31411),
     installPath: z.string(), // No default here - set in rawConfig
@@ -84,6 +90,8 @@ const rawConfig = {
     },
   },
   comfyui: {
+    // Nur ein ausdrueckliches "true" schaltet den Kartengenerator ein.
+    enabled: process.env.COMFYUI_ENABLED === 'true',
     // ComfyUI always runs locally on the same machine as the MCP server (localhost:31411)
     port: parseInt(process.env.COMFYUI_PORT || '31411', 10),
     installPath: process.env.COMFYUI_INSTALL_PATH || getDefaultComfyUIDir(),

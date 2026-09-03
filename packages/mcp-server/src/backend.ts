@@ -1239,13 +1239,25 @@ async function startBackend(): Promise<void> {
       logger,
       config: {
         port: config.comfyui?.port || 31411,
+        // NINJO: Ohne diesen Schalter verband der Client sofort und versuchte es
+        // bei Fehlschlag endlos alle fuenf Sekunden weiter - auch auf Rechnern
+        // ohne ComfyUI, was der Normalfall ist.
+        enabled: config.comfyui?.enabled === true,
       },
     });
 
-    logger.info('Map generation backend components initialized (ComfyUI on localhost:31411)');
+    logger.info(
+      config.comfyui?.enabled === true
+        ? 'Kartengenerator bereit (ComfyUI auf localhost:31411)'
+        : 'Kartengenerator abgeschaltet - COMFYUI_ENABLED=true schaltet ihn ein'
+    );
 
     // Auto-start ComfyUI if installed and autoStart is enabled
-    if (mapGenerationComfyUIClient && (mapGenerationComfyUIClient as any).config?.autoStart) {
+    if (
+      config.comfyui?.enabled === true &&
+      mapGenerationComfyUIClient &&
+      (mapGenerationComfyUIClient as any).config?.autoStart
+    ) {
       const isInstalled = await (mapGenerationComfyUIClient as any).checkInstallation();
       if (isInstalled) {
         logger.info('Auto-starting ComfyUI service...');

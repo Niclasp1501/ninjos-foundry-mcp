@@ -33,6 +33,8 @@ export interface ComfyUIConfig {
   port: number;
   pythonCommand: string;
   autoStart: boolean;
+  /** NINJO: Ab Werk aus. Ohne dies wird gar keine Verbindung aufgebaut. */
+  enabled: boolean;
 }
 
 export interface ComfyUIHealthInfo {
@@ -54,6 +56,9 @@ export class ComfyUIClient {
   private process?: ChildProcess | undefined;
   private baseUrl: string;
   private clientId: string;
+  /** NINJO: Wie oft die WebSocket-Verbindung erfolglos versucht wurde. */
+  private wsVersuche = 0;
+  private static readonly WS_VERSUCHE_MAX = 5;
   private logStream?: fss.WriteStream | undefined;
   private ws?: WebSocket;
   private progressCallbacks: Map<
@@ -77,6 +82,7 @@ export class ComfyUIClient {
       port: 31411,
       pythonCommand: defaultPython,
       autoStart: true,
+      enabled: false,
       ...options.config,
     };
 
@@ -89,8 +95,43 @@ export class ComfyUIClient {
       clientId: this.clientId,
     });
 
-    // Initialize WebSocket connection for real-time progress
+    // NINJO: Nur verbinden, wenn der Kartengenerator ausdruecklich eingeschaltet
+    // ist. Vorher lief das immer, auch ohne installiertes ComfyUI - mit einem
+    // Fehler alle fuenf Sekunden, endlos.
+    if (this.config.enabled) {
+      this.connectWebSocket();
+    } else {
+      this.logger.info(
+        'Kartengenerator ist abgeschaltet, es wird nicht zu ComfyUI verbunden. ' +
+          'Zum Einschalten COMFYUI_ENABLED=true setzen.'
+      );
+    }
+  }
+
+  /**
+   * NINJO: Verbindung auf Verlangen aufbauen.
+   *
+   * Wird aufgerufen, bevor ein Kartenwerkzeug arbeitet. Ist der Generator
+   * abgeschaltet, sagt das eine klare Meldung statt eines stillen Fehlschlags.
+   * Wurde die Verbindung nach zu vielen Versuchen aufgegeben, faengt der Zaehler
+   * hier wieder bei null an - der Aufruf ist ja ein Zeichen, dass jemand den
+   * Generator wirklich braucht.
+   */
+  verbindeBeiBedarf(): { bereit: boolean; grund?: string } {
+    if (!this.config.enabled) {
+      return {
+        bereit: false,
+        grund:
+          'Der Kartengenerator ist abgeschaltet. Zum Einschalten COMFYUI_ENABLED=true ' +
+          'in der Umgebung des MCP-Servers setzen und den Server neu starten.',
+      };
+    }
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      return { bereit: true };
+    }
+    this.wsVersuche = 0;
     this.connectWebSocket();
+    return { bereit: true };
   }
 
   private connectWebSocket(): void {
@@ -100,6 +141,7 @@ export class ComfyUIClient {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.on('open', () => {
+        this.wsVersuche = 0;
         this.logger.info('ComfyUI WebSocket connected', { clientId: this.clientId });
       });
 
@@ -117,8 +159,26 @@ export class ComfyUIClient {
       });
 
       this.ws.on('close', () => {
-        this.logger.info('ComfyUI WebSocket closed, reconnecting in 5s...');
-        setTimeout(() => this.connectWebSocket(), 5000);
+        // NINJO: Frueher wurde hier ohne Ende alle fuenf Sekunden neu versucht.
+        // Ist ComfyUI nicht da, laeuft das bis zum Ende der Sitzung und schreibt
+        // das Protokoll voll. Jetzt wird aufgegeben, mit wachsendem Abstand, und
+        // erst wieder versucht, wenn jemand ein Kartenwerkzeug benutzt
+        // (verbindeBeiBedarf).
+        this.wsVersuche += 1;
+        if (this.wsVersuche > ComfyUIClient.WS_VERSUCHE_MAX) {
+          this.logger.warn(
+            `ComfyUI nach ${ComfyUIClient.WS_VERSUCHE_MAX} Versuchen nicht erreichbar. ` +
+              'Es wird nicht weiter versucht; der naechste Aufruf eines Kartenwerkzeugs ' +
+              'baut die Verbindung erneut auf.'
+          );
+          return;
+        }
+        const wartezeit = Math.min(5000 * 2 ** (this.wsVersuche - 1), 60000);
+        this.logger.info(
+          `ComfyUI WebSocket geschlossen, neuer Versuch in ${wartezeit / 1000}s ` +
+            `(${this.wsVersuche}/${ComfyUIClient.WS_VERSUCHE_MAX})`
+        );
+        setTimeout(() => this.connectWebSocket(), wartezeit);
       });
     } catch (error) {
       this.logger.error('Failed to connect WebSocket', { error });
