@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
 import { getFoundryDataDir, getDefaultComfyUIDir } from './utils/platform.js';
+import { readFileSync, existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 dotenv.config();
 
@@ -89,10 +92,34 @@ const rawConfig = {
   },
   toolResponseMaxChars: parseInt(process.env.TOOL_RESPONSE_MAX_CHARS || '20000', 10),
   server: {
-    name: process.env.SERVER_NAME || 'foundry-mcp-server',
-    version: process.env.SERVER_VERSION || '1.0.0',
+    name: process.env.SERVER_NAME || 'ninjos-foundry-mcp',
+    // NINJO: Die Version stand fest auf 1.0.0 und meldete sich so auch beim
+    // MCP-Handschlag, waehrend das Paket bei 14.2608.1 stand. Wer eine
+    // Fehlermeldung schickt, nennt dann eine Version, die es nie gab.
+    version: process.env.SERVER_VERSION || paketVersion(),
   },
 };
+
+/**
+ * NINJO: Die Version aus der package.json des Servers lesen, statt sie zu
+ * verdoppeln. Schlaegt das fehl - etwa in einem gebuendelten Stand ohne
+ * package.json daneben -, bleibt "unbekannt" statt einer erfundenen Nummer.
+ */
+function paketVersion(): string {
+  try {
+    const hier = dirname(fileURLToPath(import.meta.url));
+    for (const kandidat of ['../package.json', '../../package.json']) {
+      const pfad = resolve(hier, kandidat);
+      if (existsSync(pfad)) {
+        const { version } = JSON.parse(readFileSync(pfad, 'utf8'));
+        if (version) return version;
+      }
+    }
+  } catch {
+    // absichtlich still: eine fehlende Versionsangabe darf den Start nicht verhindern
+  }
+  return 'unbekannt';
+}
 
 export const config = ConfigSchema.parse(rawConfig);
 

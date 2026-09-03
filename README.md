@@ -297,7 +297,7 @@ and the dnd5e/Foundry dynamic ring.
 #### Translating an imported chapter
 
 Translation happens **outside** this bridge, in the companion CLI
-(`Ninjo´s Gemini DnD Portrait-Token Maker/translate.js`), which runs on the
+(`Werkzeuge/Ninjos-Portrait-Token-Maker/translate.js`), which runs on the
 user's own API key. The bridge only reads and writes:
 
 ```

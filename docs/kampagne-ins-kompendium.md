@@ -168,28 +168,42 @@ Schreiben je Dokument prüfen, wo die Id schon liegt:
 | ----------------------------------------------- | ------------------------------------------------------------------------ |
 | gar nicht vorhanden                             | anlegen mit `keepId` unter `Kampagne <Name>`                             |
 | in der alten flachen Ablage (kein `Kampagne …`) | aktualisieren und umhängen — das ist der frühere Stand genau dieser Welt |
-| unter `Kampagne <andere>`                       | **überspringen**, nichts anfassen                                        |
+| unter `Kampagne <andere>`                       | **Kopie mit neuer Id**; der fremde Eintrag bleibt unberührt              |
 
 ```js
 const v = nach.get(d.id); // nach = Map(id -> Indexeintrag)
-const fremd =
-  v &&
-  v.folder &&
-  opfad(p.folders.get(v.folder))[0].startsWith('Kampagne ') &&
-  opfad(p.folders.get(v.folder))[0] !== WURZEL;
+const wurzelName = v && v.folder ? opfad(p.folders.get(v.folder))[0] : null;
+const modus = !v
+  ? 'neu' // keepId
+  : wurzelName?.startsWith('Kampagne ') && wurzelName !== WURZEL
+    ? 'kopie' // neue Id
+    : 'ersetzen'; // löschen + keepId, hängt dabei um
 ```
 
-**Warum überspringen und nicht als Kopie mit neuer Id anlegen?** Weil die
-Kollisionen in der Praxis genau die geteilten Inhalte sind: 570 der alt-WdS-
-Journale lagen im Weltordner „Beneos Battlemaps", 50 Gegenstände unter „Fluch des
-Strahd" — Reste der Welt, aus der kopiert wurde. Sie sind unter der Kampagne,
-zu der sie gehören, bereits archiviert, und dort in der vollständigeren Fassung.
-Eine zweite Kopie wäre nur Ballast.
+Der dritte Fall ist der entscheidende. `delete + create` würde den Eintrag aus
+dem Ordner der anderen Kampagne herausreißen. Stattdessen `_id` verwerfen und
+ohne `keepId` anlegen — Foundry vergibt dann eine frische:
 
-Die Inhalte sind dabei **nicht** identisch: bei einer Stichprobe von 75
-kollidierenden Dokumenten stimmten nur 5 wirklich überein. Strahds „Zustände"
-etwa hat eine Seite „Erschöpfungsregeln", die der alt-WdS-Fassung fehlt.
-Überschreiben verliert also echten Inhalt — das ist kein theoretisches Risiko.
+```js
+if (modus === 'kopie') {
+  delete d._id;
+  await Kl.create(d, { pack: packId }); // bewusst ohne keepId
+}
+```
+
+Damit steht dieselbe Sache zweimal im Archiv, einmal je Kampagne. **Das ist
+gewollt.** Die Fassungen sind inhaltlich auseinandergelaufen: bei einer
+Stichprobe von 75 kollidierenden Dokumenten stimmten nur 5 überein. Strahds
+„Zustände" hat eine Seite „Erschöpfungsregeln", die der alt-WdS-Fassung fehlt.
+Es sind also keine Dubletten, sondern zwei Stände — und jede Kampagne soll ihren
+eigenen vollständig behalten.
+
+**Zur Vorgeschichte:** Bei „alt WdS" wurde der dritte Fall zunächst
+_übersprungen_ statt kopiert. Das schützt die andere Kampagne genauso, lässt aber
+Löcher: von 2145 Dokumenten landeten nur 1169 im Archiv, 976 fehlten dort. Bei
+`faerun3` wurde deshalb auf Kopien umgestellt, und dort ist die Kampagne mit
+allen 398 Dokumenten vollständig. Wer „alt WdS" nachziehen will, legt für die 976
+übersprungenen Dokumente nachträglich Kopien an.
 
 Hinterher gegenprüfen, dass die andere Kampagne unverändert ist: Die Zählwerte je
 Pack müssen exakt dieselben sein wie vorher.
