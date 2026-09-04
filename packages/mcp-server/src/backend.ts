@@ -51,7 +51,9 @@ import { DnD5eFeaturesFromCompendiumTools } from './tools/dnd5e/features.js';
 
 const CONTROL_HOST = '127.0.0.1';
 
-const CONTROL_PORT = 31414;
+// NINJO: Einstellbar, damit sich der Lebenszyklus des Backends pruefen laesst,
+// ohne die laufende Bruecke abzuschiessen. Ohne die Variable bleibt es bei 31414.
+const CONTROL_PORT = Number(process.env.FOUNDRY_MCP_CONTROL_PORT || 31414);
 
 const LOCK_FILE = path.join(os.tmpdir(), 'foundry-mcp-backend.lock');
 
@@ -1523,8 +1525,61 @@ async function startBackend(): Promise<void> {
 
   // Control channel (TCP JSON-lines)
 
+  // NINJO: Wie viele Wrapper gerade am Backend haengen.
+  //
+  // Bis zum 04.09.2026 beendete der Wrapper, der das Backend gestartet hatte,
+  // es beim eigenen Ende mit kill(). Hing ein zweiter Wrapper daran - zwei offene
+  // Sitzungen genuegen -, riss dessen Verbindung mit. Fuer das Modul im Browser
+  // sah das aus wie ein Abbruch, und es verbindet sich erst beim naechsten Laden
+  // der Welt wieder. Genau daher kam das Flattern: ein Aufruf ging durch, der
+  // naechste lief in "module not connected".
+  //
+  // Jetzt entscheidet das Backend selbst: Es lebt, solange mindestens ein Wrapper
+  // verbunden ist, und beendet sich eine Schonfrist nach dem letzten. Die Frist
+  // gibt es, weil beim Neustart einer Sitzung die alte Verbindung kurz vor der
+  // neuen faellt - ohne sie wuerde das Backend dazwischen sterben.
+  let verbundeneWrapper = 0;
+  let abschaltUhr: NodeJS.Timeout | null = null;
+  const SCHONFRIST_MS = Number(process.env.FOUNDRY_MCP_IDLE_SHUTDOWN_MS || 60000);
+
+  const pruefeAbschaltung = () => {
+    if (verbundeneWrapper > 0) {
+      if (abschaltUhr) {
+        clearTimeout(abschaltUhr);
+        abschaltUhr = null;
+        logger.info('Wieder ein Wrapper verbunden, Abschaltung abgesagt');
+      }
+      return;
+    }
+    if (abschaltUhr) return;
+    logger.info(
+      `Kein Wrapper mehr verbunden, Abschaltung in ${SCHONFRIST_MS / 1000}s ` +
+        '(verbindet sich einer neu, wird sie abgesagt)'
+    );
+    abschaltUhr = setTimeout(() => {
+      logger.info('Schonfrist abgelaufen, Backend beendet sich');
+      process.exit(0);
+    }, SCHONFRIST_MS);
+    // Die Uhr darf den Prozess nicht am Leben halten, wenn sonst nichts mehr laeuft
+    abschaltUhr.unref?.();
+  };
+
   const server = net.createServer(socket => {
     socket.setEncoding('utf8');
+
+    verbundeneWrapper += 1;
+    logger.info(`Wrapper verbunden (${verbundeneWrapper} insgesamt)`);
+    pruefeAbschaltung();
+
+    const wrapperGing = () => {
+      verbundeneWrapper = Math.max(0, verbundeneWrapper - 1);
+      logger.info(`Wrapper getrennt (${verbundeneWrapper} verbleibend)`);
+      pruefeAbschaltung();
+    };
+    socket.once('close', wrapperGing);
+    socket.once('error', () => {
+      /* close folgt und zaehlt herunter */
+    });
 
     let buffer = '';
 

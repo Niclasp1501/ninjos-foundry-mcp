@@ -22,7 +22,9 @@ import * as path from 'path';
 
 const CONTROL_HOST = '127.0.0.1';
 
-const CONTROL_PORT = 31414;
+// NINJO: Einstellbar, damit sich der Lebenszyklus des Backends pruefen laesst,
+// ohne die laufende Bruecke abzuschiessen. Ohne die Variable bleibt es bei 31414.
+const CONTROL_PORT = Number(process.env.FOUNDRY_MCP_CONTROL_PORT || 31414);
 
 type BackendReq = { id: string; method: string; params?: any };
 
@@ -155,8 +157,11 @@ class BackendClient {
 
       this.log('startBackend(): spawning', { path: backendPath });
 
+      // NINJO: detached, damit das Backend den Wrapper ueberlebt. Es soll
+      // weiterlaufen, wenn diese Sitzung geht und eine andere noch daran haengt.
+      // Ohne Wrapper beendet es sich nach einer Schonfrist von selbst.
       const child = spawn(process.execPath, [backendPath!], {
-        detached: false, // Stay attached to monitor backend
+        detached: true,
 
         stdio: ['ignore', 'ignore', 'pipe'], // Capture stderr to detect exit
       });
@@ -179,7 +184,9 @@ class BackendClient {
         }
       });
 
-      // Don't unref since we want to monitor the process
+      // Der Wrapper darf nicht auf das Kind warten - sonst haelt ihn das
+      // losgeloeste Backend am Leben, obwohl er laengst fertig ist.
+      child.unref();
 
       resolve();
     });
@@ -265,19 +272,19 @@ class BackendClient {
   }
 
   cleanup() {
-    this.log('cleanup(): shutting down backend');
-
-    if (this.backendProcess && !this.backendProcess.killed) {
-      try {
-        // Kill backend process - works cross-platform
-
-        this.backendProcess.kill();
-
-        this.log('cleanup(): backend process killed');
-      } catch (e) {
-        this.log('cleanup(): error killing backend', { error: (e as any)?.message });
-      }
-    }
+    // NINJO: Hier wurde bis zum 04.09.2026 das Backend gekillt. Das war falsch,
+    // sobald mehr als eine Sitzung lief: Nur der Wrapper, der das Backend
+    // gestartet hat, haelt eine Referenz darauf - und beendete es beim eigenen
+    // Ende auch dann, wenn ein zweiter Wrapper noch daran hing. Dessen
+    // Verbindung riss mit, und das Modul im Browser verbindet sich erst beim
+    // naechsten Laden der Welt wieder. Das war die Ursache des Flatterns.
+    //
+    // Der Wrapper legt jetzt nur noch seine Verbindung nieder. Wann das Backend
+    // geht, entscheidet es selbst: eine Schonfrist nach dem letzten Wrapper
+    // (siehe pruefeAbschaltung in backend.ts). Damit bleibt niemand als
+    // Waisenprozess zurueck, und niemandem wird die Verbindung unter den
+    // Fuessen weggezogen.
+    this.log('cleanup(): Verbindung wird geschlossen, das Backend entscheidet selbst');
 
     if (this.socket && !this.socket.destroyed) {
       this.socket.destroy();
