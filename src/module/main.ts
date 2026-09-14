@@ -9,7 +9,7 @@ import { BRIDGE_PROTOCOL, DEFAULT_BRIDGE_PORT, MODULE_ID } from '../common/const
 import type { HelloData } from '../common/protocol.js';
 import { MODULE_AREAS } from './areas/index.js';
 import { areaSettings, installAreaAdapters, installAreaQueries } from './areas.js';
-import { BridgeClient, type SocketLike } from './bridge-client.js';
+import { BridgeClient, PREVIOUS_SERVER_HOOK, type SocketLike } from './bridge-client.js';
 import { changeLog, extensionTools, useServerRequests } from './core-services.js';
 import { QueryDispatcher } from './dispatcher.js';
 import type { ExtensionToolDefinition } from './extension-tools.js';
@@ -81,6 +81,10 @@ function createClient(): BridgeClient {
           reason: reason || window.location.origin,
         }),
       changed: () => refreshStatusIndicator(),
+      previousServer: () => {
+        refreshStatusIndicator();
+        Hooks.callAll(PREVIOUS_SERVER_HOOK);
+      },
     },
     pageProtocol: () => window.location.protocol,
     pageOrigin: () => window.location.origin,

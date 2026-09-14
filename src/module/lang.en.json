@@ -89,6 +89,8 @@
       "standbyDetail": "Another tab or world holds the bridge ({world}). This tab takes over when that one closes.",
       "on": "MCP: connected",
       "onDetail": "Bridge to {where}",
+      "outdated": "MCP: old server",
+      "outdatedDetail": "Connected to {where}, but the MCP server on the PC is of the previous generation. Set it up anew with the new server package from the releases page, then restart your MCP client.",
       "connecting": "MCP: connecting",
       "attempt": "Attempt {count} to reach {where}",
       "down": "MCP: disconnected",

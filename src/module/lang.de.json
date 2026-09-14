@@ -89,6 +89,8 @@
       "standbyDetail": "Ein anderer Tab oder eine andere Welt hält die Brücke ({world}). Dieser Tab übernimmt, sobald jener geschlossen wird.",
       "on": "MCP: verbunden",
       "onDetail": "Brücke zu {where}",
+      "outdated": "MCP: alter Server",
+      "outdatedDetail": "Verbunden mit {where}, aber der MCP-Server auf dem PC ist von der vorigen Generation. Richte ihn mit dem neuen Serverpaket von der Downloadseite neu ein und starte danach dein MCP-Programm neu.",
       "connecting": "MCP: verbindet",
       "attempt": "Versuch {count}, {where} zu erreichen",
       "down": "MCP: getrennt",

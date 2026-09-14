@@ -21,9 +21,9 @@ import { localize } from './notify.js';
 const ELEMENT_ID = 'mcp-bridge-status';
 const POLL_MS = 5000;
 
-type Kind = 'connected' | 'standby' | 'connecting' | 'disconnected' | 'disabled';
+type Kind = 'connected' | 'outdated' | 'standby' | 'connecting' | 'disconnected' | 'disabled';
 
-interface Readout {
+export interface Readout {
   kind: Kind;
   text: string;
   detail: string;
@@ -52,7 +52,11 @@ function read(): Readout {
   } catch {
     status = undefined;
   }
+  return describeBridgeStatus(status);
+}
 
+/** The readout for a bridge state; undefined means the bridge reports nothing. */
+export function describeBridgeStatus(status: BridgeStatus | undefined): Readout {
   if (!status) {
     return {
       kind: 'disconnected',
@@ -93,6 +97,18 @@ function read(): Readout {
         'standbyDetail',
         'Another tab or world holds the bridge ({world}). This tab takes over when that one closes.',
         { world: info.activeWorld ?? '?' }
+      ),
+    };
+  }
+
+  if (status.connected && info.previousServer) {
+    return {
+      kind: 'outdated',
+      text: t('outdated', 'MCP: old server'),
+      detail: t(
+        'outdatedDetail',
+        'Connected to {where}, but the MCP server on the PC is of the previous generation. Set it up anew with the new server package from the releases page, then restart your MCP client.',
+        { where }
       ),
     };
   }
@@ -139,7 +155,7 @@ function onActivate(): void {
     ui.notifications?.info(detail);
     return;
   }
-  if (kind === 'disabled') {
+  if (kind === 'disabled' || kind === 'outdated') {
     ui.notifications?.warn(detail);
     return;
   }

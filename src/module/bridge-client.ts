@@ -69,7 +69,19 @@ export interface BridgeEvents {
   stillDown(): void;
   rejected(reason: string): void;
   changed(): void;
+  /**
+   * The connected server did not say welcome within three seconds of the
+   * connection opening, so it is of the previous generation. Called once per
+   * connection.
+   */
+  previousServer?(): void;
 }
+
+/**
+ * Foundry hook called when the bridge finds a server of the previous
+ * generation. The interface area listens for it to show the update notice.
+ */
+export const PREVIOUS_SERVER_HOOK = 'ninjosFoundryMcp.previousServer';
 
 export interface Timers {
   setTimeout(callback: () => void, ms: number): unknown;
@@ -106,6 +118,8 @@ export interface BridgeStatus {
     activeWorld?: string;
     serverVersion?: string;
     serverProtocol: number;
+    /** Set while connected to a server that never said welcome: the previous generation. */
+    previousServer?: true;
   };
 }
 
@@ -167,6 +181,8 @@ export class BridgeClient {
   private activeWorld: string | undefined;
   private rejectionReason: string | undefined;
   private welcomed = false;
+  private previousGeneration = false;
+  private welcomeTimer: unknown = null;
   private serverFeatures: ReadonlySet<string> = new Set();
   private openedAt = 0;
   private nextRequest = 1;
@@ -218,6 +234,7 @@ export class BridgeClient {
     if (this.role) info.role = this.role;
     if (this.activeWorld) info.activeWorld = this.activeWorld;
     if (this.serverVersion) info.serverVersion = this.serverVersion;
+    if (this.previousGeneration && this.state === 'connected') info.previousServer = true;
     return {
       enabled: settings.enabled(),
       connected: this.state === 'connected',
@@ -342,11 +359,13 @@ export class BridgeClient {
       this.lastPongAt = null;
       this.role = undefined;
       this.welcomed = false;
+      this.previousGeneration = false;
       this.serverFeatures = new Set();
       this.openedAt = this.now();
       this.setState('connected');
       this.send({ type: 'hello', data: this.options.hello() });
       this.startHeartbeat();
+      this.startWelcomeWatch(socket);
       this.options.events.connected(url);
     };
     socket.onmessage = event => {
@@ -404,6 +423,8 @@ export class BridgeClient {
         this.role = message.data.role;
         this.activeWorld = message.data.activeWorld;
         this.welcomed = true;
+        this.previousGeneration = false;
+        this.clearWelcomeWatch();
         this.serverFeatures = new Set(message.data.features ?? []);
         this.wakeWelcomeWaiters();
         this.options.events.changed();
@@ -429,6 +450,7 @@ export class BridgeClient {
 
   private handleClose(code: number, reason: string): void {
     this.stopHeartbeat();
+    this.clearWelcomeWatch();
     this.failRequests();
     const wasConnected = this.state === 'connected';
     const verdict = judgeClose(code, this.requestedClose);
@@ -497,6 +519,27 @@ export class BridgeClient {
     this.heartbeatTimer = null;
   }
 
+  /**
+   * The previous server never says welcome. After the same wait a request
+   * gives it, a connection still without welcome counts as that generation,
+   * so the Gamemaster can be told to set up the new server.
+   */
+  private startWelcomeWatch(socket: SocketLike): void {
+    this.clearWelcomeWatch();
+    this.welcomeTimer = this.timers.setTimeout(() => {
+      this.welcomeTimer = null;
+      if (this.socket !== socket || this.welcomed || !this.isOpen()) return;
+      this.previousGeneration = true;
+      this.options.events.previousServer?.();
+      this.options.events.changed();
+    }, WELCOME_WAIT_MS);
+  }
+
+  private clearWelcomeWatch(): void {
+    if (this.welcomeTimer !== null) this.timers.clearTimeout(this.welcomeTimer);
+    this.welcomeTimer = null;
+  }
+
   private clearReconnect(): void {
     if (this.reconnectTimer !== null) this.timers.clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
@@ -504,6 +547,7 @@ export class BridgeClient {
 
   private shutdownSocket(): void {
     this.stopHeartbeat();
+    this.clearWelcomeWatch();
     const socket = this.socket;
     if (!socket) return;
     this.requestedClose = true;

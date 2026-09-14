@@ -79,6 +79,7 @@ beforeEach(() => {
     stillDown: vi.fn(),
     rejected: vi.fn(),
     changed: vi.fn(),
+    previousServer: vi.fn(),
   };
 });
 
@@ -294,5 +295,36 @@ describe('BridgeClient', () => {
     client.start();
     expect(sockets).toHaveLength(0);
     expect(client.getStatus()).toMatchObject({ enabled: false, connectionState: 'disabled' });
+  });
+
+  it('reports a server without welcome as the previous generation after three seconds, once per connection', () => {
+    const client = makeClient();
+    client.start();
+    last().open();
+    vi.advanceTimersByTime(2999);
+    expect(events.previousServer).not.toHaveBeenCalled();
+    expect(client.getStatus().connectionInfo.previousServer).toBeUndefined();
+    vi.advanceTimersByTime(1);
+    expect(events.previousServer).toHaveBeenCalledOnce();
+    expect(client.getStatus().connectionInfo.previousServer).toBe(true);
+    vi.advanceTimersByTime(60_000);
+    expect(events.previousServer).toHaveBeenCalledOnce();
+  });
+
+  it('does not report a server that says welcome, nor a connection that closed before the wait', () => {
+    const client = makeClient();
+    client.start();
+    last().open();
+    last().receive({ type: 'welcome', data: { protocol: 2, serverVersion: '1', role: 'active' } });
+    vi.advanceTimersByTime(5000);
+    expect(events.previousServer).not.toHaveBeenCalled();
+    expect(client.getStatus().connectionInfo.previousServer).toBeUndefined();
+
+    client.stop();
+    client.start();
+    last().open();
+    client.stop();
+    vi.advanceTimersByTime(5000);
+    expect(events.previousServer).not.toHaveBeenCalled();
   });
 });

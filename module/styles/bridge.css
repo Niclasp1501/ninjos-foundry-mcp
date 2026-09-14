@@ -45,6 +45,7 @@
 }
 
 .mcp-status--connecting .mcp-status__dot,
+.mcp-status--outdated .mcp-status__dot,
 .mcp-status--standby .mcp-status__dot {
   background: var(--mcp-status-wait);
 }
