@@ -182,10 +182,11 @@ describe('readForm', () => {
 });
 
 describe('the area', () => {
-  it('brings the welcome switch per device, hidden from the list, and no queries', () => {
+  it('brings the welcome switch and the acknowledged update version per device, hidden from the list, and no queries', () => {
     expect(interfaceArea.queries).toEqual([]);
     expect(interfaceArea.settings).toEqual([
       { key: 'willkommenGesehen', kind: Boolean, initial: false, listed: false, scope: 'client' },
+      { key: 'updateNoticeVersion', kind: String, initial: '', listed: false, scope: 'client' },
     ]);
   });
 

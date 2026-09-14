@@ -4,6 +4,10 @@
       "willkommenGesehen": {
         "name": "Willkommensfenster gesehen",
         "hint": "Wird über „Nicht mehr anzeigen“ im Willkommensfenster gesetzt. Gilt je Gerät."
+      },
+      "updateNoticeVersion": {
+        "name": "Update-Hinweis bestätigt für Version",
+        "hint": "Wird über „Erledigt, nicht mehr anzeigen“ im Update-Hinweis gesetzt. Gilt je Gerät."
       }
     },
     "interface": {
@@ -13,6 +17,24 @@
         "apply": "Übernehmen",
         "failed": "Fehlgeschlagen: {reason}",
         "gmOnly": "Nur eine Spielleitung kann dieses Fenster benutzen."
+      },
+      "updateNotice": {
+        "title": "Update auf {version}: MCP-Server neu einrichten",
+        "heading": "Diese Version ist komplett neu geschrieben",
+        "intro": "Version {version} von Ninjo's Foundry MCP ist von Grund auf neu geschrieben. Der MCP-Server auf deinem PC muss mit dem neuen Serverpaket komplett neu eingerichtet werden.",
+        "oldServer": "Es ist noch ein MCP-Server der vorigen Generation verbunden. Richte das neue Serverpaket wie unten beschrieben ein und starte danach dein MCP-Programm neu.",
+        "stepsHeading": "Kurz gesagt",
+        "step1": "{file} von der Downloadseite herunterladen.",
+        "step2": "Die Zip-Datei entpacken.",
+        "step3": "Im entpackten Ordner setup.cmd doppelklicken.",
+        "step4": "Claude Desktop oder dein MCP-Programm ganz beenden und neu starten.",
+        "guideIntro": "Mac, Claude Code, andere Programme und Fehlersuche:",
+        "guideLink": "Installationsanleitung",
+        "keeps": "Einstellungen der Welt und Rechte bleiben, wie sie sind.",
+        "download": "Downloadseite öffnen",
+        "downloadLabel": "Downloadseite in einem neuen Tab öffnen",
+        "later": "Später erinnern",
+        "done": "Erledigt, nicht mehr anzeigen"
       },
       "menu": {
         "creatureIndex": {

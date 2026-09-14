@@ -30,6 +30,10 @@ apart still work together.
 3. Restart Claude Desktop, open your world as Gamemaster and ask: "Which world is open in
    Foundry?"
 
+**Updating from 14.2609.3 or older:** the module update alone is not enough, set up the
+server on your PC anew with the new server package as in step 2; a notice in Foundry
+explains this after the update.
+
 Setup takes over an installation from the previous installer in place: same folder, same
 entry, your settings stay. Details, Claude Code, other clients, updating, uninstalling
 and troubleshooting: [docs/INSTALLATION.en.md](docs/INSTALLATION.en.md) (German:

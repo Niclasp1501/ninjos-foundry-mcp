@@ -92,6 +92,21 @@ installed ComfyUI with its models stay where they are.
 
 Foundry updates the module on its own, independently of the server.
 
+### Updating from 14.2609.3 or older
+
+Version 14.2609.4 is a complete rewrite. Updating the Foundry module is not enough: the
+MCP server on your PC has to be set up anew with the new server package.
+
+1. Download `ninjos-foundry-mcp-server-<version>-win32-x64.zip` from the
+   [releases page](https://github.com/Niclasp1501/ninjos-foundry-mcp/releases).
+2. Unpack it and run `setup.cmd` (Mac: `setup.command`), as under "Install".
+3. Quit Claude Desktop or your MCP client completely and start it again.
+
+After the module update, Foundry shows the Gamemaster a notice with these steps. "Done,
+don't show again" hides it on this device; it comes back as long as a server of the
+previous generation is still connected, and the status indicator then says "MCP: old
+server". World settings, permissions and your allowed Foundry pages stay.
+
 ## Uninstall
 
 ### Windows

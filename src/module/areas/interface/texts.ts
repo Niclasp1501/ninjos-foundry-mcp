@@ -17,6 +17,10 @@ export const EN = {
         name: 'Welcome window seen',
         hint: "Set by the button Don't show again in the welcome window. Stored per device.",
       },
+      updateNoticeVersion: {
+        name: 'Update notice acknowledged for version',
+        hint: "Set by the button Done, don't show again in the update notice. Stored per device.",
+      },
     },
     interface: {
       common: {
@@ -25,6 +29,26 @@ export const EN = {
         apply: 'Apply',
         failed: 'Failed: {reason}',
         gmOnly: 'Only a Gamemaster can use this window.',
+      },
+      updateNotice: {
+        title: 'Update to {version}: set up the MCP server anew',
+        heading: 'This version is a complete rewrite',
+        intro:
+          "Version {version} of Ninjo's Foundry MCP was rewritten from the ground up. The MCP server on your PC has to be set up completely anew with the new server package.",
+        oldServer:
+          'An MCP server of the previous generation is still connected. Set up the new server package as described below, then restart your MCP client.',
+        stepsHeading: 'In short',
+        step1: 'Download {file} from the releases page.',
+        step2: 'Unpack the zip file.',
+        step3: 'In the unpacked folder, double click setup.cmd.',
+        step4: 'Quit Claude Desktop or your MCP client completely and start it again.',
+        guideIntro: 'Mac, Claude Code, other clients and troubleshooting:',
+        guideLink: 'installation guide',
+        keeps: 'Your world settings and permissions stay as they are.',
+        download: 'Open download page',
+        downloadLabel: 'Open download page in a new tab',
+        later: 'Remind me later',
+        done: "Done, don't show again",
       },
       menu: {
         creatureIndex: {

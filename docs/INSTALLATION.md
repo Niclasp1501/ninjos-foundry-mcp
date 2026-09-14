@@ -94,6 +94,24 @@ samt Modellen bleiben, wo sie sind.
 
 Das Foundry-Modul aktualisiert Foundry selbst, unabhängig vom Server.
 
+### Aktualisieren von 14.2609.3 oder älter
+
+Version 14.2609.4 ist komplett neu geschrieben. Das Foundry-Modul zu aktualisieren reicht
+nicht: Der MCP-Server auf deinem PC muss mit dem neuen Serverpaket neu eingerichtet
+werden.
+
+1. `ninjos-foundry-mcp-server-<version>-win32-x64.zip` von der
+   [Downloadseite](https://github.com/Niclasp1501/ninjos-foundry-mcp/releases)
+   herunterladen.
+2. Entpacken und `setup.cmd` ausführen (Mac: `setup.command`), wie unter „Installieren".
+3. Claude Desktop oder dein MCP-Programm ganz beenden und neu starten.
+
+Nach dem Modulupdate zeigt Foundry der Spielleitung einen Hinweis mit diesen Schritten.
+„Erledigt, nicht mehr anzeigen" blendet ihn auf diesem Gerät aus; er kommt wieder, solange
+noch ein Server der vorigen Generation verbunden ist, und die Statusanzeige zeigt dann
+„MCP: alter Server". Einstellungen der Welt, Rechte und deine freigegebenen Foundry-Seiten
+bleiben.
+
 ## Deinstallieren
 
 ### Windows

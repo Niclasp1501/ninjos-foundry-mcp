@@ -211,3 +211,46 @@
 .mcp-release__count {
   text-align: right;
 }
+
+/* Update notice after the rewrite: steps, the old-server warning and the download link. */
+.mcp-update h2 {
+  margin: 0 0 0.5rem;
+  border: none;
+  font-size: 1.05rem;
+}
+
+.mcp-update h3 {
+  margin: 0.75rem 0 0.25rem;
+  border: none;
+  font-size: 0.95rem;
+}
+
+.mcp-update p,
+.mcp-update ol {
+  margin: 0 0 0.6rem;
+}
+
+.mcp-update ol {
+  padding-left: 1.3rem;
+}
+
+.mcp-update__old-server {
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid var(--ninjo-marke);
+  background: color-mix(in srgb, var(--ninjo-marke) 10%, transparent);
+  font-weight: 600;
+}
+
+.mcp-update__download-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.mcp-update__download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: var(--ninjo-tippziel);
+  padding: 0.3rem 0.8rem;
+  text-decoration: none;
+}
