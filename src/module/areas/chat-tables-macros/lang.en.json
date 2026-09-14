@@ -1,0 +1,19 @@
+{
+  "ninjos-foundry-mcp": {
+    "settings": {
+      "macroExecution": {
+        "name": "Permissions · Run macros",
+        "hint": "Whether the AI may run macros. Off by default. A chat macro only writes to the chat. A script macro can do anything a Gamemaster can, including deleting and changing settings, and cannot be undone. The switch Allow Write Operations applies as well.",
+        "off": "Off: the AI runs no macro",
+        "chat": "Chat macros only",
+        "all": "Chat and script macros (a script can do anything)"
+      }
+    },
+    "chat-tables-macros": {
+      "notify": {
+        "chatMacroRun": "The AI is running the chat macro {name}.",
+        "scriptMacroRun": "The AI is running the script macro {name}."
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "ninjos-foundry-mcp": {
+    "tokens-dice": {
+      "roll": {
+        "customLabel": "Freier Wurf",
+        "resultFlavorGm": "{label} (von der Spielleitung gewürfelt)",
+        "card": {
+          "title": "Wurfanfrage: {label}",
+          "target": "Ziel: {player}",
+          "targetWithCharacter": "Ziel: {player} ({character})",
+          "targetGmOnly": "Ziel: {character}. Kein Spieler besitzt diese Figur, deshalb würfelt die Spielleitung.",
+          "context": "Anlass: {flavor}",
+          "public": "Offener Wurf: Das Ergebnis sehen alle.",
+          "private": "Verdeckter Wurf: Das Ergebnis sehen nur {player} und die Spielleitung.",
+          "privateGm": "Verdeckter Wurf: Das Ergebnis sieht nur die Spielleitung.",
+          "button": "Würfeln: {label}",
+          "onlyTarget": "Würfeln dürfen nur {player} und die Spielleitung.",
+          "onlyGm": "Würfeln darf nur die Spielleitung.",
+          "rolling": "Es wird gewürfelt",
+          "waiting": "Gewürfelt von {name}. Die Spielleitung bestätigt den Wurf, sobald sie online ist.",
+          "completed": "Gewürfelt von {name} am {time}.",
+          "result": "Ergebnis: {total}"
+        }
+      },
+      "notify": {
+        "notAllowed": "Diesen Wurf darfst du nicht ausführen.",
+        "rollFailed": "Der Wurf konnte nicht ausgeführt werden: {reason}",
+        "alreadyRolled": "Für diese Anfrage wurde schon gewürfelt.",
+        "noGamemaster": "Der Wurf steht im Chat. Als erledigt gilt die Anfrage, sobald eine Spielleitung online ist.",
+        "completeFailed": "Die Wurfanfrage {label} konnte nicht als erledigt markiert werden: {reason}",
+        "foreignRoll": "{name} hat für die Anfrage {label} gewürfelt, ohne es zu dürfen. Die Anfrage bleibt offen.",
+        "formulaMismatch": "{name} hat für die Anfrage {label} mit {used} statt {expected} gewürfelt. Die Anfrage bleibt offen.",
+        "visibilityMismatch": "Der Wurf von {name} für die verdeckte Anfrage {label} wurde nicht geflüstert. Die Anfrage bleibt offen.",
+        "duplicateRoll": "{name} hat für die Anfrage {label} noch einmal gewürfelt. Sie war schon erledigt, es zählt der erste Wurf."
+      }
+    }
+  }
+}

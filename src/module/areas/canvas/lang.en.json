@@ -1,0 +1,9 @@
+{
+  "ninjos-foundry-mcp": {
+    "canvas": {
+      "notify": {
+        "viewsPulled": "The AI moved the view of everyone on the scene {scene}."
+      }
+    }
+  }
+}

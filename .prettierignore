@@ -1,0 +1,10 @@
+# Installed and generated files, never formatted.
+node_modules/
+build/
+dist/
+coverage/
+installer/out/
+module/scripts/
+module/lang/
+package-lock.json
+release-notes.md

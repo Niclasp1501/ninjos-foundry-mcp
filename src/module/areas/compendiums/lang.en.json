@@ -1,0 +1,23 @@
+{
+  "ninjos-foundry-mcp": {
+    "compendiums": {
+      "indexBuilding": "Building the creature index for the compendiums. This can take a moment.",
+      "indexBuilt": "Creature index built: {count} creatures.",
+      "indexFailed": "The creature index could not be built: {reason}"
+    },
+    "settings": {
+      "writableCompendiums": {
+        "name": "Compendiums · Release list",
+        "hint": "Which compendiums the AI may write to. Empty: every unlocked compendium. Filled: only the listed compendium ids or package names, and their lock no longer holds the AI back."
+      },
+      "enableEnhancedCreatureIndex": {
+        "name": "Compendiums · Use the creature index",
+        "hint": "Keeps the values of every creature in the actor compendiums at hand, so creatures can be filtered by their values. Off: the search estimates from names."
+      },
+      "autoRebuildIndex": {
+        "name": "Compendiums · Rebuild the creature index automatically",
+        "hint": "Marks the creature index as outdated when an actor in a compendium changes, and rebuilds it on the next search."
+      }
+    }
+  }
+}

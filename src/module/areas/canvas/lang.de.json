@@ -1,0 +1,9 @@
+{
+  "ninjos-foundry-mcp": {
+    "canvas": {
+      "notify": {
+        "viewsPulled": "Die KI hat die Ansicht aller auf der Szene {scene} verschoben."
+      }
+    }
+  }
+}

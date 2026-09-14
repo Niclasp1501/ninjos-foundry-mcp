@@ -1,0 +1,366 @@
+Ninjo's Foundry MCP
+Copyright (c) 2026 Ninjo. All rights reserved.
+
+This software is NOT open source. It is distributed free of charge through the
+Foundry Virtual Tabletop package listing and this project's GitHub releases,
+but the author retains all rights not granted below.
+
+These terms cover both parts of this project: the Foundry module
+"ninjos-foundry-mcp" and the server that runs on your computer, including the
+setup bundles on the releases page. Where the terms say "this module", they
+mean both parts.
+
+A German version of these terms follows at the end of this file. In case of
+a discrepancy, the German version applies.
+
+These terms apply to version 14.2609.4 and every later version. Versions
+released before 14.2609.4 were released under the MIT License, and copies of
+those versions remain under it. Version 14.2609.4 is a rewrite: it contains no
+code of the project those earlier versions were forked from. The few files it
+shares with earlier versions were written by the author.
+
+
+WHAT YOU MAY DO
+
+  * Install and use this module in your own Foundry Virtual Tabletop worlds,
+    for private or commercial play. Running paid games with it is fine.
+  * Keep copies for backup.
+  * Modify it for use at your own table.
+  * Write your own, separate module that works together with this one, for
+    example through its hooks or its API, as long as it contains none of this
+    module's code or assets.
+
+WHAT YOU MAY NOT DO WITHOUT WRITTEN PERMISSION FROM THE AUTHOR
+
+  * Redistribute it, in whole or in part, modified or unmodified. Point people
+    at the package listing or the releases page instead of handing out copies.
+  * Copy its code, or substantial parts of it, into another project.
+  * Publish it under another name, or bundle it into another package.
+  * Sell it, or include it in anything that is sold.
+  * Remove or alter the copyright and licence notices.
+
+
+FORKS ON GITHUB
+
+GitHub's terms of service let anyone fork a public repository on GitHub. A
+fork grants no rights beyond this licence. It may be used to prepare a
+contribution to this project or to modify the module for your own table, and
+for nothing else.
+
+
+CONTRIBUTIONS
+
+Bug reports and pull requests are welcome. By submitting a contribution you
+agree that the author may use it under these terms and under any other terms
+the author later chooses for this project, including a more permissive or a
+commercial licence.
+
+
+ADD-ONS AND FUTURE VERSIONS
+
+The author may offer add-on modules for this module under separate terms,
+including paid ones. Future versions of this module may be released under
+different terms; each version is governed by the licence that ships with it.
+
+
+TERMINATION
+
+If you break these terms, the rights granted here end automatically.
+
+
+NO WARRANTY, LIMITED LIABILITY
+
+The software is provided free of charge and as is, without any warranty that
+it is free of defects or suitable for a particular purpose. The author is
+liable without limitation for intent and gross negligence, for injury to
+life, body or health, and wherever liability is mandatory by law, in
+particular under the German Product Liability Act (Produkthaftungsgesetz).
+Any further liability is excluded.
+
+
+GOVERNING LAW
+
+These terms are governed by the law of the Federal Republic of Germany,
+excluding the United Nations Convention on Contracts for the International
+Sale of Goods. If you are a consumer, the mandatory consumer protection rules
+of the country you live in remain unaffected. Should any provision of these
+terms be invalid, the remaining provisions stay in effect.
+
+
+THIRD-PARTY MATERIAL
+
+  The terms above do not apply to the material in this section. Each part
+  keeps its own licence, and its notices ship with it.
+
+  Node.js runtime. The setup bundles of the server
+  (ninjos-foundry-mcp-server-<version>-<platform>-<arch>.zip) contain the
+  official Node.js runtime (node.exe or node) of the OpenJS Foundation
+  (https://nodejs.org), unmodified. Its licence, which also covers the
+  libraries built into Node.js, lies next to it as NODE-LICENSE.txt.
+
+  npm packages. The server uses the packages below at runtime. The setup
+  bundles contain them unmodified under app/node_modules, each with the
+  licence file it was published with, and THIRD-PARTY-NOTICES.txt in the
+  bundle collects all of these notices in one file.
+
+    MIT License:
+      @fidm/asn1
+      @fidm/x509
+      @leichtgewicht/ip-codec
+      @modelcontextprotocol/core
+      @modelcontextprotocol/server
+      @noble/curves
+      @noble/hashes
+      @peculiar/asn1-cms
+      @peculiar/asn1-csr
+      @peculiar/asn1-ecc
+      @peculiar/asn1-pfx
+      @peculiar/asn1-pkcs8
+      @peculiar/asn1-pkcs9
+      @peculiar/asn1-rsa
+      @peculiar/asn1-schema
+      @peculiar/asn1-x509
+      @peculiar/asn1-x509-attr
+      @peculiar/utils
+      @peculiar/x509
+      @shinyoshiaki/binary-data
+      @types/dom-mediacapture-transform
+      @types/dom-webcodecs
+      base64-js
+      buffer
+      debug
+      dns-packet
+      generate-function
+      is-plain-object
+      is-property
+      isobject
+      ms
+      multicast-dns
+      pvtsutils
+      pvutils
+      thunky
+      tsyringe
+      werift
+      ws
+      zod
+    BSD 3-Clause License:
+      asn1js
+      ieee754
+    Apache License 2.0:
+      reflect-metadata
+    0BSD License:
+      tslib
+    The Unlicense:
+      tweetnacl
+    Mozilla Public License 2.0:
+      mediabunny
+
+  werift is published without a licence file; its package.json declares the
+  MIT License, and THIRD-PARTY-NOTICES.txt carries that licence text for it.
+
+  mediabunny is used unmodified. Its source code is available at
+  https://github.com/Vanilagy/mediabunny and in the npm package of the same
+  name.
+
+  The Foundry module contains no third-party code. The fonts and Font Awesome
+  glyphs it shows are provided by Foundry Virtual Tabletop at runtime and are
+  not redistributed here.
+
+
+THE NINJO LOGO
+
+  module/assets/ninjo.png (assets/ninjo.png in the Foundry module) is original
+  artwork, drawn on commission for the author by the artist Roxy and used with
+  the artist's permission. It is the author's brand mark: all rights reserved,
+  not covered by any licence, and not free to reuse, modify or redistribute.
+  It contains no third-party logos, marks or stock material.
+
+
+====================================================================
+DEUTSCHE FASSUNG
+
+Die englische Fassung oben und diese deutsche Fassung haben denselben Inhalt.
+Bei Abweichungen gilt die deutsche Fassung.
+
+Ninjo's Foundry MCP
+Copyright (c) 2026 Ninjo. Alle Rechte vorbehalten.
+
+Diese Software ist NICHT Open Source. Sie wird kostenlos über den Paketkatalog
+von Foundry Virtual Tabletop und über die GitHub-Releases dieses Projekts
+verbreitet. Alle Rechte, die unten nicht eingeräumt werden, behält der
+Urheber.
+
+Diese Bedingungen gelten für beide Teile dieses Projekts: das Foundry-Modul
+"ninjos-foundry-mcp" und den Server, der auf dem eigenen Rechner läuft,
+einschließlich der Einrichtungspakete auf der Releases-Seite. Wo die
+Bedingungen "das Modul" sagen, meinen sie beide Teile.
+
+Diese Bedingungen gelten für Version 14.2609.4 und jede spätere Version. Die
+Versionen vor 14.2609.4 sind unter der MIT-Lizenz erschienen; Kopien dieser
+Versionen bleiben unter ihr. Version 14.2609.4 ist neu geschrieben: Sie
+enthält keinen Code des Projekts, von dem diese früheren Versionen abgeleitet
+waren. Die wenigen Dateien, die sie mit früheren Versionen teilt, hat der
+Urheber selbst geschrieben.
+
+WAS ERLAUBT IST
+
+  * Das Modul in eigenen Welten von Foundry Virtual Tabletop installieren und
+    benutzen, privat wie gewerblich. Bezahlte Runden damit zu leiten ist
+    ausdrücklich erlaubt.
+  * Sicherungskopien behalten.
+  * Es für den eigenen Spieltisch anpassen.
+  * Ein eigenes, getrenntes Modul schreiben, das mit diesem zusammenarbeitet,
+    etwa über dessen Hooks oder API, solange es keinen Code und keine Dateien
+    dieses Moduls enthält.
+
+WAS OHNE SCHRIFTLICHE ERLAUBNIS DES URHEBERS NICHT ERLAUBT IST
+
+  * Es weitergeben, ganz oder in Teilen, verändert oder unverändert. Verweise
+    stattdessen auf den Paketkatalog oder auf die Releases-Seite.
+  * Seinen Code oder wesentliche Teile davon in ein anderes Projekt
+    übernehmen.
+  * Es unter einem anderen Namen veröffentlichen oder in ein anderes Paket
+    einbauen.
+  * Es verkaufen oder Teil von etwas Verkauftem sein lassen.
+  * Urheber- und Lizenzhinweise entfernen oder ändern.
+
+
+FORKS AUF GITHUB
+
+Die Nutzungsbedingungen von GitHub erlauben jedem, ein öffentliches
+Repository auf GitHub zu forken. Ein Fork räumt keine Rechte ein, die über
+diese Lizenz hinausgehen. Er darf benutzt werden, um einen Beitrag für dieses
+Projekt vorzubereiten oder das Modul für den eigenen Tisch anzupassen, und
+sonst für nichts.
+
+
+BEITRÄGE
+
+Fehlermeldungen und Pull Requests sind willkommen. Wer einen Beitrag
+einreicht, stimmt zu, dass der Urheber ihn unter diesen Bedingungen nutzen
+darf und unter allen weiteren Bedingungen, die der Urheber später für dieses
+Projekt wählt, auch unter freieren oder kommerziellen.
+
+
+ZUSATZMODULE UND KÜNFTIGE VERSIONEN
+
+Der Urheber darf Zusatzmodule für dieses Modul zu eigenen Bedingungen
+anbieten, auch gegen Bezahlung. Künftige Versionen dieses Moduls dürfen unter
+anderen Bedingungen erscheinen; für jede Version gilt die Lizenz, die mit ihr
+ausgeliefert wird.
+
+
+ENDE DER RECHTE
+
+Wer gegen diese Bedingungen verstößt, verliert die hier eingeräumten Rechte
+automatisch.
+
+
+KEINE GEWÄHRLEISTUNG, BESCHRÄNKTE HAFTUNG
+
+Die Software wird kostenlos und wie besehen überlassen, ohne Gewähr dafür,
+dass sie fehlerfrei oder für einen bestimmten Zweck geeignet ist. Der Urheber
+haftet unbeschränkt für Vorsatz und grobe Fahrlässigkeit, für Schäden aus der
+Verletzung des Lebens, des Körpers oder der Gesundheit sowie überall dort, wo
+das Gesetz die Haftung zwingend vorschreibt, insbesondere nach dem
+Produkthaftungsgesetz. Eine weitergehende Haftung ist ausgeschlossen.
+
+
+ANWENDBARES RECHT
+
+Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des
+UN-Kaufrechts. Für Verbraucher bleiben die zwingenden Verbraucherschutzregeln
+ihres Wohnsitzlandes unberührt. Sollte eine Bestimmung dieser Bedingungen
+unwirksam sein, bleiben die übrigen wirksam.
+
+
+FREMDES MATERIAL
+
+  Die Bedingungen oben gelten nicht für das Material in diesem Abschnitt.
+  Jeder Teil behält seine eigene Lizenz, und seine Hinweise werden mit ihm
+  ausgeliefert.
+
+  Node.js-Laufzeit. Die Einrichtungspakete des Servers
+  (ninjos-foundry-mcp-server-<Version>-<Plattform>-<Architektur>.zip)
+  enthalten die offizielle Node.js-Laufzeit (node.exe oder node) der OpenJS
+  Foundation (https://nodejs.org), unverändert. Ihre Lizenz, die auch die in
+  Node.js eingebauten Bibliotheken abdeckt, liegt daneben als
+  NODE-LICENSE.txt.
+
+  npm-Pakete. Der Server benutzt zur Laufzeit die Pakete unten. Die
+  Einrichtungspakete enthalten sie unverändert unter app/node_modules, jedes
+  mit der Lizenzdatei, mit der es veröffentlicht wurde, und
+  THIRD-PARTY-NOTICES.txt im Paket fasst alle diese Hinweise in einer Datei
+  zusammen.
+
+    MIT-Lizenz:
+      @fidm/asn1
+      @fidm/x509
+      @leichtgewicht/ip-codec
+      @modelcontextprotocol/core
+      @modelcontextprotocol/server
+      @noble/curves
+      @noble/hashes
+      @peculiar/asn1-cms
+      @peculiar/asn1-csr
+      @peculiar/asn1-ecc
+      @peculiar/asn1-pfx
+      @peculiar/asn1-pkcs8
+      @peculiar/asn1-pkcs9
+      @peculiar/asn1-rsa
+      @peculiar/asn1-schema
+      @peculiar/asn1-x509
+      @peculiar/asn1-x509-attr
+      @peculiar/utils
+      @peculiar/x509
+      @shinyoshiaki/binary-data
+      @types/dom-mediacapture-transform
+      @types/dom-webcodecs
+      base64-js
+      buffer
+      debug
+      dns-packet
+      generate-function
+      is-plain-object
+      is-property
+      isobject
+      ms
+      multicast-dns
+      pvtsutils
+      pvutils
+      thunky
+      tsyringe
+      werift
+      ws
+      zod
+    BSD-3-Clause-Lizenz:
+      asn1js
+      ieee754
+    Apache-Lizenz 2.0:
+      reflect-metadata
+    0BSD-Lizenz:
+      tslib
+    The Unlicense:
+      tweetnacl
+    Mozilla Public License 2.0:
+      mediabunny
+
+  werift ist ohne Lizenzdatei veröffentlicht; seine package.json nennt die
+  MIT-Lizenz, und THIRD-PARTY-NOTICES.txt enthält den Lizenztext dafür.
+
+  mediabunny wird unverändert benutzt. Sein Quellcode ist unter
+  https://github.com/Vanilagy/mediabunny und im gleichnamigen npm-Paket
+  erhältlich.
+
+  Das Foundry-Modul enthält keinen fremden Code. Die Schriften und
+  Font-Awesome-Zeichen, die es zeigt, stellt Foundry Virtual Tabletop zur
+  Laufzeit bereit; sie werden hier nicht mitverbreitet.
+
+
+DAS NINJO-LOGO
+
+  module/assets/ninjo.png (im Foundry-Modul assets/ninjo.png) ist eine eigens
+  für den Urheber angefertigte Zeichnung von Roxy, genutzt mit Roxys
+  Erlaubnis. Es ist das Markenzeichen des Urhebers: alle Rechte vorbehalten,
+  von keiner Lizenz erfasst und nicht frei nutzbar, veränderbar oder
+  weiterzugeben.

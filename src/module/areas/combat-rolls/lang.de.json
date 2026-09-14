@@ -1,0 +1,10 @@
+{
+  "ninjos-foundry-mcp": {
+    "combat-rolls": {
+      "chat": {
+        "initiativeFlavor": "{name} würfelt Initiative.",
+        "checkFlavor": "{actor}: {label}"
+      }
+    }
+  }
+}

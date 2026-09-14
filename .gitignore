@@ -1,0 +1,14 @@
+node_modules/
+build/
+module/scripts/
+# Built by scripts/lang.mjs from src/module/lang.*.json and src/module/areas/*/lang.*.json
+module/lang/
+coverage/
+*.log
+# Built by scripts/package-module.mjs: module.zip for a release, test-module/ for manual tests.
+dist/
+# Written by the release workflow from CHANGELOG.md.
+release-notes.md
+
+# Private names in plain text and the helper that hashes them; see scripts/check-public.mjs.
+.private/

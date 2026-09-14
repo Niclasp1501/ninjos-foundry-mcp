@@ -1,0 +1,245 @@
+{
+  "ninjos-foundry-mcp": {
+    "campaign": {
+      "status": {
+        "not_started": "Nicht begonnen",
+        "in_progress": "In Arbeit",
+        "completed": "Abgeschlossen",
+        "skipped": "Übersprungen",
+        "toggle": "{part}: {status}. Aktivieren, um den Stand zu ändern."
+      },
+      "dashboard": {
+        "journalName": "{title} (Kampagnenübersicht)",
+        "pageName": "Übersicht",
+        "overview": "Überblick",
+        "progress": "Kampagnenstand: {done} von {total} Teilen erledigt ({percent} %)",
+        "current": "Aktueller Teil: {part}",
+        "ready": "Bereit zum Beginn",
+        "finished": "Alle Teile sind erledigt",
+        "location": "Schauplatz: {location}",
+        "questGiver": "Auftraggeber: {name}",
+        "partsHeading": "Teile der Kampagne",
+        "partsHint": "Ein Klick auf einen Status ändert den Stand. Er wird sofort gespeichert.",
+        "part": "Teil {number}: {title}",
+        "subPart": "{number}: {title}",
+        "locked": "[Gesperrt]",
+        "levels": "Stufen {start} bis {end}",
+        "level": "Stufe {level}",
+        "requires": "Setzt voraus, dass erledigt ist: {part}",
+        "gmNote": "Hinweise für die Spielleitung",
+        "created": "Angelegt am {date}.",
+        "campaignId": "Kennung der Kampagne: {id}",
+        "partType": {
+          "main_part": "Hauptteil",
+          "sub_part": "Unterteil",
+          "chapter": "Kapitel",
+          "session": "Spielabend",
+          "optional": "Optional"
+        }
+      },
+      "templates": {
+        "fivePartAdventure": {
+          "hook": {
+            "title": "Aufhänger und Einstieg",
+            "description": "Die Helden werden in das Abenteuer hineingezogen und erfahren, worum es geht."
+          },
+          "investigation": {
+            "title": "Nachforschungen und Hinweise",
+            "description": "Die Helden sammeln Wissen, folgen Spuren und treffen auf erste Hindernisse."
+          },
+          "midpoint": {
+            "title": "Wendepunkt",
+            "description": "Eine Entdeckung verändert, wie die Helden die Lage sehen, und es steht mehr auf dem Spiel."
+          },
+          "climax": {
+            "title": "Entscheidende Konfrontation",
+            "description": "Die Helden stellen sich der Hauptbedrohung in einer entscheidenden Begegnung."
+          },
+          "resolution": {
+            "title": "Auflösung und Belohnung",
+            "description": "Offene Fäden werden verknüpft, Belohnungen verteilt, und die Folgen werden sichtbar."
+          }
+        },
+        "dungeonCrawl": {
+          "approach": {
+            "title": "Anreise und Eingang",
+            "description": "Die Helden reisen zum Verlies und finden einen Weg hinein."
+          },
+          "upper": {
+            "title": "Obere Ebenen",
+            "description": "Die ersten Hallen mit ihren Wachen, Fallen und Hinweisen auf das, was darunter liegt."
+          },
+          "upperFirst": {
+            "title": "Eingangshallen",
+            "description": "Die ersten Räume und ihre Wachen."
+          },
+          "upperSecond": {
+            "title": "Gänge voller Fallen",
+            "description": "Tiefere Räume mit Fallen und einem Weg weiter nach unten."
+          },
+          "lower": {
+            "title": "Untere Ebenen",
+            "description": "Schwerere Begegnungen und die Geheimnisse des Verlieses."
+          },
+          "lowerFirst": {
+            "title": "Tiefe Hallen",
+            "description": "Starke Gegner bewachen den Weg zum Herz des Verlieses."
+          },
+          "lowerSecond": {
+            "title": "Verborgene Kammern",
+            "description": "Geheimnisse, Wissen und die letzten Hindernisse vor dem Hort."
+          },
+          "boss": {
+            "title": "Endgegner und Schatz",
+            "description": "Der Herr des Verlieses und der Hort, den er bewacht."
+          }
+        },
+        "investigation": {
+          "scene": {
+            "title": "Tatort",
+            "description": "Die Helden untersuchen den Ort des Geschehens und sichern erste Hinweise."
+          },
+          "witnesses": {
+            "title": "Zeugenbefragung",
+            "description": "Die Helden befragen Leute, die etwas gesehen haben oder wissen."
+          },
+          "witnessFirst": {
+            "title": "Erste Zeugen",
+            "description": "Leute nah am Geschehen erzählen, was sie gesehen haben."
+          },
+          "witnessSecond": {
+            "title": "Verschlossene Zeugen",
+            "description": "Manche wissen mehr, als sie zugeben, und müssen überzeugt werden."
+          },
+          "leads": {
+            "title": "Spuren verfolgen",
+            "description": "Die Hinweise führen zu mehreren Orten und Personen."
+          },
+          "leadFirst": {
+            "title": "Erste Spur",
+            "description": "Die naheliegendste Fährte."
+          },
+          "leadSecond": {
+            "title": "Zweite Spur",
+            "description": "Eine Fährte, die der ersten widerspricht."
+          },
+          "leadThird": {
+            "title": "Dritte Spur",
+            "description": "Die Fährte, die zur Wahrheit führt."
+          },
+          "confrontation": {
+            "title": "Konfrontation",
+            "description": "Die Helden stellen den, der dahintersteckt."
+          },
+          "resolution": {
+            "title": "Auflösung",
+            "description": "Die Wahrheit kommt ans Licht, und die Folgen treten ein."
+          }
+        },
+        "sandbox": {
+          "intro": {
+            "title": "Einführung in die Welt",
+            "description": "Die Helden lernen die Gegend, ihre Bewohner und ihre Konflikte kennen."
+          },
+          "exploration": {
+            "title": "Erkundung",
+            "description": "Die Helden wählen ihre eigenen Ziele und erkunden frei."
+          },
+          "consequences": {
+            "title": "Folgen und Reaktionen",
+            "description": "Die Welt reagiert auf das, was die Helden getan haben."
+          },
+          "climax": {
+            "title": "Höhepunkt nach Wahl der Spieler",
+            "description": "Die Fäden, an denen die Helden gezogen haben, laufen zusammen."
+          }
+        }
+      },
+      "quest": {
+        "pageName": "Questdetails",
+        "background": "Hintergrund",
+        "backgroundLocation": "Die Quest spielt in {location}.",
+        "backgroundGiver": "{name} bittet die Gruppe um Hilfe.",
+        "backgroundNpc": "{name} spielt dabei eine zentrale Rolle.",
+        "adjust": "Diese Angaben nach Bedarf an die eigene Kampagne anpassen.",
+        "details": "Questdetails",
+        "statusColumn": "Belohnung und Stand",
+        "type": "Art",
+        "difficulty": "Schwierigkeit",
+        "location": "Ort",
+        "keyFigure": "Zentrale Figur",
+        "rewards": "Belohnung",
+        "status": "Stand",
+        "created": "Angelegt",
+        "hook": "Aufhänger",
+        "hookGiver": "{name} tritt mit einer Bitte an die Gruppe heran.",
+        "hookRumour": "In {place} geht ein Gerücht um.",
+        "hookRumourAnywhere": "Ein Gerücht geht um.",
+        "gmNote": "Hinweise für die Spielleitung",
+        "gmDifficulty": "Schwierigkeit: {difficulty}.",
+        "gmType": "Art der Quest: {type}.",
+        "gmAdvice": "Begegnungen und Belohnungen an die Stärke der Gruppe anpassen.",
+        "objectives": "Ziele der Quest",
+        "objective": {
+          "fetch1": "Herausfinden, wo sich der gesuchte Gegenstand befindet.",
+          "fetch2": "Den Gegenstand beschaffen.",
+          "fetch3": "Den Gegenstand sicher zurückbringen.",
+          "escort1": "Die zu begleitende Person treffen.",
+          "escort2": "Sie unterwegs beschützen.",
+          "escort3": "Das Ziel sicher erreichen.",
+          "kill1": "Das Ziel aufspüren.",
+          "kill2": "Das Ziel besiegen.",
+          "kill3": "Einen Beweis des Erfolgs mitbringen.",
+          "mystery1": "Hinweise sammeln.",
+          "mystery2": "Zeugen und Verdächtige befragen.",
+          "mystery3": "Die Wahrheit aufdecken.",
+          "npc1": "Mehr über {name} herausfinden.",
+          "npc2": "Nach {location} reisen.",
+          "npc3": "Sich um {name} kümmern.",
+          "main": "Das Hauptziel erreichen: {summary}",
+          "reportGiver": "Nach Abschluss {name} Bericht erstatten.",
+          "reportDefault": "Den Ausgang den zuständigen Stellen melden.",
+          "claim": "Die versprochene Belohnung einfordern."
+        },
+        "progressNotes": "Verlauf",
+        "progressPlaceholder": "Hier festhalten, was die Gruppe erreicht.",
+        "relatedNpcs": "Beteiligte Figuren",
+        "npcEntry": "{npc}: {role}",
+        "statusValue": {
+          "active": "Aktiv",
+          "completed": "Abgeschlossen",
+          "failed": "Gescheitert"
+        },
+        "questType": {
+          "main": "Hauptquest",
+          "side": "Nebenquest",
+          "personal": "persönliche Quest",
+          "mystery": "Rätsel",
+          "fetch": "Beschaffung",
+          "escort": "Geleit",
+          "kill": "Jagd",
+          "collection": "Sammlung"
+        },
+        "difficultyValue": {
+          "easy": "leicht",
+          "medium": "mittel",
+          "hard": "schwer",
+          "deadly": "tödlich"
+        },
+        "relationship": {
+          "quest_giver": "Auftraggeber",
+          "target": "Ziel",
+          "ally": "Verbündeter",
+          "enemy": "Gegner",
+          "contact": "Kontakt"
+        }
+      },
+      "update": {
+        "progress": "Fortschritt, {date}",
+        "completion": "Quest abgeschlossen, {date}",
+        "failure": "Quest gescheitert, {date}",
+        "modification": "Quest geändert, {date}"
+      }
+    }
+  }
+}

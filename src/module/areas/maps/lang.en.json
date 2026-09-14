@@ -1,0 +1,21 @@
+{
+  "ninjos-foundry-mcp": {
+    "settings": {
+      "mapGenAutoStart": {
+        "name": "Start the map service with Foundry",
+        "hint": "Asks the MCP server to start ComfyUI when a Gamemaster loads the world: the server reads this setting as soon as the module has connected. Set in the map generation window."
+      },
+      "mapGenQuality": {
+        "name": "Map quality",
+        "hint": "Low, medium or high: 8, 20 or 35 steps per map. Set in the map generation window.",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
+    },
+    "maps": {
+      "bridgeMissing": "The MCP server is not connected.",
+      "noAnswer": "The MCP server did not answer within {seconds} seconds."
+    }
+  }
+}

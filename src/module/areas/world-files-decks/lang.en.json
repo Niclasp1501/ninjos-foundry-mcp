@@ -1,0 +1,11 @@
+{
+  "ninjos-foundry-mcp": {
+    "world-files-decks": {
+      "notify": {
+        "messageInfo": "Message from {sender}: {message}",
+        "messageWarn": "Message from {sender}: {message}",
+        "messageError": "Message from {sender}: {message}"
+      }
+    }
+  }
+}

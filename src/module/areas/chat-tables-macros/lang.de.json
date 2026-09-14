@@ -1,0 +1,19 @@
+{
+  "ninjos-foundry-mcp": {
+    "settings": {
+      "macroExecution": {
+        "name": "Rechte · Makros ausführen",
+        "hint": "Ob die KI Makros ausführen darf. Ab Werk aus. Ein Chat-Makro schreibt nur in den Chat. Ein Skript-Makro kann alles, was eine Spielleitung kann, auch löschen und Einstellungen ändern, und lässt sich nicht rückgängig machen. Der Schalter Schreibvorgänge erlauben gilt zusätzlich.",
+        "off": "Aus: die KI führt kein Makro aus",
+        "chat": "Nur Chat-Makros",
+        "all": "Chat- und Skript-Makros (ein Skript kann alles)"
+      }
+    },
+    "chat-tables-macros": {
+      "notify": {
+        "chatMacroRun": "Die KI führt das Chat-Makro {name} aus.",
+        "scriptMacroRun": "Die KI führt das Skript-Makro {name} aus."
+      }
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "ninjos-foundry-mcp": {
+    "settings": {
+      "enabled": {
+        "name": "Connection · Bridge on",
+        "hint": "Connects this world to the MCP server on the Gamemaster's PC. Only a Gamemaster's browser connects."
+      },
+      "connectionType": {
+        "name": "Connection · Connection type",
+        "hint": "This module always connects over WebSocket, on HTTPS pages as well. The WebRTC choice is kept for worlds that stored it and connects over WebSocket too.",
+        "auto": "Automatic (WebSocket)",
+        "websocket": "WebSocket",
+        "webrtc": "WebRTC (replaced by WebSocket)"
+      },
+      "serverHost": {
+        "name": "Connection · Server address",
+        "hint": "Where the MCP server runs. localhost when it runs on the same PC as this browser."
+      },
+      "serverPort": {
+        "name": "Connection · Server port",
+        "hint": "Port of the bridge on the PC."
+      },
+      "allowWriteOperations": {
+        "name": "Writing · Allow Write Operations",
+        "hint": "The switch before everything else. Off means the AI changes nothing in this world, whatever the levels below say. Tools of other modules are held by it too, unless they only read."
+      },
+      "permScenes": {
+        "name": "Permissions · Scenes",
+        "hint": "What the AI may do with scenes. Deleting is off by default, because it cannot be undone."
+      },
+      "permPlaylists": {
+        "name": "Permissions · Playlists",
+        "hint": "What the AI may do with playlists. Deleting is off by default, because it cannot be undone."
+      },
+      "permJournals": {
+        "name": "Permissions · Journals",
+        "hint": "What the AI may do with journals. Deleting is off by default, because it cannot be undone."
+      },
+      "permRollTables": {
+        "name": "Permissions · Roll tables",
+        "hint": "What the AI may do with roll tables. Deleting is off by default, because it cannot be undone."
+      },
+      "permActors": {
+        "name": "Permissions · Actors",
+        "hint": "What the AI may do with actors. Deleting is off by default, because it cannot be undone."
+      },
+      "permFolders": {
+        "name": "Permissions · Folders",
+        "hint": "What the AI may do with folders. Deleting is off by default, because it cannot be undone."
+      },
+      "permCompendiums": {
+        "name": "Permissions · Compendiums",
+        "hint": "What the AI may do with compendiums. Deleting is off by default, because it cannot be undone."
+      },
+      "level": {
+        "read": "Read only",
+        "write": "Create and change",
+        "full": "Create, change and delete"
+      },
+      "toolProviderModules": {
+        "name": "Permissions · Modules with their own tools",
+        "hint": "Ids of modules that may offer the AI tools of their own, separated by commas, for example ninjos-shops. None by default: a tool of another module runs its own code and works around the levels above."
+      },
+      "werkzeugModule": {
+        "name": "Modules with their own tools (old key)",
+        "hint": "Replaced by the setting above."
+      },
+      "enableNotifications": {
+        "name": "Behaviour · Connection messages",
+        "hint": "Shows a message when the bridge connects, disconnects, or stays down for a minute."
+      },
+      "autoReconnectEnabled": {
+        "name": "Behaviour · Reconnect automatically",
+        "hint": "Tries again after a lost connection: quickly at first, then every 30 seconds, without giving up."
+      },
+      "heartbeatInterval": {
+        "name": "Behaviour · Heartbeat in seconds",
+        "hint": "How often the module checks that the connection is really alive. A dead connection is closed and then reconnected."
+      }
+    },
+    "indicator": {
+      "unknown": "MCP: no answer",
+      "unknownDetail": "The module is loaded but reports no state.",
+      "off": "MCP: off",
+      "offDetail": "The bridge is switched off in the module settings.",
+      "blocked": "MCP: address not allowed",
+      "blockedDetail": "The MCP server on the PC does not accept connections from {origin}. Add the address to FOUNDRY_ALLOWED_ORIGINS there, or delete allowed-origins.json so it learns this address again.",
+      "standby": "MCP: standby",
+      "standbyDetail": "Another tab or world holds the bridge ({world}). This tab takes over when that one closes.",
+      "on": "MCP: connected",
+      "onDetail": "Bridge to {where}",
+      "connecting": "MCP: connecting",
+      "attempt": "Attempt {count} to reach {where}",
+      "down": "MCP: disconnected",
+      "downDetail": "No bridge to {where}. Is the MCP server running on the PC? The bridge reconnects on its own once it is. Click to try right away.",
+      "retrying": "Reconnecting the MCP bridge",
+      "retryFailed": "Reconnecting failed: {reason}"
+    },
+    "notify": {
+      "connected": "MCP bridge connected.",
+      "disconnected": "MCP bridge disconnected. It reconnects on its own.",
+      "serverUnreachable": "The MCP server on the PC is not reachable at {url}. Start it there; the bridge connects on its own as soon as it runs.",
+      "lostConnection": "The MCP bridge has been down for a minute. It keeps trying every 30 seconds.",
+      "rejected": "The MCP server on the PC refused this page: {reason}"
+    }
+  }
+}

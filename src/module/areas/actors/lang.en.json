@@ -1,0 +1,14 @@
+{
+  "ninjos-foundry-mcp": {
+    "actors": {
+      "usesItem": "{actor} uses {item}.",
+      "useFailedLate": "Ninjo's Foundry MCP: using {item} of {actor} failed: {error}"
+    },
+    "settings": {
+      "maxActorsPerRequest": {
+        "name": "Limits · Actors per request",
+        "hint": "The most actors the AI may create or place in a scene with one request. Copies from a compendium stay at 10 at most."
+      }
+    }
+  }
+}

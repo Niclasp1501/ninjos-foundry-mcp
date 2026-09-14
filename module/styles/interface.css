@@ -1,0 +1,213 @@
+/* Settings windows of the interface area. Builds on ninjo-marke.css; only role tokens, no colours of its own. */
+
+/*
+ * Layout first, grouped by what the boxes share: every flex container in one
+ * rule, the stacked ones in a second. The rules per element below only add
+ * what is particular to them.
+ */
+.mcp-window,
+.mcp-window__section,
+.mcp-window__check,
+.mcp-window__check span,
+.mcp-window__field,
+.mcp-window__buttons,
+.mcp-window__footer,
+.mcp-release__groups {
+  display: flex;
+}
+
+.mcp-window,
+.mcp-window__section,
+.mcp-window__check span,
+.mcp-window__field,
+.mcp-release__groups {
+  flex-direction: column;
+}
+
+/* Paragraph-like blocks without outer margin. */
+.mcp-window__intro,
+.mcp-window__hint,
+.mcp-window__unavailable,
+.mcp-window__status,
+.mcp-mapgen__state,
+.mcp-release__group,
+.mcp-release__table {
+  margin: 0;
+}
+
+/* Small rounded panels. */
+.mcp-window__section,
+.mcp-mapgen__state {
+  border-radius: 4px;
+}
+
+/* Status lines and table heads carry weight. */
+.mcp-window__status--ok,
+.mcp-window__status--error,
+.mcp-release__table th {
+  font-weight: 600;
+}
+
+.ninjos-foundry-mcp.mcp-window-frame .window-content {
+  overflow-y: auto;
+  background-color: var(--ninjo-grund);
+  background-image: var(--ninjo-faser);
+  background-blend-mode: multiply;
+  color: var(--ninjo-text);
+  font-family: var(--ninjo-schrift);
+}
+
+.mcp-window {
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.mcp-window h3 {
+  margin: 0 0 0.35rem;
+  border-bottom: 1px solid var(--ninjo-rand);
+  padding-bottom: 0.2rem;
+  color: var(--ninjo-marke);
+  font-family: var(--ninjo-schrift-kopf);
+  font-size: 1rem;
+}
+
+.mcp-window__hint,
+.mcp-window small {
+  color: var(--ninjo-text-blass);
+}
+
+.mcp-window__section {
+  gap: 0.45rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--ninjo-rand);
+  background: var(--ninjo-flaeche);
+  box-shadow: var(--ninjo-schatten-sm);
+}
+
+.mcp-window__unavailable {
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid var(--ninjo-akzent);
+  background: var(--ninjo-leiste);
+}
+
+.mcp-window__check,
+.mcp-window__field {
+  gap: 0.5rem;
+  align-items: start;
+  min-height: var(--ninjo-tippziel);
+}
+
+.mcp-window__field {
+  gap: 0.2rem;
+}
+
+.mcp-window__check input {
+  flex: none;
+  margin-top: 0.2rem;
+}
+
+.mcp-window button {
+  min-height: var(--ninjo-tippziel);
+  font-family: var(--ninjo-schrift);
+}
+
+.mcp-window button:focus-visible,
+.mcp-window input:focus-visible,
+.mcp-window select:focus-visible {
+  outline: 2px solid var(--ninjo-akzent);
+  outline-offset: 1px;
+}
+
+.mcp-window__buttons {
+  flex-flow: row wrap;
+  gap: 0.4rem;
+}
+
+.mcp-window__buttons button {
+  flex: 1 1 8rem;
+}
+
+.mcp-window__status {
+  min-height: 1.3em;
+}
+
+.mcp-window__status--ok {
+  color: var(--ninjo-text);
+}
+
+.mcp-window__status--error,
+.mcp-mapgen__state--error {
+  color: var(--ninjo-marke);
+}
+
+.mcp-window__footer {
+  justify-content: end;
+}
+
+.mcp-window__primary {
+  border-color: var(--ninjo-marke-tief);
+  background: var(--ninjo-marke);
+  color: var(--ninjo-auf-marke);
+}
+
+.mcp-mapgen__state {
+  padding: 0.4rem 0.6rem;
+  background: var(--ninjo-leiste);
+}
+
+.mcp-release__all {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--ninjo-rand);
+  background: var(--ninjo-leiste);
+}
+
+.mcp-release__groups {
+  gap: 0.6rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  transition: opacity 0.15s;
+}
+
+.mcp-release__groups.is-dimmed {
+  opacity: 0.55;
+}
+
+.mcp-release__group {
+  border: 1px solid var(--ninjo-rand);
+  background: var(--ninjo-flaeche);
+}
+
+.mcp-release__group legend {
+  padding: 0 0.3rem;
+  color: var(--ninjo-marke);
+  font-weight: 700;
+}
+
+.mcp-release__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mcp-release__table th {
+  color: var(--ninjo-text-blass);
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.mcp-release__table td,
+.mcp-release__table th {
+  padding: 0.2rem 0.35rem;
+  border-bottom: 1px solid var(--ninjo-rand);
+  vertical-align: middle;
+}
+
+.mcp-release__label,
+.mcp-release__id {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.mcp-release__count {
+  text-align: right;
+}

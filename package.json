@@ -1,0 +1,48 @@
+{
+  "name": "ninjos-foundry-mcp",
+  "version": "14.2609.4",
+  "private": true,
+  "description": "MCP server and Foundry VTT module that let an AI assistant work with a Foundry world.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "ninjos-foundry-mcp": "build/server/wrapper.js"
+  },
+  "scripts": {
+    "build": "npm run build:server && npm run build:module && npm run build:lang",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:module": "tsc -p tsconfig.module.json",
+    "build:lang": "node scripts/lang.mjs",
+    "lang:check": "node scripts/lang.mjs --check",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.module.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "check:public": "node scripts/check-public.mjs",
+    "check": "npm run typecheck && npm run lang:check && npm run check:public && npm test",
+    "version:check": "node scripts/check-version.mjs",
+    "package:module": "node scripts/package-module.mjs",
+    "build:test-module": "node scripts/package-module.mjs --test",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,js,json,md}": "node node_modules/prettier/bin/prettier.cjs --write"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "werift": "0.24.4",
+    "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "@types/node": "24.13.4",
+    "@types/ws": "8.18.1",
+    "husky": "9.1.7",
+    "lint-staged": "17.5.1",
+    "prettier": "3.9.6",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  }
+}

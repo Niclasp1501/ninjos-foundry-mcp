@@ -1,0 +1,107 @@
+{
+  "ninjos-foundry-mcp": {
+    "settings": {
+      "enabled": {
+        "name": "Verbindung · Brücke an",
+        "hint": "Verbindet diese Welt mit dem MCP-Server auf dem PC der Spielleitung. Nur der Browser einer Spielleitung verbindet sich."
+      },
+      "connectionType": {
+        "name": "Verbindung · Verbindungsart",
+        "hint": "Dieses Modul verbindet sich immer über WebSocket, auch auf HTTPS-Seiten. Die Wahl WebRTC bleibt für Welten, die sie gespeichert haben, und verbindet ebenfalls über WebSocket.",
+        "auto": "Automatisch (WebSocket)",
+        "websocket": "WebSocket",
+        "webrtc": "WebRTC (durch WebSocket ersetzt)"
+      },
+      "serverHost": {
+        "name": "Verbindung · Serveradresse",
+        "hint": "Wo der MCP-Server läuft. localhost, wenn er auf demselben PC läuft wie dieser Browser."
+      },
+      "serverPort": {
+        "name": "Verbindung · Serverport",
+        "hint": "Port der Brücke auf dem PC."
+      },
+      "allowWriteOperations": {
+        "name": "Schreiben · Schreibvorgänge erlauben",
+        "hint": "Der Schalter vor allem anderen. Aus heißt: Die KI ändert nichts in dieser Welt, egal was die Stufen darunter sagen. Er hält auch Werkzeuge anderer Module auf, sofern sie nicht nur lesen."
+      },
+      "permScenes": {
+        "name": "Rechte · Szenen",
+        "hint": "Was die KI mit Szenen tun darf. Löschen ist ab Werk aus, weil es sich nicht rückgängig machen lässt."
+      },
+      "permPlaylists": {
+        "name": "Rechte · Wiedergabelisten",
+        "hint": "Was die KI mit Wiedergabelisten tun darf. Löschen ist ab Werk aus, weil es sich nicht rückgängig machen lässt."
+      },
+      "permJournals": {
+        "name": "Rechte · Journale",
+        "hint": "Was die KI mit Journalen tun darf. Löschen ist ab Werk aus, weil es sich nicht rückgängig machen lässt."
+      },
+      "permRollTables": {
+        "name": "Rechte · Zufallstabellen",
+        "hint": "Was die KI mit Zufallstabellen tun darf. Löschen ist ab Werk aus, weil es sich nicht rückgängig machen lässt."
+      },
+      "permActors": {
+        "name": "Rechte · Figuren",
+        "hint": "Was die KI mit Figuren tun darf. Löschen ist ab Werk aus, weil es sich nicht rückgängig machen lässt."
+      },
+      "permFolders": {
+        "name": "Rechte · Ordner",
+        "hint": "Was die KI mit Ordnern tun darf. Löschen ist ab Werk aus, weil es sich nicht rückgängig machen lässt."
+      },
+      "permCompendiums": {
+        "name": "Rechte · Kompendien",
+        "hint": "Was die KI mit Kompendien tun darf. Löschen ist ab Werk aus, weil es sich nicht rückgängig machen lässt."
+      },
+      "level": {
+        "read": "Nur lesen",
+        "write": "Anlegen und ändern",
+        "full": "Anlegen, ändern und löschen"
+      },
+      "toolProviderModules": {
+        "name": "Rechte · Module mit eigenen Werkzeugen",
+        "hint": "Kennungen von Modulen, die der KI eigene Werkzeuge anbieten dürfen, durch Komma getrennt, zum Beispiel ninjos-shops. Ab Werk keines: Ein Werkzeug eines anderen Moduls führt eigenen Code aus und umgeht die Stufen oben."
+      },
+      "werkzeugModule": {
+        "name": "Module mit eigenen Werkzeugen (alter Schlüssel)",
+        "hint": "Durch die Einstellung oben ersetzt."
+      },
+      "enableNotifications": {
+        "name": "Verhalten · Verbindungsmeldungen",
+        "hint": "Zeigt eine Meldung, wenn die Brücke verbunden oder getrennt wird oder eine Minute lang getrennt bleibt."
+      },
+      "autoReconnectEnabled": {
+        "name": "Verhalten · Automatisch neu verbinden",
+        "hint": "Versucht es nach einer verlorenen Verbindung erneut: erst schnell, dann alle 30 Sekunden, ohne aufzugeben."
+      },
+      "heartbeatInterval": {
+        "name": "Verhalten · Lebenszeichen in Sekunden",
+        "hint": "Wie oft das Modul prüft, ob die Verbindung wirklich lebt. Eine tote Verbindung wird geschlossen und danach neu aufgebaut."
+      }
+    },
+    "indicator": {
+      "unknown": "MCP: keine Antwort",
+      "unknownDetail": "Das Modul ist geladen, meldet aber keinen Zustand.",
+      "off": "MCP: aus",
+      "offDetail": "Die Brücke ist in den Moduleinstellungen ausgeschaltet.",
+      "blocked": "MCP: Adresse nicht erlaubt",
+      "blockedDetail": "Der MCP-Server auf dem PC nimmt keine Verbindungen von {origin} an. Trag die Adresse dort in FOUNDRY_ALLOWED_ORIGINS ein oder lösche allowed-origins.json, damit er diese Adresse neu lernt.",
+      "standby": "MCP: in Bereitschaft",
+      "standbyDetail": "Ein anderer Tab oder eine andere Welt hält die Brücke ({world}). Dieser Tab übernimmt, sobald jener geschlossen wird.",
+      "on": "MCP: verbunden",
+      "onDetail": "Brücke zu {where}",
+      "connecting": "MCP: verbindet",
+      "attempt": "Versuch {count}, {where} zu erreichen",
+      "down": "MCP: getrennt",
+      "downDetail": "Keine Brücke zu {where}. Läuft der MCP-Server auf dem PC? Die Brücke verbindet sich von selbst, sobald er läuft. Klick, um es sofort zu versuchen.",
+      "retrying": "MCP-Brücke wird neu verbunden",
+      "retryFailed": "Neu verbinden fehlgeschlagen: {reason}"
+    },
+    "notify": {
+      "connected": "MCP-Brücke verbunden.",
+      "disconnected": "MCP-Brücke getrennt. Sie verbindet sich von selbst neu.",
+      "serverUnreachable": "Der MCP-Server auf dem PC ist unter {url} nicht erreichbar. Starte ihn dort; die Brücke verbindet sich von selbst, sobald er läuft.",
+      "lostConnection": "Die MCP-Brücke ist seit einer Minute getrennt. Sie versucht es weiter alle 30 Sekunden.",
+      "rejected": "Der MCP-Server auf dem PC hat diese Seite abgelehnt: {reason}"
+    }
+  }
+}

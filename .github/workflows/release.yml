@@ -1,0 +1,190 @@
+# Release on a tag v<version>, for example v14.2609.4:
+#   1. check that the tag and every version source agree, install, typecheck, check the
+#      language files, run the tests, build
+#   2. pack module.zip and module.json for Foundry and the Windows setup bundle
+#   3. create the GitHub release; its text is the CHANGELOG section of this version only
+#   4. submit the version to the Foundry package listing, if PACKAGE_TOKEN is set
+#
+# Every job runs only in the public repository. Tag only finished versions: every tag
+# ends up in the package listing.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.ref_name }}
+  # No commit hook in CI: npm ci would otherwise point Git at .husky.
+  HUSKY: 0
+
+jobs:
+  build:
+    if: github.repository == 'Niclasp1501/ninjos-foundry-mcp'
+    name: Check and build (Windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Tag matches every version source
+        run: node scripts/check-version.mjs "$TAG"
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Language files
+        run: npm run lang:check
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Pack the Foundry module
+        run: node scripts/package-module.mjs
+
+      # The official Windows runtime does not always lie next to its LICENSE on the
+      # runner. The licence of exactly this Node version is fetched from the Node.js
+      # repository and shipped next to node.exe.
+      - name: Node.js licence
+        run: curl --fail --silent --show-error --location --output node-license.txt "https://raw.githubusercontent.com/nodejs/node/$(node --version)/LICENSE"
+
+      - name: Build the Windows setup bundle
+        run: node installer/build.mjs --node-license node-license.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-files
+          if-no-files-found: error
+          path: |
+            dist/module.zip
+            dist/module.json
+            installer/out/*.zip
+            installer/out/*.zip.sha256
+
+  # Disabled: the macOS bundle is not ready (still open:
+  # whether it ships at all, which architectures, and whether Gatekeeper quarantine of an
+  # unnotarized runtime blocks the start from Claude). To enable it, remove "false &&"
+  # below and add "macos-bundle" to "needs" of the release job.
+  macos-bundle:
+    if: false && github.repository == 'Niclasp1501/ninjos-foundry-mcp'
+    name: Build the macOS setup bundle (disabled)
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Node.js licence
+        run: curl --fail --silent --show-error --location --output node-license.txt "https://raw.githubusercontent.com/nodejs/node/$(node --version)/LICENSE"
+
+      - name: Build the macOS setup bundle
+        run: node installer/build.mjs --platform darwin --arch arm64 --node-license node-license.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-files-macos
+          if-no-files-found: error
+          path: |
+            installer/out/*.zip
+            installer/out/*.zip.sha256
+
+  release:
+    if: github.repository == 'Niclasp1501/ninjos-foundry-mcp'
+    name: GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-files
+          path: release-files
+
+      - name: Release text from CHANGELOG.md
+        run: VERSION="${TAG#v}" python3 .github/scripts/release_notes.py
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(release-files/dist/module.zip release-files/dist/module.json release-files/installer/out/*.zip release-files/installer/out/*.zip.sha256)
+          gh release create "$TAG" "${files[@]}" --verify-tag --title "$TAG" --notes-file release-notes.md
+
+  foundry:
+    if: github.repository == 'Niclasp1501/ninjos-foundry-mcp'
+    name: Submit to the Foundry package listing
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Submit the version
+        run: |
+          if [ -z "$PACKAGE_TOKEN" ]; then
+            echo "::warning title=Not submitted to Foundry::The secret PACKAGE_TOKEN is not set. The release exists on GitHub, but the package listing was not told about ${TAG}."
+            exit 0
+          fi
+          version="${TAG#v}"
+          repository="https://github.com/${GITHUB_REPOSITORY}"
+          body=$(node -e '
+            const m = require("./module/module.json");
+            const [version, repository] = process.argv.slice(1);
+            process.stdout.write(JSON.stringify({
+              id: m.id,
+              release: {
+                version,
+                manifest: `${repository}/releases/download/v${version}/module.json`,
+                notes: `${repository}/releases/tag/v${version}`,
+                compatibility: {
+                  minimum: m.compatibility.minimum ?? "",
+                  verified: m.compatibility.verified ?? "",
+                  maximum: m.compatibility.maximum ?? "",
+                },
+              },
+            }));
+          ' "$version" "$repository")
+          response=$(curl --silent --show-error --write-out '\n%{http_code}' \
+            --request POST "https://api.foundryvtt.com/_api/packages/release_version/" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: ${PACKAGE_TOKEN}" \
+            --data "$body")
+          status=$(printf '%s' "$response" | tail -n 1)
+          answer=$(printf '%s' "$response" | sed '$d')
+          echo "HTTP ${status}: ${answer}"
+          if [ "$status" != "200" ] || ! printf '%s' "$answer" | grep -q '"status": *"success"'; then
+            echo "::error title=Foundry package listing::Submitting ${TAG} failed (HTTP ${status}): ${answer}"
+            exit 1
+          fi

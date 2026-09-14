@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a new tool, a game system adapter or an improvement.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggestions are welcome. Code contributions need an agreement first, see [CONTRIBUTING.md](https://github.com/Niclasp1501/ninjos-foundry-mcp/blob/main/CONTRIBUTING.md).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to do
+      description: Describe the task at your table, not the implementation. For example "prepare all encounters of a chapter in one step".
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: How it could work
+      description: Which tool or parameter, what the assistant should see as a result, what should happen on errors.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead
+
+  - type: input
+    id: game-system
+    attributes:
+      label: Game system
+      description: If the request depends on one, for example "dnd5e" or "pf2e". Leave empty if it applies to every system.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues.
+          required: true

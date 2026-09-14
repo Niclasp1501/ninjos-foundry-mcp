@@ -1,0 +1,9 @@
+{
+  "ninjos-foundry-mcp": {
+    "wfrp4e-cosmere-traveller": {
+      "notify": {
+        "blankItems": "{count} item(s) for {actor} were not in any compendium and were added blank: {names}."
+      }
+    }
+  }
+}

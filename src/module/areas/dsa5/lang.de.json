@@ -1,0 +1,9 @@
+{
+  "ninjos-foundry-mcp": {
+    "dsa5": {
+      "notify": {
+        "characterCreated": "DSA5-Held „{name}“ aus dem Archetyp „{archetype}“ angelegt."
+      }
+    }
+  }
+}

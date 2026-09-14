@@ -1,0 +1,23 @@
+{
+  "ninjos-foundry-mcp": {
+    "compendiums": {
+      "indexBuilding": "Der Kreaturenindex der Kompendien wird gebaut. Das kann einen Moment dauern.",
+      "indexBuilt": "Kreaturenindex gebaut: {count} Kreaturen.",
+      "indexFailed": "Der Kreaturenindex konnte nicht gebaut werden: {reason}"
+    },
+    "settings": {
+      "writableCompendiums": {
+        "name": "Kompendien · Freigabeliste",
+        "hint": "In welche Kompendien die KI schreiben darf. Leer: in jedes nicht gesperrte. Gefüllt: nur in die eingetragenen Kompendium-Ids oder Paketnamen, und deren Sperre hält die KI nicht mehr auf."
+      },
+      "enableEnhancedCreatureIndex": {
+        "name": "Kompendien · Kreaturenindex verwenden",
+        "hint": "Hält die Werte aller Kreaturen aus den Figuren-Kompendien bereit, damit sich Kreaturen nach ihren Werten filtern lassen. Aus: Die Suche schätzt anhand der Namen."
+      },
+      "autoRebuildIndex": {
+        "name": "Kompendien · Kreaturenindex automatisch neu bauen",
+        "hint": "Markiert den Kreaturenindex als veraltet, sobald sich eine Figur in einem Kompendium ändert, und baut ihn bei der nächsten Suche neu."
+      }
+    }
+  }
+}

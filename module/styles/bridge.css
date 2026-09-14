@@ -1,0 +1,62 @@
+/* Status readout of the MCP bridge above the player list. Builds on ninjo-marke.css. */
+
+.mcp-status {
+  --mcp-status-ok: #3fa34d;
+  --mcp-status-wait: var(--ninjo-akzent);
+  --mcp-status-fault: #d23c2f;
+  --mcp-status-off: #8c8c8c;
+
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 45%);
+  color: #f3ece0;
+  font-family: var(--ninjo-schrift);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mcp-status:focus-visible {
+  outline: 2px solid var(--ninjo-akzent);
+  outline-offset: 1px;
+}
+
+@media (pointer: coarse) {
+  .mcp-status {
+    min-height: var(--ninjo-tippziel);
+  }
+}
+
+.mcp-status__dot {
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--mcp-status-off);
+}
+
+.mcp-status--connected .mcp-status__dot {
+  background: var(--mcp-status-ok);
+}
+
+.mcp-status--connecting .mcp-status__dot,
+.mcp-status--standby .mcp-status__dot {
+  background: var(--mcp-status-wait);
+}
+
+.mcp-status--disconnected {
+  background: rgb(80 0 0 / 70%);
+}
+
+.mcp-status--disconnected .mcp-status__dot {
+  background: var(--mcp-status-fault);
+}
+
+.mcp-status--disabled .mcp-status__dot {
+  background: var(--mcp-status-off);
+}

@@ -1,0 +1,59 @@
+# Checks every push to main and every pull request: versions, types, language files, tests.
+# Runs only in the public repository; a copy of the code elsewhere builds nothing.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# No commit hook in CI: npm ci would otherwise point Git at .husky.
+env:
+  HUSKY: 0
+
+jobs:
+  check:
+    if: github.repository == 'Niclasp1501/ninjos-foundry-mcp'
+    name: Check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is where the server and its setup are released and tested.
+        # Linux runs the same suite so platform assumptions show up early.
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Version sources agree
+        run: node scripts/check-version.mjs
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Language files
+        run: npm run lang:check
+
+      - name: No references to working notes or private names
+        run: npm run check:public
+
+      - name: Tests
+        run: npm test

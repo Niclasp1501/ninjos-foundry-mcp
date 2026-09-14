@@ -1,0 +1,35 @@
+# Weekly update pull requests for npm packages and GitHub Actions.
+#
+# Pull requests only: nothing is tagged or released. The release workflow runs on tags
+# alone, and CI checks every update pull request.
+#
+# A new or changed runtime package can pull in a package that LICENSE does not name yet.
+# installer/build.mjs then stops the release build on purpose, so before merging such an
+# update, add the new packages to both lists in LICENSE.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build
+      prefix-development: build
+      include: scope
+    groups:
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']

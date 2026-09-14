@@ -1,0 +1,14 @@
+{
+  "ninjos-foundry-mcp": {
+    "actors": {
+      "usesItem": "{actor} benutzt {item}.",
+      "useFailedLate": "Ninjo's Foundry MCP: {item} von {actor} konnte nicht benutzt werden: {error}"
+    },
+    "settings": {
+      "maxActorsPerRequest": {
+        "name": "Grenzen · Figuren je Anfrage",
+        "hint": "So viele Figuren darf die KI mit einer Anfrage höchstens anlegen oder in eine Szene setzen. Kopien aus einem Kompendium bleiben bei höchstens 10."
+      }
+    }
+  }
+}

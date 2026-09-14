@@ -1,0 +1,114 @@
+name: Bug report
+description: Something does not work as described.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Setup questions are answered in [docs/INSTALLATION.en.md](https://github.com/Niclasp1501/ninjos-foundry-mcp/blob/main/docs/INSTALLATION.en.md). Security vulnerabilities go through [private reporting](https://github.com/Niclasp1501/ninjos-foundry-mcp/security/advisories/new), not here.
+
+  - type: input
+    id: foundry-version
+    attributes:
+      label: Foundry VTT version
+      description: The full version shown on the Foundry setup screen.
+    validations:
+      required: true
+
+  - type: input
+    id: game-system
+    attributes:
+      label: Game system and its version
+      description: Id and version of the system, for example "dnd5e 5.3.3".
+    validations:
+      required: true
+
+  - type: input
+    id: module-version
+    attributes:
+      label: Module version
+      description: Version of "Ninjo's Foundry MCP" under "Add-on Modules" in Foundry.
+    validations:
+      required: true
+
+  - type: input
+    id: server-version
+    attributes:
+      label: PC server version
+      description: 'The "status" command prints it, see "Troubleshooting" in docs/INSTALLATION.en.md.'
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: For example Windows 11 24H2 or macOS 15.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP client
+      options:
+        - Claude Desktop
+        - Claude Desktop (Microsoft Store edition)
+        - Claude Code
+        - Cursor
+        - Other (please name it below)
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser running Foundry
+      description: For example Chrome 140 or the Foundry desktop app.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Include the tool name and the exact error text the assistant received, if there was one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the world as Gamemaster
+        2. Ask the assistant to ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Please remove world content you do not want to share before pasting.
+        - **Server log:** `backend.log` in the `logs` folder of the server, on Windows `%LOCALAPPDATA%\FoundryMCPServer\logs\backend.log`, on a Mac `~/.config/ninjos-foundry-mcp/logs/backend.log`, or the file set in `FOUNDRY_MCP_LOG_FILE`.
+        - **Claude Desktop log:** the `logs` folder next to `claude_desktop_config.json`, file `mcp-server-foundry-mcp.log`.
+        - **Browser console:** press F12 in Foundry and copy the lines mentioning `ninjos-foundry-mcp`.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I opened the world as Gamemaster and the module's status indicator shows the connection state.
+          required: true
+        - label: I searched the existing issues.
+          required: true

@@ -1,0 +1,10 @@
+{
+  "ninjos-foundry-mcp": {
+    "settings": {
+      "confirmDestructiveTools": {
+        "name": "Permissions · Confirm destructive tools",
+        "hint": "Off by default. When on, the AI runs a tool that deletes or overwrites only on its second call: the first shows a preview with the result of the dry run and a confirmation that is valid for five minutes and once. That way it can ask you before it destroys anything. Only works with an MCP server of this generation or later."
+      }
+    }
+  }
+}

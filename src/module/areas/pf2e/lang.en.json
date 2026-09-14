@@ -1,0 +1,9 @@
+{
+  "ninjos-foundry-mcp": {
+    "pf2e": {
+      "notify": {
+        "conditionNotApplied": "Condition on {actor} not as requested: {condition} should be {wanted}, it is {actual}."
+      }
+    }
+  }
+}

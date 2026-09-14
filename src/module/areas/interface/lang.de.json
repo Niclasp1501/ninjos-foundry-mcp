@@ -1,0 +1,142 @@
+{
+  "ninjos-foundry-mcp": {
+    "settings": {
+      "willkommenGesehen": {
+        "name": "Willkommensfenster gesehen",
+        "hint": "Wird über „Nicht mehr anzeigen“ im Willkommensfenster gesetzt. Gilt je Gerät."
+      }
+    },
+    "interface": {
+      "common": {
+        "notAvailable": "Noch nicht verfügbar: {what}",
+        "save": "Speichern",
+        "apply": "Übernehmen",
+        "failed": "Fehlgeschlagen: {reason}",
+        "gmOnly": "Nur eine Spielleitung kann dieses Fenster benutzen."
+      },
+      "menu": {
+        "creatureIndex": {
+          "name": "Kreaturenindex",
+          "label": "Kreaturenindex",
+          "hint": "Den Kreaturenindex neu bauen und festlegen, ob er verwendet und automatisch neu gebaut wird."
+        },
+        "compendiumRelease": {
+          "name": "Kompendien freigeben",
+          "label": "Kompendien freigeben",
+          "hint": "Festlegen, in welche Kompendien die KI schreiben darf."
+        },
+        "mapGeneration": {
+          "name": "Kartengenerierung",
+          "label": "Kartengenerierung",
+          "hint": "Den Kartendienst prüfen, starten und stoppen und seine Qualität festlegen."
+        }
+      },
+      "creatureIndex": {
+        "title": "Kreaturenindex",
+        "intro": "Der Kreaturenindex hält die wichtigsten Werte jeder Kreatur aus den Figuren-Kompendien in einer Datei der Welt. Die Suche nach Herausforderungsgrad oder Kreaturart liest dann diese Datei, statt jedes Kompendium zu laden.",
+        "rebuildHeading": "Neu bauen",
+        "rebuildHint": "Nötig, wenn sich ein Kompendium außerhalb von Foundry geändert hat, etwa nach einem Modul-Update. Große Kompendien brauchen eine Weile.",
+        "rebuildButton": "Index neu bauen",
+        "serviceMissing": "Der Kreaturenindex kommt mit den Kompendium-Werkzeugen.",
+        "settingsHeading": "Einstellungen",
+        "enabled": "Kreaturenindex verwenden",
+        "enabledHint": "Aus: Die Suche nach Kriterien fällt auf eine Schätzung aus den Namen zurück und sagt das im Ergebnis.",
+        "autoRebuild": "Automatisch neu bauen",
+        "autoRebuildHint": "Verwirft den Index, sobald in einem Kompendium eine Kreatur angelegt, geändert oder gelöscht wird. Bei der nächsten Suche wird er neu gebaut.",
+        "settingsMissing": "Diese Einstellungen kommen mit den Kompendium-Werkzeugen."
+      },
+      "release": {
+        "title": "Kompendien freigeben",
+        "intro": "Lege fest, in welche Kompendien die KI schreiben darf. Lesen ist nie beschränkt. Die Rechtestufe für Kompendien gilt zusätzlich.",
+        "allowAll": "Alle nicht gesperrten Kompendien erlauben",
+        "allowAllHint": "Bleibt gesetzt, solange unten nichts angehakt ist. Eine Auswahl unten gilt immer vor diesem Häkchen.",
+        "world": "Welt",
+        "system": "Spielsystem: {title}",
+        "column": {
+          "release": "Freigeben",
+          "name": "Kompendium",
+          "type": "Art",
+          "entries": "Einträge",
+          "lock": "Sperre"
+        },
+        "locked": "gesperrt",
+        "open": "offen",
+        "releaseOne": "{name} freigeben",
+        "none": "Diese Welt hat keine Kompendien.",
+        "unmatched": "{count} Einträge der Liste passen zu keinem vorhandenen Kompendium, etwa aus einem abgeschalteten Modul. Sie bleiben auf der Liste: {entries}",
+        "serviceMissing": "Die Freigabeliste kommt mit den Kompendium-Werkzeugen.",
+        "notStored": "Die Freigabeliste wurde nicht wie gewählt gespeichert. Jetzt gespeichert: {entries}",
+        "nothing": "nichts",
+        "damaged": "Die gespeicherte Freigabeliste ließ sich nicht lesen: {problem}. Bis sie neu gespeichert ist, gilt kein Kompendium als freigegeben."
+      },
+      "mapGeneration": {
+        "title": "Kartengenerierung",
+        "intro": "Schlachtkarten entstehen mit ComfyUI auf dem PC des MCP-Servers. Hier prüfst, startest und stoppst du den Dienst und legst die Qualität fest.",
+        "serviceHeading": "Dienst",
+        "state": "Zustand",
+        "stateUnknown": "noch nicht geprüft",
+        "stateChecking": "wird geprüft",
+        "stateStarting": "startet. Der erste Start mit Modellen kann mehrere Minuten dauern.",
+        "stateStopping": "wird gestoppt",
+        "stateRunning": "läuft",
+        "stateStopped": "gestoppt",
+        "stateError": "Fehler",
+        "stateDisabled": "auf dem Server ausgeschaltet. Setze dort COMFYUI_ENABLED=true, um Karten zu erzeugen.",
+        "check": "Prüfen",
+        "start": "Starten",
+        "stop": "Stoppen",
+        "serviceMissing": "Der Kartendienst kommt mit dem Kartengenerator.",
+        "settingsHeading": "Einstellungen",
+        "autoStart": "Mit Foundry starten",
+        "autoStartHint": "Fordert den Start des Dienstes an, wenn eine Spielleitung die Welt lädt. Ab Werk aus, weil der Dienst viel Speicher braucht.",
+        "quality": "Qualität",
+        "qualityHint": "Mehr Rechenschritte ergeben eine feinere Karte und dauern länger.",
+        "low": "Niedrig (8 Schritte)",
+        "medium": "Mittel (20 Schritte)",
+        "high": "Hoch (35 Schritte)",
+        "settingsMissing": "Diese Einstellungen kommen mit dem Kartengenerator."
+      },
+      "notify": {
+        "indexBuilding": "Der Kreaturenindex fehlt und wird gebaut.",
+        "indexRebuilding": "Der Kreaturenindex wird neu gebaut.",
+        "indexRebuilt": "Kreaturenindex gebaut: {creatures} Kreaturen aus {packs} Kompendien.",
+        "indexRebuildFailed": "Der Kreaturenindex ließ sich nicht bauen: {reason}",
+        "indexSkipped": "Beim Bau des Index übersprungene Kreaturen: {count}.",
+        "indexNotStored": "Der Kreaturenindex wurde gebaut, aber nicht gespeichert: {reason}. Bei der nächsten Suche wird er neu gebaut.",
+        "indexSettingsSaved": "Einstellungen des Kreaturenindex gespeichert.",
+        "releaseSaved": "Freigabeliste gespeichert, Einträge: {count}.",
+        "releaseAllowAll": "Freigabeliste geleert: Die KI darf in jedes nicht gesperrte Kompendium schreiben.",
+        "releaseFailed": "Die Freigabeliste wurde nicht gespeichert: {reason}",
+        "comfyAlreadyRunning": "Der Kartendienst läuft bereits.",
+        "comfyStarting": "Der Kartendienst wird gestartet.",
+        "comfyStarted": "Der Kartendienst läuft.",
+        "comfyStartFailed": "Der Kartendienst ist nicht gestartet: {reason}",
+        "comfyStopped": "Kartendienst: {message}",
+        "comfyStopFailed": "Der Kartendienst ließ sich nicht stoppen: {reason}",
+        "backendMissing": "Der MCP-Server ist nicht verbunden, deshalb lässt sich der Kartendienst von hier nicht steuern.",
+        "mapgenSaved": "Einstellungen der Kartengenerierung gespeichert.",
+        "mapJobFailed": "Die Karte {name} ließ sich nicht erzeugen: {reason}",
+        "sceneCreated": "Szene {name} angelegt.",
+        "sceneSwitched": "Auf die Szene {name} gewechselt.",
+        "wallsCreated": "Wände angelegt: {count}.",
+        "noWalls": "Die Erkennung hat keine brauchbaren Wände gefunden.",
+        "gmOnlyProgress": "Nur eine Spielleitung kann den Kampagnenstand ändern.",
+        "progressSaveFailed": "Der Kampagnenstand wurde nicht gespeichert: {reason}",
+        "progressUpdateFailed": "Der Kampagnenstand wurde nicht aktualisiert: {reason}"
+      }
+    }
+  },
+  "MCP": {
+    "Willkommen": {
+      "Untertitel": "Deine Welt, erreichbar für einen KI-Assistenten",
+      "Einleitung": "Dieses Modul verbindet einen KI-Assistenten auf deinem PC, etwa Claude, über das Model Context Protocol mit dieser Welt. Der Assistent liest Journale, Szenen und Kompendien und schreibt darin, soweit du es erlaubst.",
+      "Punkt1": "Nur der Browser einer Spielleitung verbindet sich. Der Punkt über der Spielerliste zeigt, ob die Brücke steht.",
+      "Punkt2": "„Schreibvorgänge erlauben“ und die Rechtestufen in den Moduleinstellungen bestimmen, was der Assistent ändern darf. Löschen ist ab Werk aus.",
+      "Punkt3": "Kompendien freigeben und den Kreaturenindex findest du als eigene Fenster in den Moduleinstellungen.",
+      "Start": "Zum Start: den MCP-Server auf dem PC einrichten, diese Welt als Spielleitung öffnen und auf den grünen Punkt warten.",
+      "ForgeZeile": "Weitere Module und Web-Werkzeuge von Ninjo",
+      "Nie": "Nicht mehr anzeigen",
+      "Spaeter": "Später"
+    }
+  }
+}

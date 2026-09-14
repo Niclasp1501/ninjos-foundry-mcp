@@ -1,0 +1,38 @@
+{
+  "ninjos-foundry-mcp": {
+    "tokens-dice": {
+      "roll": {
+        "customLabel": "Custom roll",
+        "resultFlavorGm": "{label} (rolled by the Gamemaster)",
+        "card": {
+          "title": "Roll request: {label}",
+          "target": "Target: {player}",
+          "targetWithCharacter": "Target: {player} ({character})",
+          "targetGmOnly": "Target: {character}. No player owns this character, so a Gamemaster rolls.",
+          "context": "Context: {flavor}",
+          "public": "Public roll: everyone sees the result.",
+          "private": "Private roll: only {player} and the Gamemasters see the result.",
+          "privateGm": "Private roll: only the Gamemasters see the result.",
+          "button": "Roll: {label}",
+          "onlyTarget": "Only {player} or a Gamemaster can roll.",
+          "onlyGm": "Only a Gamemaster can roll.",
+          "rolling": "Rolling",
+          "waiting": "Rolled by {name}. A Gamemaster confirms the roll as soon as one is online.",
+          "completed": "Rolled by {name} on {time}.",
+          "result": "Result: {total}"
+        }
+      },
+      "notify": {
+        "notAllowed": "You may not make this roll.",
+        "rollFailed": "The roll could not be made: {reason}",
+        "alreadyRolled": "This request has already been rolled.",
+        "noGamemaster": "The roll is in the chat. The request is marked as done as soon as a Gamemaster is online.",
+        "completeFailed": "The roll request {label} could not be marked as done: {reason}",
+        "foreignRoll": "{name} rolled for the request {label} without being allowed to. The request stays open.",
+        "formulaMismatch": "{name} rolled {used} instead of {expected} for the request {label}. The request stays open.",
+        "visibilityMismatch": "The roll of {name} for the private request {label} was not whispered. The request stays open.",
+        "duplicateRoll": "{name} rolled again for the request {label}, which was already done. The first roll counts."
+      }
+    }
+  }
+}

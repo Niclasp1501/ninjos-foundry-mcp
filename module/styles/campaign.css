@@ -1,0 +1,69 @@
+/*
+ * Campaign dashboards and quest pages inside journal pages.
+ * Colours come from ninjo-marke.css, with fallbacks for a page shown without it.
+ */
+
+.ninjo-campaign-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+
+.ninjo-campaign-toggle {
+  display: inline-block;
+  min-height: var(--ninjo-tippziel, 2rem);
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--ninjo-rand, #b8a57a);
+  border-radius: 999px;
+  font-family: var(--ninjo-schrift, inherit);
+  line-height: 1.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ninjo-campaign-toggle:focus-visible {
+  outline: 2px solid var(--ninjo-akzent, #c9a227);
+  outline-offset: 2px;
+}
+
+.ninjo-campaign-toggle[data-campaign-status='not_started'] {
+  background: transparent;
+}
+
+.ninjo-campaign-toggle[data-campaign-status='in_progress'] {
+  background: #fff3cd;
+  border-color: #b8860b;
+}
+
+.ninjo-campaign-toggle[data-campaign-status='completed'] {
+  background: #d9f2df;
+  border-color: #2e7d32;
+}
+
+.ninjo-campaign-toggle[data-campaign-status='skipped'] {
+  background: #e8e8e8;
+  border-color: #777;
+  text-decoration: line-through;
+}
+
+.ninjo-campaign-lock,
+.ninjo-campaign-requires {
+  color: var(--ninjo-marke, #8b1e1e);
+}
+
+.ninjo-campaign-subpart {
+  margin-left: 1.5rem;
+}
+
+.ninjo-campaign-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.ninjo-campaign-readaloud {
+  padding: 0.5rem 1rem;
+  border-left: 4px solid var(--ninjo-akzent, #c9a227);
+  background: var(--ninjo-flaeche, rgba(0, 0, 0, 0.04));
+}

@@ -1,0 +1,9 @@
+{
+  "ninjos-foundry-mcp": {
+    "wfrp4e-cosmere-traveller": {
+      "notify": {
+        "blankItems": "{count} Gegenstände für {actor} standen in keinem Kompendium und wurden leer angelegt: {names}."
+      }
+    }
+  }
+}

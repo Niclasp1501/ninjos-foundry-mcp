@@ -1,0 +1,32 @@
+# Line endings: LF in the repository and in every checkout, on every platform.
+# Prettier writes LF (.prettierrc.json, "endOfLine": "lf"), so a checkout with CRLF
+# would show every file as changed after formatting. installer/build.mjs converts
+# LICENSE.txt, THIRD-PARTY-NOTICES.txt, setup.cmd and uninstall.cmd to CRLF when it
+# builds the Windows bundle, so the batch files do not need CRLF here.
+* text=auto eol=lf
+
+*.ts text eol=lf
+*.mts text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.py text eol=lf
+*.txt text eol=lf
+*.cmd text eol=lf
+*.command text eol=lf
+
+# Binary: never converted, never diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.zip binary

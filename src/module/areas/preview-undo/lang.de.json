@@ -1,0 +1,10 @@
+{
+  "ninjos-foundry-mcp": {
+    "settings": {
+      "confirmDestructiveTools": {
+        "name": "Rechte · Zerstörende Werkzeuge bestätigen",
+        "hint": "Ab Werk aus. Eingeschaltet führt die KI ein Werkzeug, das löscht oder überschreibt, erst beim zweiten Aufruf aus: Der erste zeigt eine Vorschau mit dem Ergebnis des Probelaufs und einer Bestätigung, die fünf Minuten und nur einmal gilt. So kann sie dich fragen, bevor sie etwas zerstört. Wirkt nur mit einem MCP-Server ab dieser Generation."
+      }
+    }
+  }
+}

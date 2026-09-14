@@ -1,0 +1,9 @@
+{
+  "ninjos-foundry-mcp": {
+    "scene-image": {
+      "notify": {
+        "captureFailed": "The canvas could not be captured for the scene image. The picture was composed from the background instead: {reason}"
+      }
+    }
+  }
+}

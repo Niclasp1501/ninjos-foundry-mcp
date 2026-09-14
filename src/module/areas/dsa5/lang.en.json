@@ -1,0 +1,9 @@
+{
+  "ninjos-foundry-mcp": {
+    "dsa5": {
+      "notify": {
+        "characterCreated": "DSA5 hero \"{name}\" created from the archetype \"{archetype}\"."
+      }
+    }
+  }
+}

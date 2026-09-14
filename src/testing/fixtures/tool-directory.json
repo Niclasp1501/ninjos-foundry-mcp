@@ -1,0 +1,2836 @@
+[
+  {
+    "name": "actor-refresh-from-source",
+    "description": "Refresh an actor's embedded items from the compendium they came from. Items on a sheet are frozen copies; if the source pack was later re-translated or its links fixed, the copies keep the old text. This re-pulls presentation fields (name / image / description with its @UUID links) from each item's stored source, leaving ALL mechanics untouched — levels, uses, prepared spells, quantity, equipped, attunement, advancement choices. No progress is lost. Items with no resolvable source (hand-made loot) are reported, never changed. ALWAYS run with dryRun first.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actorIdentifier": {
+          "type": "string",
+          "description": "Actor name or ID"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["name", "description", "img", "advancement"]
+          },
+          "description": "Which fields to refresh. Omit for name+description+img. 'advancement' is OPT-IN and never included by default: it re-syncs a class item's level progression (entry titles and configuration) from the source while preserving the player's picks (each entry's `value`)."
+        },
+        "namePacks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional fallback: compendium pack ids to resolve items by name when they carry no stored source. Priority order."
+        },
+        "preferPacks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Redirect: pack ids that WIN over an item's stored source when they contain the same document ID. Translation modules reuse the official document IDs, so this re-points items that were dragged from the system's own packs at a hand-translated pack — without matching on names. The item's recorded origin is updated too, so later refreshes keep using it."
+        },
+        "dryRun": {
+          "type": "boolean",
+          "description": "Only report what would change (default false). Use this first."
+        }
+      },
+      "required": ["actorIdentifier"]
+    }
+  },
+  {
+    "name": "actor-set-token",
+    "description": "Set an actor's token image (prototype token) — fills the token for actors that have none. Optionally also set the portrait and enable the dynamic token ring (dnd5e/Foundry v12+).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actorIdentifier": {
+          "type": "string",
+          "description": "Actor name or ID"
+        },
+        "tokenImg": {
+          "type": "string",
+          "description": "Token image path"
+        },
+        "portraitImg": {
+          "type": "string",
+          "description": "Optional portrait image path (actor.img)"
+        },
+        "tokenName": {
+          "type": "string",
+          "description": "Optional name for the prototype token. Without it, placed tokens keep the compendium name (e.g. 'Bandit') instead of the actor's name. Usually you want to pass the actor's own name here."
+        },
+        "ring": {
+          "type": "boolean",
+          "description": "Enable (true) or disable (false) the dynamic token ring. When true, tokenImg is also set as the ring subject texture — without that the ring would be drawn around an empty field. Omit to leave the current setting untouched."
+        },
+        "ringScale": {
+          "type": "number",
+          "description": "Scale of the artwork inside the ring. Omit it — the token art should carry its own transparent margin instead (see the image tool's --token-margin). Shrinking the subject here leaves the ring at full size and looks out of proportion."
+        },
+        "ringColor": {
+          "type": "string",
+          "description": "Optional ring colour as a hex string, e.g. \"#e72124\". Omit to colour automatically by disposition: hostile red, neutral blue, friendly green."
+        }
+      },
+      "required": ["actorIdentifier", "tokenImg"]
+    }
+  },
+  {
+    "name": "assign-actor-ownership",
+    "description": "Assign ownership permissions for actors to players. Supports individual assignments like \"Assign Aragorn to John as owner\" and bulk operations like \"Give party observer access to all friendly NPCs\".",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actorIdentifier": {
+          "type": "string",
+          "description": "Actor name, ID, or \"all friendly NPCs\" for bulk operations. Use \"party characters\" for all player-owned actors."
+        },
+        "playerIdentifier": {
+          "type": "string",
+          "description": "Player name, character name, or \"party\" for all connected players. Supports partial matching."
+        },
+        "permissionLevel": {
+          "type": "string",
+          "enum": ["NONE", "LIMITED", "OBSERVER", "OWNER"],
+          "description": "Permission level to assign: NONE (no access), LIMITED (basic view), OBSERVER (full view, no control), OWNER (full control)"
+        },
+        "confirmBulkOperation": {
+          "type": "boolean",
+          "description": "Required confirmation for bulk operations affecting multiple actors/players",
+          "default": false
+        }
+      },
+      "required": ["actorIdentifier", "playerIdentifier", "permissionLevel"]
+    }
+  },
+  {
+    "name": "cancel-map-job",
+    "description": "Cancel a running map generation job",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "Job ID to cancel"
+        }
+      },
+      "required": ["job_id"]
+    }
+  },
+  {
+    "name": "check-map-status",
+    "description": "Check status of map generation job. Progress updates appear automatically in Foundry VTT. DO NOT check frequently - this wastes tokens. Only check if user explicitly asks for status.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "Job ID to check status for"
+        }
+      },
+      "required": ["job_id"]
+    }
+  },
+  {
+    "name": "create-actor-from-compendium",
+    "description": "Create one or more actors from a specific compendium entry with custom names. Use search-compendium first to find the exact creature you want, then use this tool with the packId and itemId from the search results.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "packId": {
+          "type": "string",
+          "description": "ID of the compendium pack containing the creature (e.g., \"dnd5e.monsters\")"
+        },
+        "itemId": {
+          "type": "string",
+          "description": "ID of the specific creature entry within the pack (get this from search-compendium results)"
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Custom names for the created actors (e.g., [\"Flameheart\", \"Sneak\", \"Peek\"])",
+          "minItems": 1
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Number of actors to create (default: based on names array length)",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "addToScene": {
+          "type": "boolean",
+          "description": "Whether to add created actors to the current scene as tokens",
+          "default": false
+        },
+        "placement": {
+          "type": "object",
+          "description": "Token placement options (only used when addToScene is true)",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["random", "grid", "center", "coordinates"],
+              "description": "Placement strategy",
+              "default": "grid"
+            },
+            "coordinates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X coordinate in pixels"
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y coordinate in pixels"
+                  }
+                },
+                "required": ["x", "y"]
+              },
+              "description": "Specific coordinates for each token (required when type is \"coordinates\")"
+            }
+          },
+          "required": ["type"]
+        }
+      },
+      "required": ["packId", "itemId", "names"]
+    }
+  },
+  {
+    "name": "create-campaign-dashboard",
+    "description": "Create a comprehensive campaign dashboard journal with navigation, progress tracking, and part management",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "campaignTitle": {
+          "type": "string",
+          "description": "Title of the campaign (e.g., \"The Whisperstone Conspiracy\")"
+        },
+        "campaignDescription": {
+          "type": "string",
+          "description": "Brief description of the campaign theme and scope"
+        },
+        "template": {
+          "type": "string",
+          "enum": ["five-part-adventure", "dungeon-crawl", "investigation", "sandbox", "custom"],
+          "description": "Campaign structure template to use"
+        },
+        "customParts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["main_part", "sub_part", "chapter", "session", "optional"]
+              },
+              "levelStart": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 20
+              },
+              "levelEnd": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 20
+              },
+              "subParts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["title", "description"]
+                }
+              }
+            },
+            "required": ["title", "description", "type", "levelStart", "levelEnd"]
+          },
+          "description": "Custom campaign parts when template is \"custom\""
+        },
+        "defaultQuestGiver": {
+          "type": "string",
+          "description": "Default NPC name for quest giving (optional)"
+        },
+        "defaultLocation": {
+          "type": "string",
+          "description": "Default campaign location/setting (optional)"
+        }
+      },
+      "required": ["campaignTitle", "campaignDescription", "template"]
+    }
+  },
+  {
+    "name": "create-compendium",
+    "description": "Create a new world compendium, for example to archive a finished chapter of a campaign. Choose the document type it will hold.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Display name, e.g. \"Secrets of the Abyss, Act 0\""
+        },
+        "type": {
+          "type": "string",
+          "description": "What it holds: Actor, Item, Scene, JournalEntry, RollTable, Playlist, Macro, Cards or Adventure"
+        }
+      },
+      "required": ["label", "type"]
+    }
+  },
+  {
+    "name": "create-quest-journal",
+    "description": "Create a new quest journal entry with AI-generated content based on natural language description",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "questTitle": {
+          "type": "string",
+          "description": "The title of the quest"
+        },
+        "questDescription": {
+          "type": "string",
+          "description": "Detailed description of what the quest should accomplish"
+        },
+        "questType": {
+          "type": "string",
+          "enum": ["main", "side", "personal", "mystery", "fetch", "escort", "kill", "collection"],
+          "description": "Type of quest (optional)"
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["easy", "medium", "hard", "deadly"],
+          "description": "Quest difficulty level (optional)"
+        },
+        "location": {
+          "type": "string",
+          "description": "Where the quest takes place (optional)"
+        },
+        "questGiver": {
+          "type": "string",
+          "description": "Name of the NPC who gives this quest to the party (optional)"
+        },
+        "npcName": {
+          "type": "string",
+          "description": "Name of key NPC this quest involves - could be antagonist, ally, or target (optional)"
+        },
+        "rewards": {
+          "type": "string",
+          "description": "Quest rewards description (optional)"
+        },
+        "additionalPages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Page name (e.g. \"Player Handout\", \"GM Notes\")"
+              },
+              "content": {
+                "type": "string",
+                "description": "HTML content for this page"
+              }
+            },
+            "required": ["name", "content"]
+          },
+          "description": "Optional additional pages to create alongside the main quest page. Use for multi-page journals with separate sections like Player Handout, GM Notes, etc."
+        },
+        "folderName": {
+          "type": "string",
+          "description": "Optional folder name to organize the journal into. The folder is created automatically if it does not exist."
+        }
+      },
+      "required": ["questTitle", "questDescription"]
+    }
+  },
+  {
+    "name": "create-roll-table",
+    "description": "Create a roll table from a list of text results. Ranges are assigned consecutively when omitted (first entry 1, second 2, and so on) and the dice formula is derived from the highest range, so a six-entry table becomes 1d6 by itself.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Table name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description"
+        },
+        "formula": {
+          "type": "string",
+          "description": "Dice formula, e.g. \"1d6\". Derived from the ranges if omitted."
+        },
+        "folderPath": {
+          "type": "string",
+          "description": "Target folder, nested paths allowed"
+        },
+        "results": {
+          "type": "array",
+          "description": "The entries of the table, in order",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "Result text"
+              },
+              "range": {
+                "type": "array",
+                "description": "Optional [min, max] for this entry",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "weight": {
+                "type": "number",
+                "description": "Optional weight, default 1"
+              }
+            },
+            "required": ["text"]
+          }
+        }
+      },
+      "required": ["name", "results"]
+    }
+  },
+  {
+    "name": "create-scene",
+    "description": "Create a Foundry scene from an image or video that already exists in the Foundry data directory. Use this for background art, location scenes and battlemaps you generated or uploaded yourself. Dimensions are measured from the file automatically. Pass templateName to copy the settings of an existing scene (grid, lighting, module flags) without ever reusing its id, so nothing gets overwritten. folderPath accepts nested paths like \"Places/Harbor\"; missing folders are created. journalIdentifier links a journal entry to the scene, optionally opening one page of it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Scene name"
+        },
+        "background": {
+          "type": "string",
+          "description": "Path to the image or video inside the Foundry data directory, e.g. \"Maps/Harbor/Night.webp\""
+        },
+        "navName": {
+          "type": "string",
+          "description": "Label shown in the scene navigation bar. Derived from the name automatically if omitted: the SC_ or BM_ prefix is dropped and underscores become spaces."
+        },
+        "folderPath": {
+          "type": "string",
+          "description": "Target folder, nested paths allowed, e.g. \"Places/Harbor\""
+        },
+        "templateName": {
+          "type": "string",
+          "description": "Name or id of an existing scene whose settings should be copied"
+        },
+        "width": {
+          "type": "number",
+          "description": "Override width in pixels"
+        },
+        "height": {
+          "type": "number",
+          "description": "Override height in pixels"
+        },
+        "padding": {
+          "type": "number",
+          "description": "Scene padding, default 0 or template value"
+        },
+        "gridSize": {
+          "type": "number",
+          "description": "Grid size in pixels"
+        },
+        "navigation": {
+          "type": "boolean",
+          "description": "Show in the scene navigation bar (default false)"
+        },
+        "journalIdentifier": {
+          "type": "string",
+          "description": "Journal to link to the scene, by name or id. Foundry shows it as the scene journal, which is different from a note placed on the map. An empty string removes the link."
+        },
+        "journalPageName": {
+          "type": "string",
+          "description": "Open this page of the journal, by name or id"
+        },
+        "activate": {
+          "type": "boolean",
+          "description": "Activate the scene right away"
+        }
+      },
+      "required": ["name", "background"]
+    }
+  },
+  {
+    "name": "create-scene-note",
+    "description": "Pin a journal entry, optionally a specific page, onto a scene at the given pixel coordinates. Use this to make the locations on a town map clickable.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sceneIdentifier": {
+          "type": "string",
+          "description": "Scene name or id"
+        },
+        "journalName": {
+          "type": "string",
+          "description": "Journal name or id"
+        },
+        "pageName": {
+          "type": "string",
+          "description": "Optional page inside that journal"
+        },
+        "x": {
+          "type": "number",
+          "description": "X coordinate in scene pixels"
+        },
+        "y": {
+          "type": "number",
+          "description": "Y coordinate in scene pixels"
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional label shown next to the pin"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Optional icon path, default \"icons/svg/book.svg\""
+        },
+        "iconSize": {
+          "type": "number",
+          "description": "Icon size in pixels, default 40"
+        }
+      },
+      "required": ["sceneIdentifier", "journalName", "x", "y"]
+    }
+  },
+  {
+    "name": "delete-compendium",
+    "description": "Remove a world compendium and everything in it. This cannot be undone, so it is off by default: the module setting for compendiums has to stand on \"create, edit and delete\". The exact label must be passed as confirmLabel. Compendiums belonging to a module or to the game system cannot be removed this way.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "packId": {
+          "type": "string",
+          "description": "Compendium id, e.g. world.archive"
+        },
+        "confirmLabel": {
+          "type": "string",
+          "description": "The exact label of the compendium, guarding against a mistyped id"
+        }
+      },
+      "required": ["packId", "confirmLabel"]
+    }
+  },
+  {
+    "name": "delete-compendium-entries",
+    "description": "Remove named entries from a compendium — by id, or by exact name. Only what is explicitly named is removed; there is deliberately no \"empty this pack\". Always run with dryRun first: it reports exactly what would go, what was not found, and which names are ambiguous, without touching anything. Names are matched exactly, never as a substring, and an ambiguous name is reported rather than guessed. If the selection happens to cover every entry in the pack, confirmLabel is required as well. Needs the compendium permission on \"create, edit and delete\".",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "packId": {
+          "type": "string",
+          "description": "Compendium id"
+        },
+        "ids": {
+          "type": "array",
+          "description": "Ids of the entries to remove — get them from list-compendium-entries",
+          "items": {
+            "type": "string"
+          }
+        },
+        "names": {
+          "type": "array",
+          "description": "Exact names, as an alternative to ids. Ambiguous names are reported.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unlockIfNeeded": {
+          "type": "boolean",
+          "description": "Lift the lock for this operation only and restore it afterwards"
+        },
+        "dryRun": {
+          "type": "boolean",
+          "description": "Report what would happen and change nothing. Use this first."
+        },
+        "confirmLabel": {
+          "type": "string",
+          "description": "Only needed when the selection covers every entry in the pack — then it must be the exact label"
+        }
+      },
+      "required": ["packId"]
+    }
+  },
+  {
+    "name": "delete-playlist",
+    "description": "Delete a playlist by its id. Refuses while the playlist is still linked to a scene, and names those scenes. Requires the playlist permission to be set to full.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "playlistId": {
+          "type": "string",
+          "description": "Id of the playlist"
+        }
+      },
+      "required": ["playlistId"]
+    }
+  },
+  {
+    "name": "delete-roll-table",
+    "description": "Delete a roll table by its id. Requires the roll table permission to be set to full.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tableId": {
+          "type": "string",
+          "description": "Id of the roll table"
+        }
+      },
+      "required": ["tableId"]
+    }
+  },
+  {
+    "name": "delete-scene",
+    "description": "Permanently delete a scene by its id. The id is required on purpose so a scene with a similar name cannot be hit by accident. An active scene cannot be deleted; activate another one first.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sceneId": {
+          "type": "string",
+          "description": "Id of the scene to delete"
+        }
+      },
+      "required": ["sceneId"]
+    }
+  },
+  {
+    "name": "dnd5e-add-feature",
+    "description": "[D&D 5e only] Add a feature, attack, spellcasting setup, or spells to an existing actor. Set featureType to select the mode — each mode uses only its own parameters:\n\n• passive — descriptive trait, no roll (Multiattack, Magic Resistance, Spider Climb).\n  Required: actorIdentifier, featureName\n  Optional: description, sourceRules, sourceBook, sourcePage\n\n• save — feature that forces a saving throw (breath weapon, cone of cold, etc.).\n  Required: actorIdentifier, featureName, saveAbility, saveDC, damageParts\n  Optional: description, activationType, halfOnSave, areaType, areaSize (required if areaType set), areaUnits, affectsType\n\n• attack — weapon attack with to-hit roll (Claw, Bite, Scimitar, etc.).\n  Required: actorIdentifier, featureName, attackType, damageParts\n  Required when ranged: rangeFt\n  Optional: description, activationType, weaponClass, abilityModifier, attackBonus, proficient, equipped, reachFt, longRangeFt, properties, sourceRules, sourceBook, sourcePage\n\n• attack-with-save — attack roll on hit + forced save for bonus damage (e.g. Stinger: piercing hit + CON save or poison damage).\n  Required: actorIdentifier, featureName, attackType, damageParts, saveAbility, saveDC, saveDamageParts\n  Required when ranged: rangeFt\n  Optional: description, activationType, weaponClass, abilityModifier, attackBonus, proficient, equipped, reachFt, longRangeFt, properties, saveOnSave, sourceRules, sourceBook, sourcePage\n\n• aura — automatic-damage area, no to-hit, no save (all creatures in range take damage).\n  Required: actorIdentifier, featureName, damageParts, areaType, areaSize\n  Optional: description, activationType, areaUnits, affectsType, sourceRules, sourceBook, sourcePage\n\n• spellcasting — configure spell slots and casting ability. Run this BEFORE featureType \"spells\".\n  Required: actorIdentifier, spellcastingClass, spellcastingLevel\n  Optional: spellcastingAbility (default per class: wizard/artificer→INT, cleric/druid/ranger→WIS, sorcerer/warlock/bard/paladin→CHA), sourceRules\n\n• spells — import named spells from compendium. Names must be in English.\n  Required: actorIdentifier, spellNames (max 50)\n  Optional: compendiumPacks (default [\"dnd5e.spells\"])\n\nUse list-characters or get-character first to find the actorIdentifier.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "featureType": {
+          "type": "string",
+          "enum": [
+            "passive",
+            "save",
+            "attack",
+            "attack-with-save",
+            "aura",
+            "spellcasting",
+            "spells"
+          ],
+          "description": "Mode selector — determines which parameters are used and which Foundry handler is called."
+        },
+        "actorIdentifier": {
+          "type": "string",
+          "description": "Name or ID of the target actor (partial name match supported). Required for all featureTypes."
+        },
+        "featureName": {
+          "type": "string",
+          "description": "Name for the new feature/item — must be unique on the actor. Required for: passive, save, attack, attack-with-save, aura."
+        },
+        "description": {
+          "type": "string",
+          "description": "HTML description of the feature (optional). Used by: passive, save, attack, attack-with-save, aura.",
+          "default": ""
+        },
+        "activationType": {
+          "type": "string",
+          "enum": ["action", "bonus", "reaction", "legendary", "lair", "special"],
+          "description": "Action economy type. Used by: save, attack, attack-with-save, aura. Default: \"action\".",
+          "default": "action"
+        },
+        "damageParts": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Damage components. For attack: first entry is base weapon die, extra entries stack on top. For save and aura: all damage dealt on trigger. For attack-with-save: the attack roll damage (on hit). Required for: save, attack, attack-with-save, aura.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "number": {
+                "type": "number",
+                "description": "Number of dice (e.g. 4)",
+                "minimum": 1
+              },
+              "denomination": {
+                "type": "number",
+                "description": "Die size",
+                "enum": [4, 6, 8, 10, 12, 20, 100]
+              },
+              "type": {
+                "type": "string",
+                "description": "Damage type (e.g. \"fire\", \"slashing\", \"cold\")"
+              }
+            },
+            "required": ["number", "denomination", "type"]
+          }
+        },
+        "saveAbility": {
+          "type": "string",
+          "enum": ["str", "dex", "con", "int", "wis", "cha"],
+          "description": "Ability used for the saving throw. Required for: save, attack-with-save."
+        },
+        "saveDC": {
+          "type": "number",
+          "description": "Saving throw DC (1–30). Required for: save, attack-with-save.",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "halfOnSave": {
+          "type": "boolean",
+          "description": "Whether the target takes half damage on a successful save. Used by: save. Default: true.",
+          "default": true
+        },
+        "saveDamageParts": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Damage dealt by the save effect on a failed save (independent of attack damage). Required for: attack-with-save.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "number": {
+                "type": "number",
+                "description": "Number of dice (e.g. 4)",
+                "minimum": 1
+              },
+              "denomination": {
+                "type": "number",
+                "description": "Die size",
+                "enum": [4, 6, 8, 10, 12, 20, 100]
+              },
+              "type": {
+                "type": "string",
+                "description": "Damage type (e.g. \"fire\", \"slashing\", \"cold\")"
+              }
+            },
+            "required": ["number", "denomination", "type"]
+          }
+        },
+        "saveOnSave": {
+          "type": "string",
+          "enum": ["half", "none"],
+          "description": "\"none\" — no damage on a successful save (default). \"half\" — half save damage on a successful save. Used by: attack-with-save.",
+          "default": "none"
+        },
+        "areaType": {
+          "type": "string",
+          "enum": ["cone", "cube", "cylinder", "emanation", "line", "radius", "sphere", ""],
+          "description": "Area-of-effect template shape. For save: optional (omit or use \"\" for no template); if set, areaSize is required. For aura: required — use \"emanation\" or \"sphere\" for radial auras.",
+          "default": ""
+        },
+        "areaSize": {
+          "type": "number",
+          "description": "Template size in areaUnits (e.g. 30 for a 30 ft cone). Must be > 0. Required for: aura. Required for save when areaType is set.",
+          "exclusiveMinimum": 0
+        },
+        "areaUnits": {
+          "type": "string",
+          "enum": ["ft", "m"],
+          "description": "Units for areaSize. Used by: save, aura. Default: \"ft\".",
+          "default": "ft"
+        },
+        "affectsType": {
+          "type": "string",
+          "enum": ["creature", "object", "space", ""],
+          "description": "What the area targets. Used by: save, aura. Default: \"creature\".",
+          "default": "creature"
+        },
+        "attackType": {
+          "type": "string",
+          "enum": ["melee", "ranged"],
+          "description": "\"melee\" for reach-based attacks; \"ranged\" for bow/thrown attacks. Required for: attack, attack-with-save."
+        },
+        "weaponClass": {
+          "type": "string",
+          "enum": ["natural", "simpleM", "martialM", "simpleR", "martialR"],
+          "description": "Weapon category. Use \"natural\" for monster attacks (claws, bite, touch). Used by: attack, attack-with-save. Default: \"natural\".",
+          "default": "natural"
+        },
+        "abilityModifier": {
+          "type": "string",
+          "enum": ["str", "dex", "con", "int", "wis", "cha"],
+          "description": "Ability used for to-hit and damage rolls. Omit to use default: STR for melee, DEX for ranged. Used by: attack, attack-with-save."
+        },
+        "attackBonus": {
+          "type": "number",
+          "description": "Flat bonus to the attack roll only, not damage (e.g. 1 for +1 to hit). Used by: attack, attack-with-save. Default: 0.",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 0
+        },
+        "proficient": {
+          "type": "boolean",
+          "description": "Whether the actor is proficient with this weapon (adds proficiency bonus to to-hit). Used by: attack, attack-with-save. Default: true.",
+          "default": true
+        },
+        "equipped": {
+          "type": "boolean",
+          "description": "Whether the weapon is equipped and available for attack rolls. Used by: attack, attack-with-save. Default: true.",
+          "default": true
+        },
+        "reachFt": {
+          "type": "number",
+          "description": "Melee reach in feet. Used by: attack, attack-with-save (melee only). Default: 5.",
+          "minimum": 5,
+          "default": 5
+        },
+        "rangeFt": {
+          "type": "number",
+          "description": "Normal range in feet. Used by: attack, attack-with-save. Required when attackType is \"ranged\".",
+          "minimum": 1
+        },
+        "longRangeFt": {
+          "type": "number",
+          "description": "Long range in feet — attacks beyond rangeFt up to this distance are at disadvantage. Must be greater than rangeFt. Used by: attack, attack-with-save (ranged only).",
+          "minimum": 1
+        },
+        "properties": {
+          "type": "array",
+          "description": "Weapon property codes (e.g. [\"fin\", \"lgt\"]). Canonical 2014 codes: ada, amm, fin, fir, foc, hvy, lgt, lod, mgc, rch, ret, spc, thr, two, ver. Used by: attack, attack-with-save. Default: [].",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "spellcastingClass": {
+          "type": "string",
+          "enum": [
+            "artificer",
+            "bard",
+            "cleric",
+            "druid",
+            "paladin",
+            "ranger",
+            "sorcerer",
+            "warlock",
+            "wizard"
+          ],
+          "description": "The spellcasting class — determines slot table and default casting ability. Warlock uses Pact Magic. Required for: spellcasting."
+        },
+        "spellcastingLevel": {
+          "type": "number",
+          "description": "Class level (1–20). Determines how many slots the actor receives. Required for: spellcasting.",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "spellcastingAbility": {
+          "type": "string",
+          "enum": ["str", "dex", "con", "int", "wis", "cha"],
+          "description": "Override the casting ability. Omit to use the class default. Used by: spellcasting."
+        },
+        "spellNames": {
+          "type": "array",
+          "description": "English spell names to import (exact match, case-insensitive). Max 50 per call. Required for: spells.",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "compendiumPacks": {
+          "type": "array",
+          "description": "Compendium pack IDs to search, in priority order (first match wins). Default: [\"dnd5e.spells\"] (SRD 2014). Use \"dnd5e.spells24\" for 2024 rules. Used by: spells.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": ["dnd5e.spells"]
+        },
+        "sourceRules": {
+          "type": "string",
+          "enum": ["2014", "2024"],
+          "description": "Rules edition. Used by: passive, attack, attack-with-save, aura, spellcasting. Default: \"2014\".",
+          "default": "2014"
+        },
+        "sourceBook": {
+          "type": "string",
+          "description": "Source book abbreviation (e.g. \"MM'14\"). Used by: passive, attack, attack-with-save, aura.",
+          "default": ""
+        },
+        "sourcePage": {
+          "type": "string",
+          "description": "Page number in the source book. Used by: passive, attack, attack-with-save, aura.",
+          "default": ""
+        }
+      },
+      "required": ["featureType", "actorIdentifier"]
+    }
+  },
+  {
+    "name": "dnd5e-add-features-from-compendium",
+    "description": "[D&D 5e only] Import class features and monster features from an official compendium pack onto an actor (NPC or PC). Each feature is looked up by EXACT name (case-insensitive) and embedded onto the actor as-is from the compendium data.\n\nUSE THIS TOOL when you need to:\n  - Add monster features by name (e.g. \"Pack Tactics\", \"Nimble Escape\", \"Multiattack\")\n  - Add class features to an NPC caster (e.g. \"Spellcasting\", \"Action Surge\", \"Font of Magic\")\n  - Mix features from monster and class compendiums on a custom NPC\n  - Example: \"add Spellcasting, Font of Magic and Metamagic to this sorcerer NPC\"\n\n⚠️ IMPORTANT — feature names must be in English: the compendium uses English names. Translate BEFORE calling if the user provided names in another language.\n\ncompendiumPacks controls which pack(s) to search (priority order, first match wins):\n  - Default [\"dnd5e.monsterfeatures\", \"dnd5e.classfeatures\"] → 2014 SRD\n  - [\"dnd5e.monsterfeatures24\"]                              → 2024 monster features only\n  - [\"dnd5e.monsterfeatures24\", \"dnd5e.classfeatures\"]       → 2024 monsters + 2014 class\n\nDO NOT USE THIS TOOL for:\n  - Importing spell items → use dnd5e-add-spells-to-actor instead\n  - Setting up spellcasting class or spell slots → use dnd5e-set-actor-spellcasting\n  - Importing 2024 class features — they are embedded inside class items in the 2024 edition, not available in a separate compendium pack; this tool cannot import them\n  - Creating custom/homebrew features from scratch → compendium-only, no homebrew\n  - Non-dnd5e systems → this tool is dnd5e-exclusive\n\nReturns a detailed report: features added ✅, skipped (already on actor) ⏭️, not found in compendium ❌, and failed during import ⚠️.\nUse list-characters or get-character first to find the actorIdentifier.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actorIdentifier": {
+          "type": "string",
+          "description": "Name or ID of the target actor (partial name match supported)"
+        },
+        "featureNames": {
+          "type": "array",
+          "description": "English feature names to import (exact match, case-insensitive). Maximum 50 per call.",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "compendiumPacks": {
+          "type": "array",
+          "description": "Compendium pack IDs to search, in priority order (first match wins). Defaults to [\"dnd5e.monsterfeatures\", \"dnd5e.classfeatures\"] (SRD 2014). Use \"dnd5e.monsterfeatures24\" for 2024 monster features. Note: 2024 class features are not available in a separate pack.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": ["dnd5e.monsterfeatures", "dnd5e.classfeatures"]
+        }
+      },
+      "required": ["actorIdentifier", "featureNames"]
+    }
+  },
+  {
+    "name": "dnd5e-create-npc",
+    "description": "[D&D 5e only] Create a new NPC actor from scratch with a full Level-2 stat block: identity (name, type, size, alignment, CR), ability scores, saving throw proficiencies, HP (average + formula), AC (default or flat), movement speeds, senses, skill proficiencies, damage immunities/resistances/vulnerabilities, condition immunities, languages, and biography. Items, actions, features, and spells are NOT added by this tool — use dnd5e-add-feature (featureType: \"passive\", \"save\", \"attack\", \"attack-with-save\", \"aura\", \"spellcasting\", or \"spells\") to add them after creation. The actor is placed in the \"Foundry MCP Creatures\" folder.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the NPC"
+        },
+        "creatureType": {
+          "type": "string",
+          "enum": [
+            "humanoid",
+            "undead",
+            "beast",
+            "dragon",
+            "aberration",
+            "construct",
+            "elemental",
+            "fey",
+            "fiend",
+            "giant",
+            "monstrosity",
+            "ooze",
+            "plant",
+            "celestial",
+            "swarm"
+          ],
+          "description": "Creature type"
+        },
+        "creatureSubtype": {
+          "type": "string",
+          "description": "Optional subtype (e.g. \"Goblinoid\", \"Shapechanger\")",
+          "default": ""
+        },
+        "size": {
+          "type": "string",
+          "enum": ["tiny", "small", "medium", "large", "huge", "gargantuan"],
+          "description": "Creature size"
+        },
+        "alignment": {
+          "type": "string",
+          "description": "Alignment string (e.g. \"Neutral Evil\", \"Chaotic Good\")",
+          "default": ""
+        },
+        "cr": {
+          "description": "Challenge Rating — whole number (0, 1, 5), fraction string (\"1/8\", \"1/4\", \"1/2\"), or decimal number (0.25, 0.5)",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d+(\\/[248])?$"
+            },
+            {
+              "type": "number",
+              "minimum": 0
+            }
+          ]
+        },
+        "hpAverage": {
+          "type": "number",
+          "description": "Average (fixed) hit points",
+          "minimum": 1
+        },
+        "hpFormula": {
+          "type": "string",
+          "description": "Hit dice formula used for re-rolls (e.g. \"2d6\", \"3d8+9\")"
+        },
+        "acMode": {
+          "type": "string",
+          "enum": ["default", "flat"],
+          "description": "\"default\" — Foundry calculates AC from equipped items and abilities; \"flat\" — set a fixed AC value via acValue"
+        },
+        "acValue": {
+          "type": "number",
+          "description": "Fixed AC value (0–30). Required when acMode is \"flat\".",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "abilities": {
+          "type": "object",
+          "description": "The six ability scores (1–30 each)",
+          "properties": {
+            "str": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30
+            },
+            "dex": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30
+            },
+            "con": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30
+            },
+            "int": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30
+            },
+            "wis": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30
+            },
+            "cha": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30
+            }
+          },
+          "required": ["str", "dex", "con", "int", "wis", "cha"]
+        },
+        "savingThrows": {
+          "type": "array",
+          "description": "Abilities with saving throw proficiency",
+          "items": {
+            "type": "string",
+            "enum": ["str", "dex", "con", "int", "wis", "cha"]
+          },
+          "default": []
+        },
+        "walkSpeed": {
+          "type": "number",
+          "description": "Walk speed in feet",
+          "minimum": 0,
+          "default": 30
+        },
+        "flySpeed": {
+          "type": "number",
+          "description": "Fly speed in feet",
+          "minimum": 0,
+          "default": 0
+        },
+        "swimSpeed": {
+          "type": "number",
+          "description": "Swim speed in feet",
+          "minimum": 0,
+          "default": 0
+        },
+        "climbSpeed": {
+          "type": "number",
+          "description": "Climb speed in feet",
+          "minimum": 0,
+          "default": 0
+        },
+        "burrowSpeed": {
+          "type": "number",
+          "description": "Burrow speed in feet",
+          "minimum": 0,
+          "default": 0
+        },
+        "hover": {
+          "type": "boolean",
+          "description": "Whether the creature hovers (cannot fall)",
+          "default": false
+        },
+        "darkvision": {
+          "type": "number",
+          "description": "Darkvision range in feet",
+          "minimum": 0,
+          "default": 0
+        },
+        "blindsight": {
+          "type": "number",
+          "description": "Blindsight range in feet",
+          "minimum": 0,
+          "default": 0
+        },
+        "tremorsense": {
+          "type": "number",
+          "description": "Tremorsense range in feet",
+          "minimum": 0,
+          "default": 0
+        },
+        "truesight": {
+          "type": "number",
+          "description": "Truesight range in feet",
+          "minimum": 0,
+          "default": 0
+        },
+        "specialSenses": {
+          "type": "string",
+          "description": "Any additional senses not covered by the standard fields",
+          "default": ""
+        },
+        "skills": {
+          "type": "array",
+          "description": "Skills with proficiency or expertise",
+          "items": {
+            "type": "object",
+            "properties": {
+              "skill": {
+                "type": "string",
+                "enum": [
+                  "Acrobatics",
+                  "Animal Handling",
+                  "Arcana",
+                  "Athletics",
+                  "Deception",
+                  "History",
+                  "Insight",
+                  "Intimidation",
+                  "Investigation",
+                  "Medicine",
+                  "Nature",
+                  "Perception",
+                  "Performance",
+                  "Persuasion",
+                  "Religion",
+                  "Sleight of Hand",
+                  "Stealth",
+                  "Survival"
+                ]
+              },
+              "proficiency": {
+                "type": "string",
+                "enum": ["proficient", "expert"],
+                "description": "\"proficient\" = proficiency bonus once; \"expert\" = double proficiency"
+              }
+            },
+            "required": ["skill", "proficiency"]
+          },
+          "default": []
+        },
+        "damageImmunities": {
+          "type": "array",
+          "description": "Damage types the creature is immune to (e.g. [\"necrotic\", \"poison\"]). Canonical values: acid, bludgeoning, cold, fire, force, lightning, necrotic, piercing, poison, psychic, radiant, slashing, thunder. Non-canonical values are accepted with a warning.",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "damageResistances": {
+          "type": "array",
+          "description": "Damage types the creature is resistant to. Same canonical set as damageImmunities.",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "damageVulnerabilities": {
+          "type": "array",
+          "description": "Damage types the creature is vulnerable to. Same canonical set as damageImmunities.",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "conditionImmunities": {
+          "type": "array",
+          "description": "Conditions the creature is immune to (e.g. [\"charmed\", \"frightened\"]). Canonical values: blinded, charmed, deafened, exhaustion, frightened, grappled, incapacitated, invisible, paralyzed, petrified, poisoned, prone, restrained, stunned, unconscious. Non-canonical values are accepted with a warning.",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "languages": {
+          "type": "array",
+          "description": "Languages the creature speaks (e.g. [\"Common\", \"Goblin\"])",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "languagesCustom": {
+          "type": "string",
+          "description": "Free-text language note (e.g. \"telepathy 60 ft.\")",
+          "default": ""
+        },
+        "biography": {
+          "type": "string",
+          "description": "HTML biography text shown in the character sheet",
+          "default": ""
+        },
+        "sourceBook": {
+          "type": "string",
+          "description": "Source book abbreviation (e.g. \"MM'14\", \"VGM\")",
+          "default": ""
+        },
+        "sourcePage": {
+          "type": "string",
+          "description": "Page number in the source book",
+          "default": ""
+        },
+        "sourceRules": {
+          "type": "string",
+          "enum": ["2014", "2024"],
+          "description": "Rules edition",
+          "default": "2014"
+        }
+      },
+      "required": [
+        "name",
+        "creatureType",
+        "size",
+        "cr",
+        "abilities",
+        "hpAverage",
+        "hpFormula",
+        "acMode"
+      ]
+    }
+  },
+  {
+    "name": "export-to-compendium",
+    "description": "Copy documents from the world into a compendium, to archive finished material. Select what to copy by name or by the folder they sit in; without either, everything of that type is copied. A locked compendium is refused unless unlockIfNeeded is set, in which case the lock is lifted for this operation only and restored afterwards.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "packId": {
+          "type": "string",
+          "description": "Target compendium id"
+        },
+        "documentType": {
+          "type": "string",
+          "description": "JournalEntry, Scene, Actor, RollTable, Playlist, Item or Macro"
+        },
+        "names": {
+          "type": "array",
+          "description": "Names or ids to copy. Omit to take everything of that type.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "folderName": {
+          "type": "string",
+          "description": "Only documents sitting in this folder"
+        },
+        "unlockIfNeeded": {
+          "type": "boolean",
+          "description": "Lift the lock for this operation and restore it afterwards"
+        }
+      },
+      "required": ["packId", "documentType"]
+    }
+  },
+  {
+    "name": "folder-delete",
+    "description": "Delete a sidebar Folder by name. By default keeps its contents (moves them up a level). Set deleteContents:true to delete contents too.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "folderName": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "Optional document type to disambiguate"
+        },
+        "deleteContents": {
+          "type": "boolean",
+          "description": "If true, also delete the folder contents (default false)"
+        }
+      },
+      "required": ["folderName"]
+    }
+  },
+  {
+    "name": "folder-rename",
+    "description": "Rename a sidebar Folder (identified by its current name, optionally by document type). Contents are kept.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "folderName": {
+          "type": "string",
+          "description": "Current folder name"
+        },
+        "newName": {
+          "type": "string",
+          "description": "New folder name"
+        },
+        "type": {
+          "type": "string",
+          "description": "Optional document type to disambiguate (e.g. \"JournalEntry\", \"Actor\")"
+        }
+      },
+      "required": ["folderName", "newName"]
+    }
+  },
+  {
+    "name": "generate-map",
+    "description": "Start AI map generation using D&D Battlemaps SDXL (async)",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "description": "Map description (will be enhanced with \"2d DnD battlemap\" trigger and perspective)"
+        },
+        "scene_name": {
+          "type": "string",
+          "description": "Short, creative name for the Foundry scene (e.g., \"Harbor District\", \"Moonlit Tavern\", \"Crystal Caverns\"). Be creative and evocative!"
+        },
+        "size": {
+          "type": "string",
+          "enum": ["small", "medium", "large"],
+          "default": "medium",
+          "description": "Map size (small=1024px, medium=1536px, large=2048px)"
+        },
+        "grid_size": {
+          "type": "number",
+          "default": 70,
+          "description": "Pixels per 5ft square for Foundry scene setup"
+        }
+      },
+      "required": ["prompt", "scene_name"]
+    }
+  },
+  {
+    "name": "get-character",
+    "description": "Retrieve character information optimized for minimal token usage. Returns: full stats (abilities, skills, saves, AC, HP), action names, active effects/conditions (name only), and ALL items with minimal metadata (name, type, equipped status) without descriptions. PF2e-specific: includes traits arrays for items/actions, action costs, rarity, and level. D&D 5e-specific: includes attunement status. Perfect for filtering (e.g., \"deviant\" trait feats, \"fire\" trait spells in PF2e), checking equipment, or identifying what to investigate further. Use get-character-entity to fetch full details for specific items, actions, spells, or effects.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "description": "Character name or ID to look up"
+        }
+      },
+      "required": ["identifier"]
+    }
+  },
+  {
+    "name": "get-character-entity",
+    "description": "Retrieve full details for a specific entity from a character. Works for items (feats, equipment, spells), actions (strikes, special abilities), or effects/conditions. Returns complete description and all system data. Use this after get-character when you need detailed information about a specific entity.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "characterIdentifier": {
+          "type": "string",
+          "description": "Character name or ID"
+        },
+        "entityIdentifier": {
+          "type": "string",
+          "description": "Entity name or ID (can be item ID, action name, spell name, or effect name)"
+        }
+      },
+      "required": ["characterIdentifier", "entityIdentifier"]
+    }
+  },
+  {
+    "name": "get-compendium-entry-full",
+    "description": "Retrieve complete stat block data including items, spells, and abilities for actor creation",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "packId": {
+          "type": "string",
+          "description": "Compendium pack identifier"
+        },
+        "entryId": {
+          "type": "string",
+          "description": "Entry identifier within the pack"
+        }
+      },
+      "required": ["packId", "entryId"]
+    }
+  },
+  {
+    "name": "get-compendium-item",
+    "description": "Retrieve detailed information about a specific compendium item. Use compact mode for UI performance when full details are not needed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "packId": {
+          "type": "string",
+          "description": "ID of the compendium pack containing the item"
+        },
+        "itemId": {
+          "type": "string",
+          "description": "ID of the specific item to retrieve"
+        },
+        "compact": {
+          "type": "boolean",
+          "description": "Return condensed stat block (recommended for UI performance). Includes key stats, abilities, and actions but omits lengthy descriptions and technical data.",
+          "default": false
+        }
+      },
+      "required": ["packId", "itemId"]
+    }
+  },
+  {
+    "name": "get-current-scene",
+    "description": "Get information about the currently active scene, including tokens and layout",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "includeTokens": {
+          "type": "boolean",
+          "description": "Whether to include detailed token information (default: true)",
+          "default": true
+        },
+        "includeHidden": {
+          "type": "boolean",
+          "description": "Whether to include hidden tokens and elements (default: false)",
+          "default": false
+        }
+      }
+    }
+  },
+  {
+    "name": "get-permissions",
+    "description": "Show what the AI is currently allowed to do per document kind: scenes, playlists, journals, roll tables, actors, folders. Each kind has three levels — read only, create and update, or additionally delete. Deleting is off by default everywhere. Call this when an action was refused, to see which switch has to be flipped in the module settings.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "get-world-info",
+    "description": "Get basic information about the Foundry world and system",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "import-from-compendium",
+    "description": "Copy a document out of a compendium into the world — playlists, scenes, journals, actors, roll tables, anything. Always assigns a FRESH id, so it can never overwrite an existing world document. That is the difference to dragging an entry out of a compendium by hand, which keeps the id and silently replaces whatever carries the same one.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "packId": {
+          "type": "string",
+          "description": "Compendium id, e.g. \"my-module.music\""
+        },
+        "entryName": {
+          "type": "string",
+          "description": "Name of the entry (exact match preferred, falls back to substring)"
+        },
+        "entryId": {
+          "type": "string",
+          "description": "Id of the entry, alternative to entryName"
+        },
+        "newName": {
+          "type": "string",
+          "description": "Rename on import"
+        },
+        "folderPath": {
+          "type": "string",
+          "description": "Target folder, nested paths allowed"
+        }
+      },
+      "required": ["packId"]
+    }
+  },
+  {
+    "name": "journal-add-page",
+    "description": "Add a new page to an existing journal with verbatim HTML content (clean, no quest wrapper).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "New page title"
+        },
+        "html": {
+          "type": "string",
+          "description": "Full HTML content, stored verbatim"
+        }
+      },
+      "required": ["journalId", "name", "html"]
+    }
+  },
+  {
+    "name": "journal-append-page",
+    "description": "Append an HTML chunk to an existing text page. Use for content too large for one call: create the page with the first chunk (journal-create or journal-add-page), then append the rest in ~40k-character chunks — a single oversized message would drop the Foundry socket. Chunks are joined verbatim, so split only at tag boundaries.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string"
+        },
+        "pageId": {
+          "type": "string",
+          "description": "Text page to append to"
+        },
+        "html": {
+          "type": "string",
+          "description": "HTML chunk to append verbatim"
+        }
+      },
+      "required": ["journalId", "pageId", "html"]
+    }
+  },
+  {
+    "name": "journal-create",
+    "description": "Create a CLEAN multi-page JournalEntry with NO quest template / no junk page. Provide pages as an array of {name, html}; each page content is stored verbatim (full HTML incl. <h2>, <img>, @UUID[...] links). Returns the new journalId.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Journal entry (document) name"
+        },
+        "folderName": {
+          "type": "string",
+          "description": "Sidebar folder name (created if missing)"
+        },
+        "pages": {
+          "type": "array",
+          "description": "Ordered list of pages to create",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Page title"
+              },
+              "html": {
+                "type": "string",
+                "description": "Full HTML content, stored verbatim"
+              }
+            },
+            "required": ["name", "html"]
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["name", "pages"]
+    }
+  },
+  {
+    "name": "journal-delete",
+    "description": "Permanently delete an entire JournalEntry and all its pages. Cannot be undone.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string"
+        }
+      },
+      "required": ["journalId"]
+    }
+  },
+  {
+    "name": "journal-delete-page",
+    "description": "Permanently delete a single page from a journal. Get the pageId from list-journals. Cannot be undone.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string"
+        },
+        "pageId": {
+          "type": "string"
+        }
+      },
+      "required": ["journalId", "pageId"]
+    }
+  },
+  {
+    "name": "journal-link-tags",
+    "description": "Convert raw 5etools tags (@creature[Name|Src], @item[Name|Src]) left over from an import into real Foundry @UUID links, resolved against the given compendium packs — e.g. a German monster manual. Unresolved names are reported, never silently skipped. Runs inside Foundry. Use dryRun first.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string"
+        },
+        "pageId": {
+          "type": "string",
+          "description": "Optional — restrict to one page. Omit to process every text page."
+        },
+        "actorPacks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Actor compendium pack ids searched for @creature tags, in priority order (e.g. [\"dnd-monster-manual-deutsch.actors\",\"dnd5e.monsters\"])."
+        },
+        "itemPacks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Item compendium pack ids searched for @item tags, in priority order."
+        },
+        "dryRun": {
+          "type": "boolean",
+          "description": "Only report what would change (default false)."
+        }
+      },
+      "required": ["journalId"]
+    }
+  },
+  {
+    "name": "journal-page-from-file",
+    "description": "Fill a journal page from an HTML file that already sits in Foundry's Data directory (upload it there first). The browser fetches the file straight from the Foundry server, so content of ANY size can be written — nothing crosses the MCP socket. Use this instead of journal-set-page for large imported chapters. Creates the page if pageId is omitted.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string",
+          "description": "Path relative to the Foundry Data directory, e.g. \"Bilder/Kampagnen/PotA/kap2-de.html\"."
+        },
+        "pageId": {
+          "type": "string",
+          "description": "Existing page to overwrite. Omit to create a new page."
+        },
+        "pageName": {
+          "type": "string",
+          "description": "Name for the new page (only used when pageId is omitted)."
+        }
+      },
+      "required": ["journalId", "path"]
+    }
+  },
+  {
+    "name": "journal-rename",
+    "description": "Rename a JournalEntry (change its display title).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string"
+        },
+        "newName": {
+          "type": "string",
+          "description": "New journal title"
+        }
+      },
+      "required": ["journalId", "newName"]
+    }
+  },
+  {
+    "name": "journal-rewrite-images",
+    "description": "Rewrite external image URLs in journal pages to local Foundry paths (keeps only the file name and puts it under localPrefix). Fixes imported adventures that point at a CDN. Runs inside Foundry. Use dryRun first.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string"
+        },
+        "pageId": {
+          "type": "string",
+          "description": "Optional — restrict to one page. Omit to process every text page."
+        },
+        "urlPattern": {
+          "type": "string",
+          "description": "Literal URL prefix to match, e.g. \"https://cdn.5e.tools/\". Matched against the img src."
+        },
+        "localPrefix": {
+          "type": "string",
+          "description": "Local folder the file name is placed under, e.g. \"Bilder/Kampagnen/PotA\"."
+        },
+        "dryRun": {
+          "type": "boolean",
+          "description": "Only report what would change (default false)."
+        }
+      },
+      "required": ["journalId", "urlPattern", "localPrefix"]
+    }
+  },
+  {
+    "name": "journal-set-page",
+    "description": "Replace a journal page's content verbatim (clean overwrite — no appending, no wrapper). Use the page id from list-journals.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string"
+        },
+        "pageId": {
+          "type": "string"
+        },
+        "html": {
+          "type": "string",
+          "description": "New full HTML content (replaces existing)"
+        }
+      },
+      "required": ["journalId", "pageId", "html"]
+    }
+  },
+  {
+    "name": "journal-split-page",
+    "description": "Split one oversized journal page into one page per section, detected by heading level. Runs INSIDE Foundry, so the content never travels over the bridge — works on pages of any size. Original markup (images, insets, links, dice formulas) is carried over untouched.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string"
+        },
+        "pageId": {
+          "type": "string",
+          "description": "Page to split"
+        },
+        "level": {
+          "type": "number",
+          "description": "Split at headings up to this level (1 = only h1, 2 = h1+h2). Default 1. Use 2 for chapters whose sections are h2."
+        },
+        "deleteOriginal": {
+          "type": "boolean",
+          "description": "Delete the oversized source page afterwards (default false — keep it until you verified the split)."
+        },
+        "namePrefix": {
+          "type": "string",
+          "description": "Optional prefix for every created page name, e.g. \"Kap. 2 —\"."
+        }
+      },
+      "required": ["journalId", "pageId"]
+    }
+  },
+  {
+    "name": "link-quest-to-npc",
+    "description": "Link an existing quest journal to an NPC in the world",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string",
+          "description": "ID of the quest journal entry"
+        },
+        "npcName": {
+          "type": "string",
+          "description": "Name of the NPC to link to the quest"
+        },
+        "relationship": {
+          "type": "string",
+          "enum": ["quest_giver", "target", "ally", "enemy", "contact"],
+          "description": "Relationship between NPC and quest"
+        }
+      },
+      "required": ["journalId", "npcName", "relationship"]
+    }
+  },
+  {
+    "name": "list-actor-ownership",
+    "description": "List current ownership permissions for actors, showing which players have what access levels.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actorIdentifier": {
+          "type": "string",
+          "description": "Optional: specific actor name/ID to check, or \"all\" for all actors"
+        },
+        "playerIdentifier": {
+          "type": "string",
+          "description": "Optional: specific player name to check ownership for"
+        }
+      }
+    }
+  },
+  {
+    "name": "list-characters",
+    "description": "List all available characters with basic information",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Optional filter by character type (e.g., \"character\", \"npc\")"
+        }
+      }
+    }
+  },
+  {
+    "name": "list-compendium-entries",
+    "description": "List what actually sits inside a compendium — ids, names, types and folders. list-compendiums only gives counts, so this is the way to check whether an archive holds what it should, to find duplicates, or to get the ids needed for any later work. Reads the index only, never the full documents, and pages through at most 1000 entries per call. Read-only: it changes nothing and works regardless of the permission level.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "packId": {
+          "type": "string",
+          "description": "Compendium id, e.g. world.archive or my-module.presets"
+        },
+        "namePattern": {
+          "type": "string",
+          "description": "Only entries whose name contains this text (case-insensitive)"
+        },
+        "folderName": {
+          "type": "string",
+          "description": "Only entries sitting in this folder inside the compendium"
+        },
+        "limit": {
+          "type": "number",
+          "description": "How many entries to return, default 200, at most 1000"
+        },
+        "offset": {
+          "type": "number",
+          "description": "Skip this many entries — use with hasMore to page through a large pack"
+        }
+      },
+      "required": ["packId"]
+    }
+  },
+  {
+    "name": "list-compendium-packs",
+    "description": "List all available compendium packs",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Optional filter by pack type"
+        }
+      }
+    }
+  },
+  {
+    "name": "list-compendiums",
+    "description": "List every compendium with its type, entry count and lock state. An unlocked compendium can be written to, no matter who ships it: many people keep their own collections as a module rather than inside the world. Call this before exporting to find the right pack id.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "list-creatures-by-criteria",
+    "description": "MULTI-SYSTEM CREATURE DISCOVERY: Get a comprehensive list of creatures matching specific criteria. Supports D&D 5e (Challenge Rating), Pathfinder 2e (Level), and Cosmere RPG (Tier/Role/Investiture) with automatic system detection. Perfect for encounter building - returns minimal data so Claude can use built-in monster knowledge to identify suitable creatures by name, then pull full details only for final selections. Features intelligent pack prioritization and high result limits for complete surveys.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "challengeRating": {
+          "oneOf": [
+            {
+              "type": "number",
+              "description": "Exact CR value (e.g., 12)"
+            },
+            {
+              "type": "string",
+              "description": "Exact CR value as string (e.g., \"12\")"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "number",
+                  "description": "Minimum CR (default: 0)"
+                },
+                "max": {
+                  "type": "number",
+                  "description": "Maximum CR (default: 30)"
+                }
+              },
+              "description": "CR range object (e.g., {\"min\": 10, \"max\": 15})"
+            }
+          ],
+          "description": "Filter by Challenge Rating - accepts number, string, or range object. Use ranges for broader discovery (e.g., {\"min\": 10, \"max\": 15}) or exact values (12 or \"12\")"
+        },
+        "creatureType": {
+          "type": "string",
+          "description": "Filter by creature type",
+          "enum": [
+            "humanoid",
+            "dragon",
+            "beast",
+            "undead",
+            "fey",
+            "fiend",
+            "celestial",
+            "construct",
+            "elemental",
+            "giant",
+            "monstrosity",
+            "ooze",
+            "plant",
+            "aberration"
+          ]
+        },
+        "size": {
+          "type": "string",
+          "description": "Filter by creature size",
+          "enum": ["tiny", "small", "medium", "large", "huge", "gargantuan"]
+        },
+        "hasSpells": {
+          "type": "boolean",
+          "description": "Filter for spellcasting creatures"
+        },
+        "hasLegendaryActions": {
+          "type": "boolean",
+          "description": "Filter for creatures with legendary actions (D&D 5e)"
+        },
+        "level": {
+          "oneOf": [
+            {
+              "type": "number",
+              "description": "Exact level value (e.g., 12)"
+            },
+            {
+              "type": "string",
+              "description": "Exact level value as string (e.g., \"12\")"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "number",
+                  "description": "Minimum level (default: -1)"
+                },
+                "max": {
+                  "type": "number",
+                  "description": "Maximum level (default: 25)"
+                }
+              },
+              "description": "Level range object (e.g., {\"min\": 10, \"max\": 15})"
+            }
+          ],
+          "description": "Filter by creature level (Pathfinder 2e, -1 to 25+)"
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filter by creature traits (Pathfinder 2e)"
+        },
+        "rarity": {
+          "type": "string",
+          "enum": ["common", "uncommon", "rare", "unique"],
+          "description": "Filter by rarity (Pathfinder 2e)"
+        },
+        "tier": {
+          "oneOf": [
+            {
+              "type": "number",
+              "description": "Exact tier value (1-4)"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "number",
+                  "description": "Minimum tier (1-4)"
+                },
+                "max": {
+                  "type": "number",
+                  "description": "Maximum tier (1-4)"
+                }
+              },
+              "description": "Tier range object (e.g., {\"min\": 2, \"max\": 3})"
+            }
+          ],
+          "description": "Filter by adversary Tier (Cosmere RPG, 1-4). Cosmere's primary encounter-design dial."
+        },
+        "role": {
+          "type": "string",
+          "description": "Filter by adversary role (Cosmere RPG). Common values: \"minion\", \"rival\", \"boss\". Case-insensitive."
+        },
+        "hasInvestiture": {
+          "type": "boolean",
+          "description": "Filter for Surge/Investiture-using adversaries (Cosmere RPG)"
+        },
+        "hitPoints": {
+          "oneOf": [
+            {
+              "type": "number",
+              "description": "Exact health/HP value"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                }
+              },
+              "description": "Health/HP range object (e.g., {\"min\": 30, \"max\": 80})"
+            }
+          ],
+          "description": "Filter by max health/HP (Cosmere RPG; cross-system field)"
+        },
+        "defensesMin": {
+          "type": "object",
+          "properties": {
+            "phy": {
+              "type": "number",
+              "description": "Minimum Physical defense"
+            },
+            "cog": {
+              "type": "number",
+              "description": "Minimum Cognitive defense"
+            },
+            "spi": {
+              "type": "number",
+              "description": "Minimum Spiritual defense"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Minimum defense thresholds (Cosmere RPG). Pass any subset of phy/cog/spi."
+        },
+        "deflectMin": {
+          "type": "number",
+          "description": "Minimum Deflect rating (Cosmere RPG)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "Maximum results to return (default: 500 for comprehensive surveys, max: 1000)",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 500
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list-journals",
+    "description": "List all journal entries, or read a specific journal/page. Without parameters: lists all journals with their pages (id, name, type). With journalId: reads the journal's first text page content and shows all available pages. With journalId + pageId: reads a specific page's content. Large pages are returned in chunks (default 50000 chars): if hasMore is true, call again with offset=nextOffset to read the rest.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "filterQuests": {
+          "type": "boolean",
+          "description": "Only show journals that appear to be quest-related (default: false)"
+        },
+        "includeContent": {
+          "type": "boolean",
+          "description": "Include journal content preview (default: false)"
+        },
+        "journalId": {
+          "type": "string",
+          "description": "If provided, read this journal's content instead of listing all journals. Returns full page content and a list of all pages in the journal."
+        },
+        "pageId": {
+          "type": "string",
+          "description": "If provided with journalId, read this specific page's content. Get page IDs from the pages array returned when listing journals or reading a journal."
+        },
+        "offset": {
+          "type": "number",
+          "description": "Start reading content at this character position (default 0). Use the nextOffset value from a truncated response to read the following chunk."
+        },
+        "maxChars": {
+          "type": "number",
+          "description": "Maximum characters of content to return (default 50000, max 200000). Large pages are chunked because an oversized response drops the Foundry connection. Check hasMore/nextOffset in the response."
+        }
+      }
+    }
+  },
+  {
+    "name": "list-playlists",
+    "description": "List the playlists in the world with their sounds. Use this to find the exact playlist and sound name before linking one to a scene, or to check whether a playlist referenced by a journal actually exists in the world.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "includeSounds": {
+          "type": "boolean",
+          "description": "Include the individual sounds of each playlist (default true)"
+        }
+      }
+    }
+  },
+  {
+    "name": "list-roll-tables",
+    "description": "List the roll tables in the world with their formula and number of results.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "list-scene-folders",
+    "description": "List all scene folders with their full path and how many scenes each contains. Use this before create-scene to find the right folderPath.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "list-scenes",
+    "description": "List all available Foundry VTT scenes with their details",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "type": "string",
+          "description": "Optional filter to search scene names (case-insensitive)",
+          "default": ""
+        },
+        "include_active_only": {
+          "type": "boolean",
+          "description": "Only return the currently active scene",
+          "default": false
+        }
+      }
+    }
+  },
+  {
+    "name": "manage-actors",
+    "description": "Create, update, or delete Actor documents in Foundry VTT. Works with any game system.\n- \"create\": Create one or more actors of any type with arbitrary system data.\n- \"update\": Update one or more existing actors by ID. Merges into existing system data.\n- \"delete\": Permanently delete one or more actors by ID.\n- \"update-items\": Update embedded items on an actor by item ID.\n- \"delete-items\": Delete embedded items from an actor by item ID.\n- \"describe\": Return system-specific actor schema notes (actor types, item restrictions,\n  field paths, skill shorthands). Call this before creating actors in an unfamiliar system.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "create",
+            "update",
+            "delete",
+            "place",
+            "update-items",
+            "delete-items",
+            "describe"
+          ],
+          "description": "Operation to perform: \"create\" / \"update\" / \"delete\" actors, \"place\" existing world actors as tokens on the current scene, \"update-items\" / \"delete-items\" for embedded items, or \"describe\" to get system-specific schema notes."
+        },
+        "actors": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Required for \"create\". One or more actor definitions. Each must have a name and a type valid for the active game system.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Display name of the actor."
+              },
+              "type": {
+                "type": "string",
+                "description": "Actor type as defined by the game system (e.g. \"traveller\", \"npc\", \"creature\", \"spacecraft\", \"vehicle\", \"world\")."
+              },
+              "img": {
+                "type": "string",
+                "description": "Optional icon/portrait path."
+              },
+              "system": {
+                "type": "object",
+                "description": "System-specific data. Free-form object — use action:\"describe\" to get valid field names for the active system.",
+                "additionalProperties": true
+              }
+            },
+            "required": ["name", "type"]
+          }
+        },
+        "folder": {
+          "type": "string",
+          "description": "For \"create\": folder name/ID to place actors in (created if absent). Defaults to \"Foundry MCP Actors\"."
+        },
+        "updates": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Required for \"update\". One or more actor patches. Each entry must include \"id\" plus at least one field to change.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "ID of the actor to update."
+              },
+              "name": {
+                "type": "string",
+                "description": "New display name."
+              },
+              "img": {
+                "type": "string",
+                "description": "New icon/portrait path."
+              },
+              "system": {
+                "type": "object",
+                "description": "System-specific fields to update. Merged into the existing system data (top-level keys only — nested objects replace, not merge). Use action:\"describe\" to get valid field names for the active system.",
+                "additionalProperties": true
+              }
+            },
+            "required": ["id"]
+          }
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Required for \"delete\". IDs of the actors to delete."
+        },
+        "actorIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Required for \"place\". IDs of existing world actors to drop as tokens on the current scene."
+        },
+        "placement": {
+          "type": "string",
+          "enum": ["random", "grid", "center"],
+          "description": "For \"place\": token layout strategy. Defaults to \"random\"."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "For \"place\": create the tokens hidden from players. Defaults to false."
+        },
+        "actorIdentifier": {
+          "type": "string",
+          "description": "Required for \"update-items\" and \"delete-items\". Actor name or ID."
+        },
+        "itemUpdates": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Required for \"update-items\". Patches for embedded items. Each entry must include the item \"id\" plus fields to change. The \"system\" object is merged at the top level.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "ID of the embedded item."
+              },
+              "name": {
+                "type": "string",
+                "description": "New display name."
+              },
+              "img": {
+                "type": "string",
+                "description": "New icon path."
+              },
+              "system": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "System fields to update. Passed directly to Foundry."
+              }
+            },
+            "required": ["id"]
+          }
+        },
+        "itemIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Required for \"delete-items\". IDs of the embedded items to delete."
+        }
+      },
+      "required": ["action"]
+    }
+  },
+  {
+    "name": "manage-world-items",
+    "description": "Manage Item documents in Foundry VTT. Specify the operation with \"action\":\n- \"create\": Create world-level Items in the sidebar (not actor-attached). Good for reusable libraries. GM-only.\n- \"list\": List world-level Items with optional type/folder/name filters.\n- \"update\": Update existing world-level Items by ID. GM-only.\n- \"add-to-actor\": Create and attach Items directly to an existing actor. GM-only.\n- \"remove-from-actor\": Delete Items already on an actor, identified by itemIds and/or itemNames (optionally constrained by type). GM-only.\n- \"describe\": Returns system-specific enum/schema reference for all item field values. Call this BEFORE creating or updating mgt2e items to get valid enum keys for fields like weapon.traits, weapon.scale, armour.form, hardware.system, software.class, associate.relationship, etc. No parameters required beyond action:\"describe\".",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["create", "list", "update", "add-to-actor", "remove-from-actor", "describe"],
+          "description": "Operation to perform: \"create\" world items, \"list\" world items, \"update\" world items by id, \"add-to-actor\" to attach items to an actor, \"remove-from-actor\" to delete items from an actor, or \"describe\" to get system-specific enum reference (mgt2e: weapon traits, scales, armour forms, hardware systems, etc.)."
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Required for \"create\" and \"add-to-actor\". One or more items to create. Each item requires a name and a type valid for the active game system (e.g. \"action\", \"talent\", \"weapon\"). For Cosmere RPG add-to-actor, pass system-specific data via the \"system\" field.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Display name of the item"
+              },
+              "type": {
+                "type": "string",
+                "description": "Item type valid for the active system (e.g. \"action\", \"talent\", \"weapon\")"
+              },
+              "img": {
+                "type": "string",
+                "description": "Optional icon path (e.g. \"icons/svg/explosion.svg\")"
+              },
+              "system": {
+                "type": "object",
+                "description": "System-specific data (free-form). Passed through to Foundry's DataModel layer.",
+                "additionalProperties": true
+              }
+            },
+            "required": ["name", "type"]
+          }
+        },
+        "updates": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Required for \"update\". One or more item patches. Each entry must include \"id\" plus at least one field to change (name, img, system, folder).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "ID of the world Item to update"
+              },
+              "name": {
+                "type": "string",
+                "description": "New display name"
+              },
+              "img": {
+                "type": "string",
+                "description": "New icon path"
+              },
+              "system": {
+                "type": "object",
+                "description": "System-specific fields to update (merged into existing system data)",
+                "additionalProperties": true
+              },
+              "folder": {
+                "type": "string",
+                "description": "Move item into this folder (name or ID). Created if absent."
+              }
+            },
+            "required": ["id"]
+          }
+        },
+        "folder": {
+          "type": "string",
+          "description": "For \"create\": folder name/ID to place items in (created if absent). For \"list\": filter to items inside this folder."
+        },
+        "type": {
+          "type": "string",
+          "description": "For \"list\": filter by item type (e.g. \"action\", \"talent\"). For \"remove-from-actor\": constrain itemNames to this type. Omit to return/match all types."
+        },
+        "nameFilter": {
+          "type": "string",
+          "description": "For \"list\": case-insensitive substring match on item name."
+        },
+        "actorIdentifier": {
+          "type": "string",
+          "description": "For \"add-to-actor\" and \"remove-from-actor\": actor name or ID to receive or lose the items."
+        },
+        "itemIds": {
+          "type": "array",
+          "description": "For \"remove-from-actor\": ids of items already on the actor to delete (most reliable; get them from get-character).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "itemNames": {
+          "type": "array",
+          "description": "For \"remove-from-actor\": names of items on the actor to delete (case-insensitive). Combine with \"type\" to disambiguate.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["action"]
+    }
+  },
+  {
+    "name": "organize-compendium",
+    "description": "Sort entries of a compendium into a folder, creating the folder if needed. Use this to bring order into an archive that has grown. Same lock rules as export-to-compendium.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "packId": {
+          "type": "string",
+          "description": "Compendium id"
+        },
+        "folderName": {
+          "type": "string",
+          "description": "Folder to move the entries into"
+        },
+        "entryNames": {
+          "type": "array",
+          "description": "Names of the entries to move",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unlockIfNeeded": {
+          "type": "boolean"
+        }
+      },
+      "required": ["packId", "folderName", "entryNames"]
+    }
+  },
+  {
+    "name": "refresh-scene-thumb",
+    "description": "Regenerate the thumbnail of a scene. After swapping a background the sidebar keeps showing the old picture until this runs.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sceneIdentifier": {
+          "type": "string",
+          "description": "Scene name or id"
+        }
+      },
+      "required": ["sceneIdentifier"]
+    }
+  },
+  {
+    "name": "remove-actor-ownership",
+    "description": "Remove ownership permissions (set to NONE) for specific actors and players. Equivalent to \"Remove ownership of Aragorn from John\".",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actorIdentifier": {
+          "type": "string",
+          "description": "Actor name or ID to remove ownership from"
+        },
+        "playerIdentifier": {
+          "type": "string",
+          "description": "Player name or character name to remove ownership for. Supports partial matching."
+        },
+        "confirmRemoval": {
+          "type": "boolean",
+          "description": "Confirmation required for ownership removal",
+          "default": false
+        }
+      },
+      "required": ["actorIdentifier", "playerIdentifier"]
+    }
+  },
+  {
+    "name": "restore-scene",
+    "description": "Recreate a scene from a JSON file inside the Foundry data directory, complete with walls, tiles, lights, sounds and tokens. Meant for recovery: pull a deleted scene out of a world backup and put it back. The data travels as a file, not through the data channel, because a scene with walls easily runs to a hundred thousand characters and the channel breaks on large payloads. A fresh id is assigned unless keepId is set, so a recovery can never overwrite an existing scene.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "jsonPath": {
+          "type": "string",
+          "description": "Path of the JSON file, counted from the Foundry data directory, e.g. \"Bergung/szenen.json\". The file may hold one scene or an array of them."
+        },
+        "index": {
+          "type": "number",
+          "description": "Which entry of the array to use, default 0"
+        },
+        "name": {
+          "type": "string",
+          "description": "Give the restored scene a different name"
+        },
+        "folderPath": {
+          "type": "string",
+          "description": "Target folder, nested paths allowed"
+        },
+        "keepId": {
+          "type": "boolean",
+          "description": "Keep the original id. Only do this when the scene is truly gone."
+        },
+        "navigation": {
+          "type": "boolean",
+          "description": "Show in the scene navigation bar"
+        }
+      },
+      "required": ["jsonPath"]
+    }
+  },
+  {
+    "name": "search-character-items",
+    "description": "Search within a character's items, spells, actions, and effects. More token-efficient than get-character when you need specific items. Supports text search (name/description) and type filtering. Returns matching items with full details including targeting info for spells. Use this to find specific spells, equipment, feats, or abilities without loading the entire character.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "characterIdentifier": {
+          "type": "string",
+          "description": "Character name or ID to search within"
+        },
+        "query": {
+          "type": "string",
+          "description": "Text to search for in item names and descriptions (case-insensitive). Leave empty to return all items of specified type."
+        },
+        "type": {
+          "type": "string",
+          "description": "Filter by item type: \"spell\", \"weapon\", \"armor\", \"equipment\", \"consumable\", \"feat\", \"feature\", \"action\", \"effect\", or system-specific types. Leave empty to search all types."
+        },
+        "category": {
+          "type": "string",
+          "description": "Additional category filter. For spells: \"cantrip\", \"prepared\", \"innate\", \"focus\". For items: \"equipped\", \"carried\", \"invested\"."
+        },
+        "limit": {
+          "type": "number",
+          "description": "Maximum number of results to return (default: 20)"
+        }
+      },
+      "required": ["characterIdentifier"]
+    }
+  },
+  {
+    "name": "search-compendium",
+    "description": "Search through compendium packs by name. IMPORTANT LIMITATIONS: (1) Text search only matches entity NAMES - descriptions and traits are NOT searchable. (2) Filters use name heuristics only (not actual system data) and only work on Actor packs - challengeRating and creatureType filters search for keywords like \"ancient\", \"legendary\", \"humanoid\", etc. in entity names. For accurate filtering by level/CR, traits, or rarity, use list-creatures-by-criteria instead. For best results, use broad name-based searches (e.g., \"dragon\", \"knight\") and inspect individual items with get-compendium-item.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query to find items in compendiums by name only. Use broad, simple terms (e.g., \"dragon\", \"sword\", \"feat\"). Descriptions and traits are NOT searchable."
+        },
+        "packType": {
+          "type": "string",
+          "description": "Optional filter by pack type (e.g., \"Item\", \"Actor\", \"JournalEntry\")"
+        },
+        "filters": {
+          "type": "object",
+          "description": "LIMITED FUNCTIONALITY: Only works on Actor packs using name-based heuristics. challengeRating searches for keywords like \"ancient\" (CR 15+), \"adult\" (CR 10+), \"captain\" (CR 5+). creatureType searches for type keywords in names. Does NOT check actual system data. For accurate filtering, use list-creatures-by-criteria instead.",
+          "properties": {
+            "challengeRating": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "description": "Exact CR value (e.g., 12)"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "min": {
+                      "type": "number",
+                      "description": "Minimum CR"
+                    },
+                    "max": {
+                      "type": "number",
+                      "description": "Maximum CR"
+                    }
+                  }
+                }
+              ]
+            },
+            "creatureType": {
+              "type": "string",
+              "description": "Creature type (e.g., \"humanoid\", \"dragon\", \"beast\", \"undead\", \"fey\", \"fiend\", \"celestial\", \"construct\", \"elemental\", \"giant\", \"monstrosity\", \"ooze\", \"plant\")",
+              "enum": [
+                "humanoid",
+                "dragon",
+                "beast",
+                "undead",
+                "fey",
+                "fiend",
+                "celestial",
+                "construct",
+                "elemental",
+                "giant",
+                "monstrosity",
+                "ooze",
+                "plant",
+                "aberration"
+              ]
+            },
+            "size": {
+              "type": "string",
+              "description": "Creature size (e.g., \"medium\", \"large\", \"huge\")",
+              "enum": ["tiny", "small", "medium", "large", "huge", "gargantuan"]
+            },
+            "alignment": {
+              "type": "string",
+              "description": "Creature alignment (e.g., \"lawful good\", \"chaotic evil\", \"neutral\")"
+            },
+            "hasLegendaryActions": {
+              "type": "boolean",
+              "description": "Filter for creatures with legendary actions"
+            },
+            "spellcaster": {
+              "type": "boolean",
+              "description": "Filter for creatures that can cast spells (D&D 5e)"
+            },
+            "level": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "description": "Exact level value (e.g., 12)"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "min": {
+                      "type": "number",
+                      "description": "Minimum level"
+                    },
+                    "max": {
+                      "type": "number",
+                      "description": "Maximum level"
+                    }
+                  }
+                }
+              ],
+              "description": "Creature level (Pathfinder 2e, -1 to 25+)"
+            },
+            "traits": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Creature traits to filter by (Pathfinder 2e)"
+            },
+            "rarity": {
+              "type": "string",
+              "enum": ["common", "uncommon", "rare", "unique"],
+              "description": "Creature rarity (Pathfinder 2e)"
+            },
+            "hasSpells": {
+              "type": "boolean",
+              "description": "Filter for spellcasting creatures (Pathfinder 2e)"
+            }
+          }
+        },
+        "limit": {
+          "type": "number",
+          "description": "Maximum number of results to return (default: 50 for discovery searches, max: 50)",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "required": ["query"]
+    }
+  },
+  {
+    "name": "search-journals",
+    "description": "Search through all pages of all journal entries for specific content or keywords. Returns which specific page matched, so you can read it with list-journals using journalId + pageId.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "searchQuery": {
+          "type": "string",
+          "description": "Text to search for in journal entries"
+        },
+        "searchType": {
+          "type": "string",
+          "enum": ["title", "content", "both"],
+          "description": "Where to search (default: both)"
+        }
+      },
+      "required": ["searchQuery"]
+    }
+  },
+  {
+    "name": "set-compendium-lock",
+    "description": "Lock or unlock a compendium. Which ones may be touched follows the module settings: by default every unlocked compendium, or only the ones listed under writable compendiums if that field has been filled in.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "packId": {
+          "type": "string",
+          "description": "Compendium id"
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "true locks, false unlocks"
+        }
+      },
+      "required": ["packId", "locked"]
+    }
+  },
+  {
+    "name": "set-scene-playlist",
+    "description": "Link a playlist, and optionally one specific sound, to a scene so it starts when the scene is activated. Pass an empty playlistName to remove the link. The playlist has to exist in the world; use import-from-compendium first if it only exists in a compendium.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sceneIdentifier": {
+          "type": "string",
+          "description": "Scene name or id"
+        },
+        "playlistName": {
+          "type": "string",
+          "description": "Playlist name or id. Empty string removes the link."
+        },
+        "soundName": {
+          "type": "string",
+          "description": "Optional single track inside that playlist"
+        }
+      },
+      "required": ["sceneIdentifier"]
+    }
+  },
+  {
+    "name": "switch-scene",
+    "description": "Switch to a different Foundry VTT scene by name or ID",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scene_identifier": {
+          "type": "string",
+          "description": "Scene name or ID to switch to"
+        },
+        "optimize_view": {
+          "type": "boolean",
+          "description": "Automatically optimize the view for the scene",
+          "default": true
+        }
+      },
+      "required": ["scene_identifier"]
+    }
+  },
+  {
+    "name": "update-quest-journal",
+    "description": "Update an existing quest journal with new progress information. By default updates the FIRST text page. Use pageId to target a specific page, or newPageName to create a new page.\n\nFor Foundry VTT v13 ProseMirror editor compatibility:\n\n✅ USE QUEST-STYLE HTML: Match create-quest-journal formatting\n✅ OR USE PLAIN TEXT: Will be wrapped in <p> tags with line breaks as <br>\n❌ DO NOT USE MARKDOWN: **bold**, *italic*, # headers will be stripped to plain text\n\nQuest-style HTML examples:\n• Sections: \"<h2 class=\\\"spaced\\\">New Discovery</h2>\"\n• GM Notes: \"<div class=\\\"gmnote\\\"><p>GM info here</p></div>\"\n• Player Info: \"<div class=\\\"readaloud\\\"><p>Player-facing content</p></div>\"\n• Plain text: \"The party discovered the secret chamber\"\n• Avoid: \"**The party** discovered the *secret chamber*\" (Markdown will be stripped)",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "journalId": {
+          "type": "string",
+          "description": "ID of the quest journal to update"
+        },
+        "newContent": {
+          "type": "string",
+          "description": "Content to add using quest-style HTML or plain text. Quest HTML classes: <h2 class=\"spaced\">Section</h2>, <div class=\"gmnote\"><p>GM info</p></div>, <div class=\"readaloud\"><p>Player content</p></div>, <div class=\"grid-2\">Two columns</div>. Plain text gets wrapped in <p> tags. Markdown will be stripped."
+        },
+        "updateType": {
+          "type": "string",
+          "enum": ["progress", "completion", "failure", "modification"],
+          "description": "Type of update being made"
+        },
+        "pageId": {
+          "type": "string",
+          "description": "ID of a specific page to update. If omitted, updates the first text page. Get page IDs from list-journals."
+        },
+        "newPageName": {
+          "type": "string",
+          "description": "If provided (without pageId), creates a new page with this name instead of updating an existing one."
+        }
+      },
+      "required": ["journalId", "newContent", "updateType"]
+    }
+  },
+  {
+    "name": "update-scene",
+    "description": "Update an existing scene: rename it, swap its background image or video, move it to another folder, change its dimensions or navigation. When a new background is set and no dimensions are given, the new dimensions are measured from the file. journalIdentifier links or, when empty, unlinks the scene journal.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sceneIdentifier": {
+          "type": "string",
+          "description": "Scene name or id"
+        },
+        "name": {
+          "type": "string",
+          "description": "New name"
+        },
+        "navName": {
+          "type": "string",
+          "description": "Label in the navigation bar. Re-derived from the name when the name changes."
+        },
+        "background": {
+          "type": "string",
+          "description": "New background path"
+        },
+        "backgroundColor": {
+          "type": "string",
+          "description": "Background colour of the scene level as hex, e.g. \"#000000\". This is what shows around the artwork."
+        },
+        "folderPath": {
+          "type": "string",
+          "description": "Move to this folder path"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "navigation": {
+          "type": "boolean"
+        },
+        "journalIdentifier": {
+          "type": "string",
+          "description": "Journal to link to the scene, by name or id. Foundry shows it as the scene journal, which is different from a note placed on the map. An empty string removes the link."
+        },
+        "journalPageName": {
+          "type": "string",
+          "description": "Open this page of the journal, by name or id"
+        }
+      },
+      "required": ["sceneIdentifier"]
+    }
+  },
+  {
+    "name": "use-item",
+    "description": "Use an item on a character (cast spell, use ability, activate feature, consume item). Opens the item dialog in Foundry VTT for the GM to configure options and confirm. Optionally specify targets by name. Returns immediately with status \"initiated\" - tell the user to check Foundry for any dialogs. Works across systems: D&D 5e, PF2e, DSA5. Use get-character or search-character-items first to see available items/spells.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actorIdentifier": {
+          "type": "string",
+          "description": "Character using the item (name or ID)"
+        },
+        "itemIdentifier": {
+          "type": "string",
+          "description": "Item name or ID (spell, feat, equipment, consumable, etc.)"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Target character/token names or IDs. Use [\"self\"] to target the caster. If omitted, GM selects targets in Foundry."
+        },
+        "consume": {
+          "type": "boolean",
+          "description": "Whether to consume charges/uses (default: true)"
+        },
+        "spellLevel": {
+          "type": "number",
+          "description": "For spells: cast at a higher level than base (D&D 5e upcasting)"
+        }
+      },
+      "required": ["actorIdentifier", "itemIdentifier"]
+    }
+  },
+  {
+    "name": "world-rewrite-paths",
+    "description": "Rewrite an asset path prefix across the ENTIRE world at once -- scenes (background, tiles, tokens, notes, sounds), actors (portrait, prototype token, items, effects), world items, journals (image pages and <img> in text), playlists, roll tables, macros and cards. Use this after MOVING files on disk, so every reference follows along in one step. Only strings starting with the prefix at a path boundary are touched ('Bilder/Token' never matches 'Bilder/Tokenringe'), and percent-encoded spellings are matched too. Runs inside Foundry, so world size does not matter. ALWAYS run dryRun first and read the report.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Old path prefix relative to the Foundry Data directory, e.g. \"Bilder/Avatare\". Minimum 3 characters."
+        },
+        "to": {
+          "type": "string",
+          "description": "New path prefix, e.g. \"Bilder/Portraits/Spieler\"."
+        },
+        "collections": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "scenes",
+              "actors",
+              "items",
+              "journal",
+              "playlists",
+              "tables",
+              "cards",
+              "macros"
+            ]
+          },
+          "description": "Restrict to these document collections. Omit to cover all of them (recommended -- a partial rewrite leaves broken references behind)."
+        },
+        "dryRun": {
+          "type": "boolean",
+          "description": "Only report what would change (default false). Always use this first."
+        }
+      },
+      "required": ["from", "to"]
+    }
+  }
+]

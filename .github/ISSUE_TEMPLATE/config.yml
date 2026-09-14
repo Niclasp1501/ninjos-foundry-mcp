@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup and installation questions
+    url: https://github.com/Niclasp1501/ninjos-foundry-mcp/blob/main/docs/INSTALLATION.en.md
+    about: Installing, updating and connecting the server and the module, with a troubleshooting section. Please read it before opening an issue.
+  - name: Report a security vulnerability
+    url: https://github.com/Niclasp1501/ninjos-foundry-mcp/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue. See SECURITY.md.

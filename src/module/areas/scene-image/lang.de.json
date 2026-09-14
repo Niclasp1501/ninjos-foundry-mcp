@@ -1,0 +1,9 @@
+{
+  "ninjos-foundry-mcp": {
+    "scene-image": {
+      "notify": {
+        "captureFailed": "Die Zeichenfläche ließ sich für das Szenenbild nicht aufnehmen. Das Bild wurde aus dem Hintergrund zusammengesetzt: {reason}"
+      }
+    }
+  }
+}
