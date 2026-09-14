@@ -1,6 +1,8 @@
 {
   "name": "ninjos-foundry-mcp",
   "version": "14.2609.4",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Ninjo",
   "private": true,
   "description": "MCP server and Foundry VTT module that let an AI assistant work with a Foundry world.",
   "type": "module",

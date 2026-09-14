@@ -12,6 +12,7 @@
       "name": "Ninjo"
     }
   ],
+  "license": "LICENSE",
   "esmodules": ["scripts/module/main.js"],
   "socket": true,
   "styles": [
