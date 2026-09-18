@@ -2,7 +2,7 @@
   "id": "ninjos-foundry-mcp",
   "title": "Ninjo's Foundry MCP",
   "description": "Connects an AI assistant on your PC, such as Claude, to your world through the Model Context Protocol. Journals, scenes, compendiums, actors, combat and more, with write and delete permissions the Gamemaster controls.",
-  "version": "14.2609.4",
+  "version": "14.2609.5",
   "compatibility": {
     "minimum": "13",
     "verified": "14"
@@ -35,5 +35,5 @@
   ],
   "url": "https://github.com/Niclasp1501/ninjos-foundry-mcp",
   "manifest": "https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/latest/download/module.json",
-  "download": "https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/download/v14.2609.4/module.zip"
+  "download": "https://github.com/Niclasp1501/ninjos-foundry-mcp/releases/download/v14.2609.5/module.zip"
 }

@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [14.2609.5] - 2026-09-19
 
 - The bridge connects as soon as you return to Foundry. When Foundry was opened before the
   MCP server on the PC, the bridge could stay on "connecting" for minutes after the server
