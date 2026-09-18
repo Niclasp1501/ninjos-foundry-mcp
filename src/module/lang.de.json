@@ -71,7 +71,7 @@
       },
       "autoReconnectEnabled": {
         "name": "Verhalten · Automatisch neu verbinden",
-        "hint": "Versucht es nach einer verlorenen Verbindung erneut: erst schnell, dann alle 30 Sekunden, ohne aufzugeben."
+        "hint": "Versucht es nach einer verlorenen Verbindung erneut: erst schnell, dann alle 10 Sekunden, ohne aufzugeben."
       },
       "heartbeatInterval": {
         "name": "Verhalten · Lebenszeichen in Sekunden",
@@ -102,7 +102,7 @@
       "connected": "MCP-Brücke verbunden.",
       "disconnected": "MCP-Brücke getrennt. Sie verbindet sich von selbst neu.",
       "serverUnreachable": "Der MCP-Server auf dem PC ist unter {url} nicht erreichbar. Starte ihn dort; die Brücke verbindet sich von selbst, sobald er läuft.",
-      "lostConnection": "Die MCP-Brücke ist seit einer Minute getrennt. Sie versucht es weiter alle 30 Sekunden.",
+      "lostConnection": "Die MCP-Brücke ist seit einer Minute getrennt. Sie versucht es weiter alle 10 Sekunden.",
       "rejected": "Der MCP-Server auf dem PC hat diese Seite abgelehnt: {reason}"
     }
   }

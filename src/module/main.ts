@@ -9,7 +9,12 @@ import { BRIDGE_PROTOCOL, DEFAULT_BRIDGE_PORT, MODULE_ID } from '../common/const
 import type { HelloData } from '../common/protocol.js';
 import { MODULE_AREAS } from './areas/index.js';
 import { areaSettings, installAreaAdapters, installAreaQueries } from './areas.js';
-import { BridgeClient, PREVIOUS_SERVER_HOOK, type SocketLike } from './bridge-client.js';
+import {
+  BridgeClient,
+  browserWakeSignals,
+  PREVIOUS_SERVER_HOOK,
+  type SocketLike,
+} from './bridge-client.js';
 import { changeLog, extensionTools, useServerRequests } from './core-services.js';
 import { QueryDispatcher } from './dispatcher.js';
 import type { ExtensionToolDefinition } from './extension-tools.js';
@@ -72,7 +77,7 @@ function createClient(): BridgeClient {
         if (notificationsOn()) {
           notify.warn(
             'lostConnection',
-            'The MCP bridge has been down for a minute. It keeps trying every 30 seconds.'
+            'The MCP bridge has been down for a minute. It keeps trying every 10 seconds.'
           );
         }
       },
@@ -88,6 +93,8 @@ function createClient(): BridgeClient {
     },
     pageProtocol: () => window.location.protocol,
     pageOrigin: () => window.location.origin,
+    // The client exists for the Gamemaster only and listens between start and stop.
+    wakeSignals: browserWakeSignals(window, document),
   });
 }
 

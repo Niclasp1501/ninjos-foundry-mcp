@@ -19,6 +19,11 @@
  *   new message it ever sees, once per connection, without `requestId`.
  * - **Queries are answered from the first moment**, not only after welcome,
  *   because the previous server never says welcome.
+ * - **A waiting bridge tries at once when the page wakes up.** Browsers slow
+ *   down or freeze the timers of a tab in the background, so a scheduled
+ *   attempt can come minutes late. When the tab becomes visible, the window
+ *   gets focus or the network comes back, a bridge that waits for its next
+ *   attempt makes it now.
  */
 import { BRIDGE_PATH, BRIDGE_PROTOCOL, shortQueryName } from '../common/constants.js';
 import {
@@ -90,6 +95,44 @@ export interface Timers {
   clearInterval(handle: unknown): void;
 }
 
+/**
+ * Moments at which a waiting bridge should try at once instead of at its next
+ * scheduled attempt. `subscribe` returns the function that removes the listener.
+ */
+export interface WakeSignals {
+  subscribe(listener: () => void): () => void;
+}
+
+interface ListenerTarget {
+  addEventListener(type: string, listener: () => void): void;
+  removeEventListener(type: string, listener: () => void): void;
+}
+
+/**
+ * The wake signals of a browser page: the document becomes visible, the
+ * window gets focus, the browser is online again.
+ */
+export function browserWakeSignals(
+  win: ListenerTarget,
+  doc: ListenerTarget & { readonly visibilityState: string }
+): WakeSignals {
+  return {
+    subscribe(listener) {
+      const onVisibility = () => {
+        if (doc.visibilityState === 'visible') listener();
+      };
+      doc.addEventListener('visibilitychange', onVisibility);
+      win.addEventListener('focus', listener);
+      win.addEventListener('online', listener);
+      return () => {
+        doc.removeEventListener('visibilitychange', onVisibility);
+        win.removeEventListener('focus', listener);
+        win.removeEventListener('online', listener);
+      };
+    },
+  };
+}
+
 export interface BridgeClientOptions {
   createSocket(url: string): SocketLike;
   settings: BridgeSettings;
@@ -100,6 +143,8 @@ export interface BridgeClientOptions {
   pageOrigin(): string;
   timers?: Timers;
   now?: () => number;
+  /** Listened to between start and stop. Without it, only the schedule brings the bridge back. */
+  wakeSignals?: WakeSignals;
 }
 
 export interface BridgeStatus {
@@ -185,6 +230,7 @@ export class BridgeClient {
   private welcomeTimer: unknown = null;
   private serverFeatures: ReadonlySet<string> = new Set();
   private openedAt = 0;
+  private stopWakeListening: (() => void) | null = null;
   private nextRequest = 1;
   private readonly pendingRequests = new Map<string, PendingRequest>();
   private readonly welcomeWaiters = new Set<() => void>();
@@ -200,10 +246,12 @@ export class BridgeClient {
   start(): void {
     this.clearReconnect();
     if (!this.options.settings.enabled()) {
+      this.stopWaking();
       this.shutdownSocket();
       this.setState('disabled');
       return;
     }
+    this.listenForWaking();
     this.rejectionReason = undefined;
     this.attempts = 0;
     this.requestedClose = false;
@@ -212,9 +260,27 @@ export class BridgeClient {
 
   /** Close on purpose. No reconnect follows. */
   stop(): void {
+    this.stopWaking();
     this.clearReconnect();
     this.shutdownSocket();
     this.setState(this.options.settings.enabled() ? 'disconnected' : 'disabled');
+  }
+
+  /**
+   * Try at once instead of at the scheduled attempt. Only a bridge that waits
+   * for its next attempt does so; a connection that is being opened or is open
+   * is never opened a second time, and a bridge that is connected, switched
+   * off, stopped or refused stays as it is. The attempt counts like a
+   * scheduled one, so the warnings about an unreachable server still come once
+   * per outage. Returns whether an attempt was started.
+   */
+  retryNow(): boolean {
+    if (this.state !== 'reconnecting' && this.state !== 'connecting') return false;
+    if (this.socket && this.socket.readyState <= OPEN) return false;
+    if (!this.options.settings.enabled()) return false;
+    this.clearReconnect();
+    this.open();
+    return true;
   }
 
   getStatus(): BridgeStatus {
@@ -538,6 +604,18 @@ export class BridgeClient {
   private clearWelcomeWatch(): void {
     if (this.welcomeTimer !== null) this.timers.clearTimeout(this.welcomeTimer);
     this.welcomeTimer = null;
+  }
+
+  private listenForWaking(): void {
+    if (this.stopWakeListening || !this.options.wakeSignals) return;
+    this.stopWakeListening = this.options.wakeSignals.subscribe(() => {
+      this.retryNow();
+    });
+  }
+
+  private stopWaking(): void {
+    this.stopWakeListening?.();
+    this.stopWakeListening = null;
   }
 
   private clearReconnect(): void {

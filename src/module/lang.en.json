@@ -71,7 +71,7 @@
       },
       "autoReconnectEnabled": {
         "name": "Behaviour · Reconnect automatically",
-        "hint": "Tries again after a lost connection: quickly at first, then every 30 seconds, without giving up."
+        "hint": "Tries again after a lost connection: quickly at first, then every 10 seconds, without giving up."
       },
       "heartbeatInterval": {
         "name": "Behaviour · Heartbeat in seconds",
@@ -102,7 +102,7 @@
       "connected": "MCP bridge connected.",
       "disconnected": "MCP bridge disconnected. It reconnects on its own.",
       "serverUnreachable": "The MCP server on the PC is not reachable at {url}. Start it there; the bridge connects on its own as soon as it runs.",
-      "lostConnection": "The MCP bridge has been down for a minute. It keeps trying every 30 seconds.",
+      "lostConnection": "The MCP bridge has been down for a minute. It keeps trying every 10 seconds.",
       "rejected": "The MCP server on the PC refused this page: {reason}"
     }
   }

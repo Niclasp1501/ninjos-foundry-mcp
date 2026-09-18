@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+- The bridge connects as soon as you return to Foundry. When Foundry was opened before the
+  MCP server on the PC, the bridge could stay on "connecting" for minutes after the server
+  started, because the browser slows down the timers of a tab in the background. Now a
+  waiting bridge tries at once when the Foundry tab becomes visible, the window gets focus
+  or the network comes back, and afterwards it retries every 10 seconds instead of every 30.
+
 ## [14.2609.4] - 2026-09-14
 
 - **Set up the MCP server on your PC anew.** This version is a complete rewrite, and the

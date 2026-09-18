@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BridgeClient, bridgeUrl, type BridgeEvents, type SocketLike } from './bridge-client.js';
+import {
+  BridgeClient,
+  browserWakeSignals,
+  bridgeUrl,
+  type BridgeEvents,
+  type SocketLike,
+  type WakeSignals,
+} from './bridge-client.js';
 
 class FakeSocket implements SocketLike {
   readyState = 0;
@@ -46,8 +53,9 @@ let settings: { enabled: boolean; autoReconnect: boolean };
 
 type Dispatch = ConstructorParameters<typeof BridgeClient>[0]['dispatch'];
 
-function makeClient(dispatch: Dispatch = vi.fn(async () => 'ok')) {
+function makeClient(dispatch: Dispatch = vi.fn(async () => 'ok'), wakeSignals?: WakeSignals) {
   return new BridgeClient({
+    ...(wakeSignals ? { wakeSignals } : {}),
     createSocket: url => {
       const socket = new FakeSocket(url);
       sockets.push(socket);
@@ -166,7 +174,7 @@ describe('BridgeClient', () => {
     expect(last().sent).toContainEqual({ type: 'mcp-progress', id: 'q2', data: { progress: 1 } });
   });
 
-  it('reconnects after any unrequested close, fast at first and then every 30 seconds', () => {
+  it('reconnects after any unrequested close, fast at first and then every 10 seconds', () => {
     const client = makeClient();
     client.start();
     last().open();
@@ -176,7 +184,7 @@ describe('BridgeClient', () => {
 
     vi.advanceTimersByTime(1000);
     expect(sockets).toHaveLength(2);
-    for (const delay of [2000, 5000, 10000, 20000, 30000, 30000]) {
+    for (const delay of [2000, 5000, 10000, 20000, 10000, 10000]) {
       last().drop(1006);
       vi.advanceTimersByTime(delay - 1);
       const before = sockets.length;
@@ -326,5 +334,153 @@ describe('BridgeClient', () => {
     client.stop();
     vi.advanceTimersByTime(5000);
     expect(events.previousServer).not.toHaveBeenCalled();
+  });
+});
+
+/** A page with a document and a window, as far as the wake signals need it. */
+class FakePage {
+  readonly window = new EventTarget();
+  readonly document = Object.assign(new EventTarget(), { visibilityState: 'visible' });
+
+  hide(): void {
+    this.document.visibilityState = 'hidden';
+    this.document.dispatchEvent(new Event('visibilitychange'));
+  }
+
+  show(): void {
+    this.document.visibilityState = 'visible';
+    this.document.dispatchEvent(new Event('visibilitychange'));
+  }
+
+  fire(type: 'focus' | 'online'): void {
+    this.window.dispatchEvent(new Event(type));
+  }
+
+  signals(): WakeSignals {
+    return browserWakeSignals(this.window, this.document);
+  }
+}
+
+describe('BridgeClient when the page wakes up', () => {
+  /** A bridge that found no server and waits for its steady attempt. */
+  function waitingClient(page: FakePage) {
+    const client = makeClient(undefined, page.signals());
+    client.start();
+    for (let i = 0; i < 6; i += 1) {
+      last().drop(1006);
+      vi.advanceTimersByTime(20_000);
+    }
+    last().drop(1006);
+    expect(client.getStatus().connectionState).toBe('reconnecting');
+    return client;
+  }
+
+  it('tries at once when a hidden tab becomes visible again', () => {
+    const page = new FakePage();
+    const client = waitingClient(page);
+    const before = sockets.length;
+
+    page.hide();
+    expect(sockets).toHaveLength(before);
+
+    page.show();
+    expect(sockets).toHaveLength(before + 1);
+    last().open();
+    expect(client.getStatus().connectionState).toBe('connected');
+  });
+
+  it.each(['focus', 'online'] as const)('tries at once on %s', type => {
+    const page = new FakePage();
+    waitingClient(page);
+    const before = sockets.length;
+    page.fire(type);
+    expect(sockets).toHaveLength(before + 1);
+  });
+
+  it('replaces the scheduled attempt instead of adding one, and keeps the schedule going', () => {
+    const page = new FakePage();
+    const client = waitingClient(page);
+    const before = sockets.length;
+    page.fire('focus');
+    vi.advanceTimersByTime(60_000);
+    expect(sockets).toHaveLength(before + 1);
+
+    last().drop(1006);
+    vi.advanceTimersByTime(10_000);
+    expect(sockets).toHaveLength(before + 2);
+    expect(client.getStatus().connectionInfo.reconnectAttempts).toBeGreaterThan(6);
+  });
+
+  it('never opens a second socket while one is being opened', () => {
+    const page = new FakePage();
+    waitingClient(page);
+    page.fire('focus');
+    const before = sockets.length;
+    page.show();
+    page.fire('online');
+    page.fire('focus');
+    expect(sockets).toHaveLength(before);
+    expect(last().closedWith).toBeNull();
+  });
+
+  it('warns about the unreachable server only once, however often the page wakes', () => {
+    const page = new FakePage();
+    waitingClient(page);
+    for (let i = 0; i < 5; i += 1) {
+      page.fire('focus');
+      last().drop(1006);
+    }
+    expect(events.unreachable).toHaveBeenCalledOnce();
+  });
+
+  it('leaves a connected bridge alone', () => {
+    const page = new FakePage();
+    const client = makeClient(undefined, page.signals());
+    client.start();
+    last().open();
+    page.hide();
+    page.show();
+    page.fire('focus');
+    page.fire('online');
+    expect(sockets).toHaveLength(1);
+    expect(last().closedWith).toBeNull();
+    expect(client.getStatus().connectionState).toBe('connected');
+  });
+
+  it('leaves a refused, a stopped and a switched off bridge alone', () => {
+    const page = new FakePage();
+    const client = makeClient(undefined, page.signals());
+    client.start();
+    last().drop(4403, 'origin not allowed');
+    page.fire('focus');
+    expect(sockets).toHaveLength(1);
+    expect(client.getStatus().connectionState).toBe('rejected');
+
+    client.start();
+    last().drop(1006);
+    client.stop();
+    page.fire('focus');
+    page.show();
+    expect(sockets).toHaveLength(2);
+    expect(client.getStatus().connectionState).toBe('disconnected');
+
+    settings.enabled = false;
+    client.start();
+    page.fire('online');
+    expect(sockets).toHaveLength(2);
+    expect(client.getStatus().connectionState).toBe('disabled');
+  });
+
+  it('removes its listeners on stop and adds them only once on repeated starts', () => {
+    const subscribe = vi.fn((_listener: () => void) => vi.fn());
+    const client = makeClient(undefined, { subscribe });
+    client.start();
+    client.start();
+    expect(subscribe).toHaveBeenCalledOnce();
+    const unsubscribe = subscribe.mock.results[0]?.value as ReturnType<typeof vi.fn>;
+    client.stop();
+    expect(unsubscribe).toHaveBeenCalledOnce();
+    client.start();
+    expect(subscribe).toHaveBeenCalledTimes(2);
   });
 });

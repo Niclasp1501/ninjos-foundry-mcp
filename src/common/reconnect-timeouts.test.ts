@@ -5,7 +5,8 @@ import { RESERVED_TOOL_NAMES } from './reserved-tools.js';
 import { DEFAULT_QUERY_TIMEOUT_MS, queryTimeoutMs, timeoutMessage } from './timeouts.js';
 
 describe('reconnectDelay', () => {
-  it('starts fast and settles at 30 seconds without giving up', () => {
+  it('starts fast and settles at 10 seconds without giving up', () => {
+    expect(STEADY_DELAY_MS).toBe(10_000);
     expect(reconnectDelay(1)).toBe(1000);
     expect(reconnectDelay(5)).toBe(20000);
     expect(reconnectDelay(6)).toBe(STEADY_DELAY_MS);
