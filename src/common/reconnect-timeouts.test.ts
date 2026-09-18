@@ -8,9 +8,16 @@ describe('reconnectDelay', () => {
   it('starts fast and settles at 10 seconds without giving up', () => {
     expect(STEADY_DELAY_MS).toBe(10_000);
     expect(reconnectDelay(1)).toBe(1000);
-    expect(reconnectDelay(5)).toBe(20000);
-    expect(reconnectDelay(6)).toBe(STEADY_DELAY_MS);
+    expect(reconnectDelay(3)).toBe(5000);
+    expect(reconnectDelay(4)).toBe(STEADY_DELAY_MS);
     expect(reconnectDelay(10_000)).toBe(STEADY_DELAY_MS);
+  });
+
+  it('never lets a later attempt wait longer than an earlier one', () => {
+    for (let attempt = 1; attempt < 20; attempt += 1) {
+      expect(reconnectDelay(attempt + 1)).toBeGreaterThanOrEqual(reconnectDelay(attempt));
+      expect(reconnectDelay(attempt)).toBeLessThanOrEqual(STEADY_DELAY_MS);
+    }
   });
 });
 

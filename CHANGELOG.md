@@ -6,7 +6,8 @@
   MCP server on the PC, the bridge could stay on "connecting" for minutes after the server
   started, because the browser slows down the timers of a tab in the background. Now a
   waiting bridge tries at once when the Foundry tab becomes visible, the window gets focus
-  or the network comes back, and afterwards it retries every 10 seconds instead of every 30.
+  or the network comes back. After three quick attempts (1, 2 and 5 seconds) it retries
+  every 10 seconds, where it used to wait 10, then 20, then every 30 seconds.
 
 ## [14.2609.4] - 2026-09-14
 

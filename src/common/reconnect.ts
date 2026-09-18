@@ -8,7 +8,7 @@
 import { CLOSE_ORIGIN_REJECTED } from './constants.js';
 
 /** Fast at first, since the usual cause is a backend that is just restarting. */
-const EARLY_DELAYS_MS = [1000, 2000, 5000, 10000, 20000] as const;
+const EARLY_DELAYS_MS = [1000, 2000, 5000] as const;
 
 /**
  * Afterwards every 10 seconds, without ever giving up. A failed attempt at a

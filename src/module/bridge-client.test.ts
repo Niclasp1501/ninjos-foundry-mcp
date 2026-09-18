@@ -184,7 +184,7 @@ describe('BridgeClient', () => {
 
     vi.advanceTimersByTime(1000);
     expect(sockets).toHaveLength(2);
-    for (const delay of [2000, 5000, 10000, 20000, 10000, 10000]) {
+    for (const delay of [2000, 5000, 10000, 10000, 10000]) {
       last().drop(1006);
       vi.advanceTimersByTime(delay - 1);
       const before = sockets.length;
