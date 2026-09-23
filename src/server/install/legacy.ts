@@ -2,7 +2,7 @@
  * What the previous installers left on disk, and the entries kept at their paths.
  */
 import { pathToFileURL } from 'node:url';
-import type { PlatformPath } from 'node:path';
+import type { PathApi } from './layout.js';
 
 /**
  * Program files of the previous Windows installer inside its folder.
@@ -35,7 +35,7 @@ export const LEGACY_WINDOWS_MARKERS = ['Uninstall.exe', 'foundry-mcp-server'] as
 /** The program folder of the previous macOS installer. Owned by root. */
 export const LEGACY_MAC_APP = '/Applications/FoundryMCPServer.app';
 
-export function legacyEntryDir(p: PlatformPath, root: string): string {
+export function legacyEntryDir(p: PathApi, root: string): string {
   return p.join(root, 'foundry-mcp-server', 'packages', 'mcp-server', 'dist');
 }
 
@@ -71,7 +71,7 @@ export function backendShim(backend: string, platform: NodeJS.Platform): string 
 }
 
 /** Start menu folder of the previous installer, with its link to Uninstall.exe. */
-export function legacyStartMenu(p: PlatformPath, roamingAppData: string): string {
+export function legacyStartMenu(p: PathApi, roamingAppData: string): string {
   return p.join(
     roamingAppData,
     'Microsoft',

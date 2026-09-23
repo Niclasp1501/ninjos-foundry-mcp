@@ -6,7 +6,17 @@
  * installs there keeps those entries runnable even where it cannot rewrite them.
  */
 import { readdirSync, statSync } from 'node:fs';
-import { posix, win32, type PlatformPath } from 'node:path';
+import { posix, win32 } from 'node:path';
+
+/**
+ * The path functions of one platform, `posix` or `win32`.
+ *
+ * Deliberately derived from `posix` instead of importing `PlatformPath`: that
+ * name exists in @types/node 24 but not in 26, so importing it pins the type
+ * definitions to a major version for a type that is simply the shape of the
+ * object we already have here.
+ */
+export type PathApi = typeof posix;
 
 /** The key under `mcpServers` every previous installer and guide used. */
 export const SERVER_KEY = 'foundry-mcp';
@@ -51,7 +61,7 @@ export const systemFileProbe: FileProbe = {
   },
 };
 
-export function pathApi(platform: NodeJS.Platform): PlatformPath {
+export function pathApi(platform: NodeJS.Platform): PathApi {
   return platform === 'win32' ? win32 : posix;
 }
 
