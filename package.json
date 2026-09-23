@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "2.0.0",
-    "@types/node": "24.13.4",
+    "@types/node": "26.6.2",
     "@types/ws": "8.18.1",
     "husky": "9.1.7",
     "lint-staged": "17.5.1",
