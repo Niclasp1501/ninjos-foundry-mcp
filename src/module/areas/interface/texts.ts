@@ -189,6 +189,8 @@ export const EN = {
       Start:
         'To start: set up the MCP server on the PC, open this world as Gamemaster and wait for the green dot.',
       ForgeZeile: 'More modules and web tools by Ninjo',
+      PatreonZeile:
+        'The modules are free and stay free. On Patreon you can support my work and get premium add-ons in return.',
       Nie: "Don't show again",
       Spaeter: 'Later',
     },

@@ -80,6 +80,7 @@ describe('language fragments of the interface package', () => {
       'Punkt3',
       'Start',
       'ForgeZeile',
+      'PatreonZeile',
       'Nie',
       'Spaeter',
     ]) {

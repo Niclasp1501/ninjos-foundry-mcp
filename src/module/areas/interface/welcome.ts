@@ -35,6 +35,7 @@ const MODULE = {
 };
 
 const FORGE = 'https://ninjos-forge.web.app';
+const PATREON = 'https://www.patreon.com/ninjosforge';
 export const WELCOME_SETTING = 'willkommenGesehen';
 
 /* ── The same in every module from here on ────────────────────────── */
@@ -93,7 +94,7 @@ function attachStyle(): void {
     }
     a.ninjo-willkommen-forge {
       display: flex; gap: 0.8rem; align-items: center;
-      margin: 1rem -0.5rem -0.5rem; padding: 0.75rem 0.9rem;
+      margin: 1rem -0.5rem 0; padding: 0.75rem 0.9rem;
       border-top: 2px solid var(--ninjo-akzent, #D4AF37);
       background: linear-gradient(180deg, var(--ninjo-marke-tief, #5e0000) 0%, var(--ninjo-marke, #8B0000) 100%);
       color: var(--ninjo-auf-marke, #fff); text-decoration: none; transition: filter 0.15s;
@@ -108,6 +109,18 @@ function attachStyle(): void {
     .ninjo-willkommen-forge-titel { display: block; color: var(--ninjo-akzent, #D4AF37); font-size: 0.95rem; font-weight: 700; line-height: 1.2; }
     .ninjo-willkommen-forge-zeile { display: block; margin-top: 0.1rem; color: rgb(255 255 255 / 88%); font-size: 0.8rem; line-height: 1.35; }
     a.ninjo-willkommen-forge > i:last-child { flex: 0 0 auto; color: var(--ninjo-akzent, #D4AF37); font-size: 1rem; }
+    /* Patreon as a second, quieter line in the same strip: one sentence, not a second sign. */
+    a.ninjo-willkommen-patreon {
+      display: flex; gap: 0.55rem; align-items: center;
+      margin: 0 -0.5rem -0.5rem; padding: 0.45rem 0.9rem 0.55rem;
+      border-top: 1px solid rgb(212 175 55 / 35%);
+      background: var(--ninjo-marke, #8B0000);
+      color: rgb(255 255 255 / 88%); font-size: 0.8rem; line-height: 1.35;
+      text-decoration: none; transition: filter 0.15s;
+    }
+    a.ninjo-willkommen-patreon:hover { filter: brightness(1.18); text-decoration: none; }
+    a.ninjo-willkommen-patreon:focus-visible { outline: 2px solid var(--ninjo-akzent, #D4AF37); outline-offset: 2px; }
+    a.ninjo-willkommen-patreon > i { flex: 0 0 auto; color: var(--ninjo-akzent, #D4AF37); font-size: 0.95rem; }
   `;
   document.head.append(style);
 }
@@ -135,6 +148,10 @@ export function welcomeContent(): string {
           <span class="ninjo-willkommen-forge-zeile">${escapeHtml(text('MCP.Willkommen.ForgeZeile'))}</span>
         </span>
         <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+      </a>
+      <a class="ninjo-willkommen-patreon" href="${PATREON}" target="_blank" rel="noopener">
+        <i class="fa-brands fa-patreon" aria-hidden="true"></i>
+        <span>${escapeHtml(text('MCP.Willkommen.PatreonZeile'))}</span>
       </a>
     </div>`;
 }
