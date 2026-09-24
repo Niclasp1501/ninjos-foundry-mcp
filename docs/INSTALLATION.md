@@ -71,12 +71,73 @@ Für jedes andere Programm, das MCP-Server über `command` und `args` startet:
 Den fertigen Block mit den Pfaden deines Rechners gibt der Befehl `print-config` aus
 (siehe „Fehlersuche").
 
+## Battlemaps und Szenenbilder mit Gemini
+
+Drei Werkzeuge malen Bilder für deine Welt: `generate-battlemap` (eine Karte von oben
+für den Tisch), `generate-scene-image` (ein Ortsbild aus Augenhöhe) und
+`edit-map-image` (ändert ein vorhandenes Bild und legt das Ergebnis als neue Datei
+daneben). Sie legen das Bild in Foundry ab, machen auf Wunsch eine Szene daraus und
+zeigen Claude eine kleine Vorschau. Vorhandene Szenenbilder können als Vorlage
+mitgehen, damit die Karte zu ihnen passt.
+
+Die Bilder kommen von Googles Gemini. **Jedes Bild kostet Geld**, einige Cent in 2K,
+abgerechnet über **deinen eigenen** Google-Zugang. Bildmodelle sind nicht im
+kostenlosen Kontingent. Die aktuellen Preise stehen bei Google:
+<https://ai.google.dev/gemini-api/docs/pricing>
+
+### Einschalten
+
+1. In Google AI Studio (<https://aistudio.google.com>) unter „API keys" einen Schlüssel
+   anlegen.
+2. Den Schlüssel in deinem Eintrag des MCP-Servers unter `env` eintragen, in Claude
+   Desktop also in `claude_desktop_config.json`:
+
+   ```json
+   "foundry-mcp": {
+     "command": "…",
+     "args": ["…"],
+     "env": { "GEMINI_API_KEY": "dein-schlüssel" }
+   }
+   ```
+
+   Für Claude Code: `claude mcp add` mit `-e GEMINI_API_KEY=dein-schlüssel` vor dem
+   Namen.
+
+3. Claude neu starten. Ohne Schlüssel erscheinen die drei Werkzeuge gar nicht.
+
+Die Einrichtung übernimmt den Wert bei jeder Aktualisierung. Wahlweise dazu:
+
+| Variable                  | Wirkung                                                   |
+| ------------------------- | --------------------------------------------------------- |
+| `GEMINI_IMAGE_MODEL`      | Bildmodell, ab Werk `gemini-3.1-flash-image`              |
+| `GEMINI_IMAGE_SIZE`       | `1K`, `2K` oder `4K`, ab Werk `2K`                        |
+| `FOUNDRY_MCP_IMAGE_STYLE` | eigener Stiltext statt des eingebauten, `none` für keinen |
+| `GEMINI_TIMEOUT_MS`       | längste Wartezeit je Bild, ab Werk 180000                 |
+
+### Deinen Schlüssel schützen
+
+Wer deinen Schlüssel hat, erzeugt Bilder auf deine Rechnung. Deshalb:
+
+- **Ein Limit setzen.** Im Google-Cloud-Projekt des Schlüssels ein Budget mit
+  Benachrichtigung anlegen und für die „Generative Language API" die Kontingente pro
+  Tag begrenzen. Den Verbrauch zeigt AI Studio unter „Usage".
+- **Den Schlüssel beschränken.** In der Google Cloud Console unter „APIs und Dienste",
+  „Anmeldedaten" den Schlüssel nur für die „Generative Language API" freigeben.
+- **Ihn nur beim MCP-Server auf deinem PC eintragen.** Nie in Foundry: Welt- und
+  Moduleinstellungen landen in den Browsern aller Spieler. Nie in einen Chat, ein
+  Bildschirmfoto, eine geteilte Datei oder ein Repository.
+- **Bei einem Verdacht sofort handeln.** Den Schlüssel in AI Studio löschen und einen
+  neuen anlegen. Der alte ist damit sofort wertlos.
+
+Der Server schickt den Schlüssel nur an Google, im Kopf der Anfrage, nie in einer
+Adresse. Er steht in keiner Protokollzeile und in keiner Antwort an Claude.
+
 ## Aktualisieren
 
 Genauso wie installieren: neue Zip-Datei entpacken, `setup.cmd` bzw. `setup.command`
 ausführen, Claude neu starten.
 
-- Einstellungen in deinem Eintrag (etwa `COMFYUI_ENABLED` oder `LOG_LEVEL` unter `env`)
+- Einstellungen in deinem Eintrag (etwa `GEMINI_API_KEY` oder `LOG_LEVEL` unter `env`)
   bleiben erhalten.
 - Andere MCP-Server und Einstellungen von Claude bleiben unangetastet.
 - Vor jeder Änderung an einer Konfiguration entsteht eine Sicherung
@@ -89,8 +150,9 @@ ausführen, Claude neu starten.
 macht nichts anders. Die Einrichtung übernimmt die bisherige Installation: gleicher
 Ordner, gleicher Eintrag `foundry-mcp`, gleiche Werte unter `env`. Der alte
 Deinstaller wird entfernt, damit er die neuen Dateien nicht löschen kann. Deine
-freigegebenen Foundry-Seiten (`allowed-origins.json`) und ein installiertes ComfyUI
-samt Modellen bleiben, wo sie sind.
+freigegebenen Foundry-Seiten (`allowed-origins.json`) bleiben, wo sie sind. Ein
+ComfyUI-Ordner einer älteren Version bleibt ebenfalls liegen; seit 14.2609.6 wird er
+nicht mehr benutzt und darf weg.
 
 Das Foundry-Modul aktualisiert Foundry selbst, unabhängig vom Server.
 
@@ -130,7 +192,7 @@ Rechtsklick, „Öffnen" starten.
   entfernt, jeweils mit Sicherung. Andere Einträge bleiben.
 - Programmdateien und der Eintrag unter „Apps" werden entfernt.
 - **Bleibt**, weil es deine Daten sind: `allowed-origins.json`, der Ordner `logs`, ein
-  ComfyUI mit Modellen und die Sicherungen der Konfiguration. Wer alles loswerden will,
+  ComfyUI-Ordner einer älteren Version und die Sicherungen der Konfiguration. Wer alles loswerden will,
   löscht danach den Ordner `FoundryMCPServer` von Hand.
 - Das Foundry-Modul entfernst du in Foundry unter „Add-on-Module".
 - Mac: Ein alter Programmordner `/Applications/FoundryMCPServer.app` des früheren
@@ -210,9 +272,15 @@ Einrichtung einfach erneut ausführen, sie findet die Store-Fassung von selbst.
   Freigegebene Seiten stehen in `allowed-origins.json` im Ordner
   `%LOCALAPPDATA%\FoundryMCPServer` (Mac: `~/.config/ninjos-foundry-mcp`).
 
-### Kartengenerator
+### Battlemaps und Szenenbilder
 
-Die Einrichtung installiert ComfyUI nicht mehr. Wer es schon hat oder selbst
-installiert, trägt in seinem Eintrag unter `env` den Wert `"COMFYUI_ENABLED": "true"`
-ein, bei Bedarf dazu `COMFYUI_INSTALL_PATH`. Diese Werte bleiben bei jeder
-Aktualisierung erhalten.
+- **Die drei Werkzeuge fehlen:** `GEMINI_API_KEY` steht nicht im Eintrag, oder Claude
+  wurde danach nicht neu gestartet.
+- **„Google rejected the API key" oder „refused the request (HTTP 403)":** Schlüssel
+  falsch abgeschrieben, gelöscht, oder für die „Generative Language API" nicht
+  freigegeben.
+- **„limit for this key is reached (HTTP 429)":** Das Kontingent oder Budget ist
+  erreicht. Das ist der Schutz, der dich vor hohen Kosten bewahrt; in Google Cloud
+  nachsehen und bei Bedarf anheben.
+- **`COMFYUI_ENABLED` im Protokoll:** Der ComfyUI-Kartengenerator ist seit 14.2609.6
+  ausgebaut. Den Eintrag entfernen und `GEMINI_API_KEY` setzen.

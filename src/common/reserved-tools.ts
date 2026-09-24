@@ -104,4 +104,9 @@ export const RESERVED_TOOL_NAMES: ReadonlySet<string> = new Set([
   'update-token',
   'wfrp4e-add-items',
   'wfrp4e-update-actor',
+  // The image tools of this generation. Listed only with GEMINI_API_KEY, reserved always, so no
+  // other module takes a name that turns up as soon as a key is set.
+  'edit-map-image',
+  'generate-battlemap',
+  'generate-scene-image',
 ]);

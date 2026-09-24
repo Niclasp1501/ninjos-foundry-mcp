@@ -12,3 +12,8 @@ release-notes.md
 
 # Private names in plain text and the helper that hashes them; see scripts/check-public.mjs.
 .private/
+
+# Keys belong in the env block of the MCP server entry on your own PC, never in this repository.
+.env
+.env.*
+*.key

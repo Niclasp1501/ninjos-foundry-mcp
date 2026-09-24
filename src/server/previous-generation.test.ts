@@ -97,7 +97,7 @@ describe('every tool of the directory against a module that knows no query of th
     bridge,
     logger: silentLogger,
     groups: [],
-    comfyuiEnabled: true,
+    imagesEnabled: true,
     maxChars: 0,
     startupWaitLeft: () => 0,
   });
@@ -128,7 +128,7 @@ describe('every tool of the directory against a module that knows no query of th
       }
       expect(result.isError, `${name}: ${text(result)}`).toBe(true);
       if (MAP_TOOLS.includes(name)) {
-        // Maps never reach an old module: without a started generator they refuse on the server.
+        // The ComfyUI map tools were removed in 14.2609.6; a call ends on the server, never at the module.
         expect(sent, name).toEqual([]);
         return;
       }
@@ -231,7 +231,7 @@ describe('a wrapper of the previous generation against this backend', () => {
     const listed = (byId.get(2)?.['result']?.['tools'] as Array<{ name: string }>).map(
       tool => tool.name
     );
-    // Map tools only with COMFYUI_ENABLED=true, as in the previous backend.
+    // The three ComfyUI map tools are gone since 14.2609.6; Gemini brought three new ones.
     const expected = directory.map(tool => tool.name).filter(name => !MAP_TOOLS.includes(name));
     expect(expected.filter(name => !listed.includes(name))).toEqual([]);
 

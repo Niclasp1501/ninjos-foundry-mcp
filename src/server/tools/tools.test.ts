@@ -36,7 +36,7 @@ describe('toToolResult', () => {
 });
 
 describe('groupEnabled', () => {
-  it('enables all groups by default, maps only with ComfyUI', () => {
+  it('enables all groups by default, maps only with a Gemini key', () => {
     expect(groupEnabled('world', [], false)).toBe(true);
     expect(groupEnabled('maps', [], false)).toBe(false);
     expect(groupEnabled('maps', [], true)).toBe(true);
@@ -74,7 +74,7 @@ function registry(bridge: BridgeAccess, groups: string[] = []): ToolRegistry {
     bridge,
     logger: silentLogger,
     groups,
-    comfyuiEnabled: false,
+    imagesEnabled: false,
     maxChars: 0,
     startupWaitLeft: () => 0,
   });

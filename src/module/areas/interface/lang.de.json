@@ -46,11 +46,6 @@
           "name": "Kompendien freigeben",
           "label": "Kompendien freigeben",
           "hint": "Festlegen, in welche Kompendien die KI schreiben darf."
-        },
-        "mapGeneration": {
-          "name": "Kartengenerierung",
-          "label": "Kartengenerierung",
-          "hint": "Den Kartendienst prüfen, starten und stoppen und seine Qualität festlegen."
         }
       },
       "creatureIndex": {
@@ -91,33 +86,6 @@
         "nothing": "nichts",
         "damaged": "Die gespeicherte Freigabeliste ließ sich nicht lesen: {problem}. Bis sie neu gespeichert ist, gilt kein Kompendium als freigegeben."
       },
-      "mapGeneration": {
-        "title": "Kartengenerierung",
-        "intro": "Schlachtkarten entstehen mit ComfyUI auf dem PC des MCP-Servers. Hier prüfst, startest und stoppst du den Dienst und legst die Qualität fest.",
-        "serviceHeading": "Dienst",
-        "state": "Zustand",
-        "stateUnknown": "noch nicht geprüft",
-        "stateChecking": "wird geprüft",
-        "stateStarting": "startet. Der erste Start mit Modellen kann mehrere Minuten dauern.",
-        "stateStopping": "wird gestoppt",
-        "stateRunning": "läuft",
-        "stateStopped": "gestoppt",
-        "stateError": "Fehler",
-        "stateDisabled": "auf dem Server ausgeschaltet. Setze dort COMFYUI_ENABLED=true, um Karten zu erzeugen.",
-        "check": "Prüfen",
-        "start": "Starten",
-        "stop": "Stoppen",
-        "serviceMissing": "Der Kartendienst kommt mit dem Kartengenerator.",
-        "settingsHeading": "Einstellungen",
-        "autoStart": "Mit Foundry starten",
-        "autoStartHint": "Fordert den Start des Dienstes an, wenn eine Spielleitung die Welt lädt. Ab Werk aus, weil der Dienst viel Speicher braucht.",
-        "quality": "Qualität",
-        "qualityHint": "Mehr Rechenschritte ergeben eine feinere Karte und dauern länger.",
-        "low": "Niedrig (8 Schritte)",
-        "medium": "Mittel (20 Schritte)",
-        "high": "Hoch (35 Schritte)",
-        "settingsMissing": "Diese Einstellungen kommen mit dem Kartengenerator."
-      },
       "notify": {
         "indexBuilding": "Der Kreaturenindex fehlt und wird gebaut.",
         "indexRebuilding": "Der Kreaturenindex wird neu gebaut.",
@@ -129,15 +97,6 @@
         "releaseSaved": "Freigabeliste gespeichert, Einträge: {count}.",
         "releaseAllowAll": "Freigabeliste geleert: Die KI darf in jedes nicht gesperrte Kompendium schreiben.",
         "releaseFailed": "Die Freigabeliste wurde nicht gespeichert: {reason}",
-        "comfyAlreadyRunning": "Der Kartendienst läuft bereits.",
-        "comfyStarting": "Der Kartendienst wird gestartet.",
-        "comfyStarted": "Der Kartendienst läuft.",
-        "comfyStartFailed": "Der Kartendienst ist nicht gestartet: {reason}",
-        "comfyStopped": "Kartendienst: {message}",
-        "comfyStopFailed": "Der Kartendienst ließ sich nicht stoppen: {reason}",
-        "backendMissing": "Der MCP-Server ist nicht verbunden, deshalb lässt sich der Kartendienst von hier nicht steuern.",
-        "mapgenSaved": "Einstellungen der Kartengenerierung gespeichert.",
-        "mapJobFailed": "Die Karte {name} ließ sich nicht erzeugen: {reason}",
         "sceneCreated": "Szene {name} angelegt.",
         "sceneSwitched": "Auf die Szene {name} gewechselt.",
         "wallsCreated": "Wände angelegt: {count}.",

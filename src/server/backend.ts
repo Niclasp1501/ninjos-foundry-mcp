@@ -140,7 +140,7 @@ export async function startBackend(options: BackendOptions): Promise<RunningBack
     bridge,
     logger,
     groups: config.toolGroups,
-    comfyuiEnabled: config.comfyuiEnabled,
+    imagesEnabled: config.imagesEnabled,
     maxChars: config.toolResponseMaxChars,
     startupWaitLeft: () => Math.max(0, startedAt + config.startupModuleWaitMs - Date.now()),
     bridgeProblem: () => bridgeProblem,

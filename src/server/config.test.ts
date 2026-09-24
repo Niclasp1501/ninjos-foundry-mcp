@@ -16,7 +16,7 @@ describe('readConfig', () => {
       remoteMode: false,
       queryTimeoutMs: 30_000,
       toolResponseMaxChars: 0,
-      comfyuiEnabled: false,
+      imagesEnabled: false,
       allowedOrigins: [],
     });
     expect(config.lockFile).toMatch(/foundry-mcp-backend\.lock$/);
@@ -29,7 +29,6 @@ describe('readConfig', () => {
       FOUNDRY_PORT: '41415',
       FOUNDRY_REMOTE_MODE: 'true',
       FOUNDRY_ALLOWED_ORIGINS: 'http://localhost:30000, https://*.forge-vtt.com',
-      COMFYUI_ENABLED: 'true',
       FOUNDRY_MCP_IDLE_SHUTDOWN_MS: '5000',
     });
     expect(config).toMatchObject({
@@ -38,7 +37,6 @@ describe('readConfig', () => {
       bridgePort: 41415,
       remoteMode: true,
       allowedOrigins: ['http://localhost:30000', 'https://*.forge-vtt.com'],
-      comfyuiEnabled: true,
       idleShutdownMs: 5000,
     });
   });
@@ -63,19 +61,36 @@ describe('readConfig', () => {
     expect(readConfig({ FOUNDRY_SIGNALING_PORT: '41416' }).config.signalingPort).toBe(41416);
   });
 
-  it('switches COMFYUI_ENABLED and FOUNDRY_REMOTE_MODE on with "true" only, as the previous generation', () => {
+  it('switches FOUNDRY_REMOTE_MODE on with "true" only, as the previous generation', () => {
     for (const raw of ['1', 'yes', 'on', 'TRUE']) {
-      const { config, warnings } = readConfig({ COMFYUI_ENABLED: raw, FOUNDRY_REMOTE_MODE: raw });
-      expect([config.comfyuiEnabled, config.remoteMode]).toEqual([false, false]);
+      const { config, warnings } = readConfig({ FOUNDRY_REMOTE_MODE: raw });
+      expect(config.remoteMode).toBe(false);
       expect(warnings).toEqual([
         `FOUNDRY_REMOTE_MODE="${raw}" stays off: only "true" switches it on`,
-        `COMFYUI_ENABLED="${raw}" stays off: only "true" switches it on`,
       ]);
     }
-    expect(readConfig({ COMFYUI_ENABLED: 'false', FOUNDRY_REMOTE_MODE: ' true ' })).toMatchObject({
-      config: { comfyuiEnabled: false, remoteMode: true },
+    expect(readConfig({ FOUNDRY_REMOTE_MODE: ' true ' })).toMatchObject({
+      config: { remoteMode: true },
       warnings: [],
     });
+  });
+
+  it('lists the image tools only with a Gemini key, and never keeps the key itself', () => {
+    expect(readConfig({}).config.imagesEnabled).toBe(false);
+    expect(readConfig({ GEMINI_API_KEY: '   ' }).config.imagesEnabled).toBe(false);
+    const { config } = readConfig({ GEMINI_API_KEY: 'secret-test-value' });
+    expect(config.imagesEnabled).toBe(true);
+    expect(JSON.stringify(config)).not.toContain('secret-test-value');
+  });
+
+  it('says that COMFYUI_ENABLED has no effect any more', () => {
+    for (const raw of ['true', '1', 'false']) {
+      const { config, warnings } = readConfig({ COMFYUI_ENABLED: raw });
+      expect(config.imagesEnabled).toBe(false);
+      expect(warnings).toEqual([
+        expect.stringMatching(/COMFYUI_ENABLED has no effect.*GEMINI_API_KEY/),
+      ]);
+    }
   });
 
   it('warns about a broken port and keeps the default', () => {

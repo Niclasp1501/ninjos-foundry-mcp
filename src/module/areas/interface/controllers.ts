@@ -14,7 +14,7 @@
 import { readSetting } from '../../settings.js';
 import { MODULE_ID } from '../../../common/constants.js';
 import { checkedIf, disabledIf, escapeHtml, icon } from './html.js';
-import { announce, messageText, reasonOf } from './messages.js';
+import { announce, reasonOf } from './messages.js';
 import {
   buildReleaseView,
   packageTitle,
@@ -29,8 +29,6 @@ import {
   interfaceService,
   type CompendiumReleaseService,
   type CreatureIndexService,
-  type MapService,
-  type MapServiceReport,
 } from './services.js';
 import { t } from './texts.js';
 
@@ -112,11 +110,6 @@ function footerHtml(action: string, iconName: string, label: string, disabled: b
 
 function rootOpen(classes: string, busy: boolean): string {
   return `<div class="mcp-window ${classes}"${busy ? ' aria-busy="true"' : ''}>`;
-}
-
-/** The action needs the MCP server and the bridge is down. Duck typed, so any package's error counts. */
-function bridgeMissing(error: unknown): boolean {
-  return (error as { code?: unknown } | null)?.code === 'BRIDGE_MISSING';
 }
 
 /* ── Creature index ───────────────────────────────────────────────── */
@@ -391,204 +384,6 @@ export class CompendiumReleaseController implements WindowController {
         kind: 'error',
         text: announce('releaseFailed', { reason: reasonOf(error) }),
       };
-      this.host.refresh();
-    }
-  }
-}
-
-/* ── Map generation ───────────────────────────────────────────────── */
-
-export const MAP_SETTINGS = { autoStart: 'mapGenAutoStart', quality: 'mapGenQuality' } as const;
-export const MAP_QUALITIES = ['low', 'medium', 'high'] as const;
-
-export interface MapGenerationDeps {
-  service(): MapService | undefined;
-  settings: SettingsAccess;
-}
-
-type MapBusy = 'check' | 'start' | 'stop' | 'apply' | null;
-
-const STATE_KEYS: Record<MapServiceReport['state'], string> = {
-  running: 'mapGeneration.stateRunning',
-  stopped: 'mapGeneration.stateStopped',
-  error: 'mapGeneration.stateError',
-  disabled: 'mapGeneration.stateDisabled',
-};
-
-export class MapGenerationController implements WindowController {
-  #busy: MapBusy = null;
-  #report: MapServiceReport | null = null;
-  #status: StatusLine | null = null;
-
-  constructor(
-    private readonly host: WindowHost,
-    private readonly deps: MapGenerationDeps = {
-      service: () => interfaceService('mapService'),
-      settings: moduleSettings,
-    }
-  ) {}
-
-  opened(): void {
-    if (this.deps.service()) void this.action('check', EMPTY_FORM);
-  }
-
-  #settingsThere(): boolean {
-    const { read } = this.deps.settings;
-    return (
-      typeof read(MAP_SETTINGS.autoStart) === 'boolean' &&
-      typeof read(MAP_SETTINGS.quality) === 'string'
-    );
-  }
-
-  #stateText(): string {
-    if (this.#busy === 'check') return t('mapGeneration.stateChecking');
-    if (this.#busy === 'start') return t('mapGeneration.stateStarting');
-    if (this.#busy === 'stop') return t('mapGeneration.stateStopping');
-    if (!this.#report) return t('mapGeneration.stateUnknown');
-    const text = t(STATE_KEYS[this.#report.state]);
-    return this.#report.detail ? `${text} (${this.#report.detail})` : text;
-  }
-
-  render(): string {
-    const service = this.deps.service();
-    const state = this.#report?.state;
-    const busy = this.#busy !== null;
-    const settingsThere = this.#settingsThere();
-    const quality = String(this.deps.settings.read(MAP_SETTINGS.quality) ?? 'low');
-    const kind = state === 'running' ? 'ok' : state === 'error' ? 'error' : 'info';
-    const options = MAP_QUALITIES.map(
-      value =>
-        `<option value="${value}"${value === quality ? ' selected' : ''}>${esc(t(`mapGeneration.${value}`))}</option>`
-    ).join('');
-    return [
-      rootOpen('mcp-mapgen', busy),
-      `<p class="mcp-window__intro">${esc(t('mapGeneration.intro'))}</p>`,
-      `<section class="mcp-window__section">`,
-      `<h3>${esc(t('mapGeneration.serviceHeading'))}</h3>`,
-      service ? '' : unavailableHtml(t('mapGeneration.serviceMissing')),
-      `<p class="mcp-mapgen__state mcp-mapgen__state--${kind}" role="status" aria-live="polite">`,
-      `<strong>${esc(t('mapGeneration.state'))}:</strong> ${esc(service ? this.#stateText() : t('mapGeneration.stateUnknown'))}</p>`,
-      `<div class="mcp-window__buttons">`,
-      buttonHtml('check', 'fa-magnifying-glass', t('mapGeneration.check'), !service || busy),
-      buttonHtml(
-        'start',
-        'fa-play',
-        t('mapGeneration.start'),
-        !service || busy || state === 'running' || state === 'disabled'
-      ),
-      buttonHtml(
-        'stop',
-        'fa-stop',
-        t('mapGeneration.stop'),
-        !service || busy || state === 'stopped' || state === 'disabled'
-      ),
-      `</div></section>`,
-      `<section class="mcp-window__section">`,
-      `<h3>${esc(t('mapGeneration.settingsHeading'))}</h3>`,
-      settingsThere ? '' : unavailableHtml(t('mapGeneration.settingsMissing')),
-      checkHtml(
-        MAP_SETTINGS.autoStart,
-        t('mapGeneration.autoStart'),
-        t('mapGeneration.autoStartHint'),
-        this.deps.settings.read(MAP_SETTINGS.autoStart) === true,
-        !settingsThere || busy
-      ),
-      `<label class="mcp-window__field"><strong>${esc(t('mapGeneration.quality'))}</strong>`,
-      `<select name="${MAP_SETTINGS.quality}"${disabledIf(!settingsThere || busy)}>${options}</select>`,
-      `<small>${esc(t('mapGeneration.qualityHint'))}</small></label>`,
-      `</section>`,
-      statusHtml(this.#status),
-      footerHtml('apply', 'fa-check', t('common.apply'), !settingsThere || busy),
-      `</div>`,
-    ].join('');
-  }
-
-  async action(name: string, form: FormSnapshot): Promise<void> {
-    if (this.#busy !== null) return;
-    if (name === 'apply') return this.#apply(form);
-    if (name !== 'check' && name !== 'start' && name !== 'stop') return;
-    const service = this.deps.service();
-    if (!service) {
-      this.#status = {
-        kind: 'error',
-        text: t('common.notAvailable', { what: t('mapGeneration.serviceMissing') }),
-      };
-      this.host.refresh();
-      return;
-    }
-    this.#busy = name;
-    this.#status = name === 'start' ? { kind: 'info', text: announce('comfyStarting') } : null;
-    this.host.refresh();
-    try {
-      if (name === 'check') {
-        this.#report = await service.status();
-      } else if (name === 'start') {
-        const report = await service.start();
-        this.#report = { state: report.state, ...(report.detail ? { detail: report.detail } : {}) };
-        this.#status = this.#afterStart(report);
-      } else {
-        const report = await service.stop();
-        this.#report = report;
-        this.#status = {
-          kind: report.state === 'error' ? 'error' : 'ok',
-          text: announce('comfyStopped', {
-            message: report.detail ?? t(STATE_KEYS[report.state]),
-          }),
-        };
-      }
-    } catch (error) {
-      this.#report = { state: 'error', detail: reasonOf(error) };
-      if (bridgeMissing(error)) {
-        this.#status = {
-          kind: 'error',
-          text: name === 'check' ? messageText('backendMissing') : announce('backendMissing'),
-        };
-      } else if (name === 'check') {
-        this.#status = { kind: 'error', text: t('common.failed', { reason: reasonOf(error) }) };
-      } else {
-        const key = name === 'start' ? 'comfyStartFailed' : 'comfyStopFailed';
-        this.#status = { kind: 'error', text: announce(key, { reason: reasonOf(error) }) };
-      }
-    } finally {
-      this.#busy = null;
-      this.host.refresh();
-    }
-  }
-
-  #afterStart(report: MapServiceReport & { alreadyRunning?: boolean }): StatusLine {
-    if (report.alreadyRunning) return { kind: 'ok', text: announce('comfyAlreadyRunning') };
-    if (report.state === 'running') return { kind: 'ok', text: announce('comfyStarted') };
-    return {
-      kind: 'error',
-      text: announce('comfyStartFailed', { reason: report.detail ?? t(STATE_KEYS[report.state]) }),
-    };
-  }
-
-  async #apply(form: FormSnapshot): Promise<void> {
-    if (!this.#settingsThere()) {
-      this.#status = {
-        kind: 'error',
-        text: t('common.notAvailable', { what: t('mapGeneration.settingsMissing') }),
-      };
-      this.host.refresh();
-      return;
-    }
-    const chosen = form.values[MAP_SETTINGS.quality];
-    const quality = (MAP_QUALITIES as readonly string[]).includes(chosen ?? '')
-      ? chosen
-      : this.deps.settings.read(MAP_SETTINGS.quality);
-    this.#busy = 'apply';
-    this.host.refresh();
-    try {
-      await writeAndCheck(this.deps.settings, {
-        [MAP_SETTINGS.autoStart]: form.flags[MAP_SETTINGS.autoStart] === true,
-        [MAP_SETTINGS.quality]: quality,
-      });
-      this.#status = { kind: 'ok', text: announce('mapgenSaved') };
-    } catch (error) {
-      this.#status = failure(error);
-    } finally {
-      this.#busy = null;
       this.host.refresh();
     }
   }

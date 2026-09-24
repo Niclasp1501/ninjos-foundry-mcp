@@ -71,12 +71,71 @@ For any other client that starts MCP servers through `command` and `args`:
 The command `print-config` prints the finished block with the paths of your machine
 (see "Troubleshooting").
 
+## Battle maps and scene images with Gemini
+
+Three tools paint pictures for your world: `generate-battlemap` (a map from above for
+the table), `generate-scene-image` (a location picture at eye level) and
+`edit-map-image` (changes an existing image and stores the result as a new file next
+to it). They store the image in Foundry, create a scene from it if you want, and show
+Claude a small preview. Existing location pictures can go along as references, so the
+map matches them.
+
+The pictures come from Google's Gemini. **Every image costs money**, a few cents in 2K,
+charged to **your own** Google account. Image models are not part of the free tier.
+Google lists the current prices: <https://ai.google.dev/gemini-api/docs/pricing>
+
+### Switching it on
+
+1. Create a key in Google AI Studio (<https://aistudio.google.com>) under "API keys".
+2. Put the key into your MCP server entry under `env`, in Claude Desktop that is
+   `claude_desktop_config.json`:
+
+   ```json
+   "foundry-mcp": {
+     "command": "…",
+     "args": ["…"],
+     "env": { "GEMINI_API_KEY": "your-key" }
+   }
+   ```
+
+   For Claude Code: `claude mcp add` with `-e GEMINI_API_KEY=your-key` before the
+   name.
+
+3. Restart Claude. Without a key the three tools do not appear at all.
+
+Setup keeps the value on every update. Optional:
+
+| Variable                  | Effect                                                           |
+| ------------------------- | ---------------------------------------------------------------- |
+| `GEMINI_IMAGE_MODEL`      | image model, default `gemini-3.1-flash-image`                    |
+| `GEMINI_IMAGE_SIZE`       | `1K`, `2K` or `4K`, default `2K`                                 |
+| `FOUNDRY_MCP_IMAGE_STYLE` | your own style text instead of the built-in one, `none` for none |
+| `GEMINI_TIMEOUT_MS`       | longest wait per image, default 180000                           |
+
+### Protect your key
+
+Whoever has your key makes images on your bill. So:
+
+- **Set a limit.** In the Google Cloud project of the key, create a budget with an alert
+  and cap the daily quotas of the "Generative Language API". AI Studio shows the usage
+  under "Usage".
+- **Restrict the key.** In the Google Cloud Console under "APIs & Services",
+  "Credentials", allow the key for the "Generative Language API" only.
+- **Put it into the MCP server entry on your PC and nowhere else.** Never into Foundry:
+  world and module settings reach the browser of every player. Never into a chat, a
+  screenshot, a shared file or a repository.
+- **Act at once on any suspicion.** Delete the key in AI Studio and create a new one. The
+  old one is worthless from that moment.
+
+The server sends the key to Google only, in the request header, never in an address. It
+appears in no log line and in no answer to Claude.
+
 ## Update
 
 Same as installing: unpack the new zip, run `setup.cmd` or `setup.command`, restart
 Claude.
 
-- Settings in your entry (such as `COMFYUI_ENABLED` or `LOG_LEVEL` under `env`) are kept.
+- Settings in your entry (such as `GEMINI_API_KEY` or `LOG_LEVEL` under `env`) are kept.
 - Other MCP servers and Claude's own settings are left alone.
 - Before any change to a configuration a backup
   `claude_desktop_config.json.foundry-mcp-backup-<date>-<time>` is written. The newest
@@ -87,8 +146,9 @@ Claude.
 **If you used the old installer** (`FoundryMCPServer-Setup-….exe` or `.dmg`), nothing is
 different for you. Setup takes over the previous installation: same folder, same entry
 `foundry-mcp`, same values under `env`. The old uninstaller is removed so it cannot
-delete the new files. Your allowed Foundry pages (`allowed-origins.json`) and an
-installed ComfyUI with its models stay where they are.
+delete the new files. Your allowed Foundry pages (`allowed-origins.json`) stay where
+they are. A ComfyUI folder of an older version stays too; since 14.2609.6 it is no
+longer used and may go.
 
 Foundry updates the module on its own, independently of the server.
 
@@ -125,7 +185,7 @@ click, "Open".
   and Cursor, each with a backup. Other entries stay.
 - Program files and the entry under "Apps" are removed.
 - **Kept**, because it is your data: `allowed-origins.json`, the `logs` folder, a ComfyUI
-  with models, and the configuration backups. To remove everything, delete the
+  folder of an older version, and the configuration backups. To remove everything, delete the
   `FoundryMCPServer` folder by hand afterwards.
 - Remove the Foundry module in Foundry under "Add-on Modules".
 - Mac: an old program folder `/Applications/FoundryMCPServer.app` from the previous
@@ -201,8 +261,14 @@ finds the Store edition by itself.
   are stored in `allowed-origins.json` in `%LOCALAPPDATA%\FoundryMCPServer` (Mac:
   `~/.config/ninjos-foundry-mcp`).
 
-### Map generator
+### Battle maps and scene images
 
-Setup no longer installs ComfyUI. If you have it or install it yourself, add
-`"COMFYUI_ENABLED": "true"` under `env` in your entry, plus `COMFYUI_INSTALL_PATH` if
-needed. These values are kept on every update.
+- **The three tools are missing:** `GEMINI_API_KEY` is not in the entry, or Claude was
+  not restarted afterwards.
+- **"Google rejected the API key" or "refused the request (HTTP 403)":** the key is
+  mistyped, deleted, or not allowed for the "Generative Language API".
+- **"limit for this key is reached (HTTP 429)":** the quota or budget is used up. That
+  is the protection that keeps costs down; look in Google Cloud and raise it if you
+  want.
+- **`COMFYUI_ENABLED` in the log:** the ComfyUI map generator was removed in
+  14.2609.6. Remove the entry and set `GEMINI_API_KEY`.

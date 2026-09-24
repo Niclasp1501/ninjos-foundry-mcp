@@ -1,13 +1,11 @@
 /**
  * This module against a server of the previous generation, through the real
  * bridge client: the server never sends `welcome`, so it has no requests from
- * the module. Every request this module sends (`mapService` from the map
- * window, `mcpListsChanged` from the change reporter) must end with a clear
- * answer in the module, and the old server must see nothing but `hello`.
+ * the module. Every request this module sends (`mcpListsChanged` from the
+ * change reporter) must end with a clear answer in the module, and the old
+ * server must see nothing but `hello`.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { InterfaceServiceError } from './areas/interface/services.js';
-import { mapService } from './areas/maps/channel.js';
 import { ListsChangedReporter } from './areas/mcp-extras/lists-changed.js';
 import { BridgeClient, type BridgeEvents, type SocketLike } from './bridge-client.js';
 import { useServerRequests } from './core-services.js';
@@ -78,22 +76,6 @@ afterEach(() => {
 });
 
 describe('every request of this module against a server without welcome', () => {
-  it('mapService: each action says the server is too old after the wait, and sends nothing', async () => {
-    vi.useFakeTimers();
-    connectToOldServer();
-    for (const action of ['status', 'start', 'stop'] as const) {
-      const answer = mapService[action]().catch((error: unknown) => error);
-      await vi.advanceTimersByTimeAsync(3000);
-      const error = await answer;
-      expect(error, action).toBeInstanceOf(InterfaceServiceError);
-      expect(error, action).toMatchObject({
-        code: 'FAILED',
-        message: expect.stringMatching(/older than this module/),
-      });
-    }
-    expect(socket.sent.map(message => message['type'])).toEqual(['hello']);
-  });
-
   it('mcpListsChanged: a change made by hand is not sent and warns nobody', async () => {
     connectToOldServer();
     const warnings: string[] = [];

@@ -32,7 +32,9 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const self = relative(root, fileURLToPath(import.meta.url)).split(sep).join('/');
+const self = relative(root, fileURLToPath(import.meta.url))
+  .split(sep)
+  .join('/');
 
 /** What is shipped: folders and files at the root of the repository. */
 const SHIPPED = [
@@ -91,7 +93,11 @@ const ERRORS = [
   ['work marker', /\/\/ 4\.\d+\s*$/],
   ['work marker', /\b[Tt]est run of \d|\b[Ff]inding \d|\((?:open )?question \d+\)/],
   ['private name (hashed match)', line => privateNameHit(line), true],
-  ['private network address', /\b(?:10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])|192\.168)\.\d{1,3}\.\d{1,3}\b/, true],
+  [
+    'private network address',
+    /\b(?:10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])|192\.168)\.\d{1,3}\.\d{1,3}\b/,
+    true,
+  ],
   ['e-mail address', line => foreignEmail(line), true],
   ['personal folder', /[\\/](?:Users|home)[\\/]+ninjo\b/i],
   [
@@ -203,7 +209,11 @@ export function selfCheck() {
   for (const digest of PRIVATE_NAME_DIGESTS)
     expect(/^[0-9a-f]{64}$/.test(digest), `not a SHA-256 digest: ${digest}`);
 
-  const madeUp = new Set([nameDigest('kuestenweg'), nameDigest('harbour gate'), nameDigest('tower 7')]);
+  const madeUp = new Set([
+    nameDigest('kuestenweg'),
+    nameDigest('harbour gate'),
+    nameDigest('tower 7'),
+  ]);
   for (const line of [
     'Küstenweg',
     'see KÜSTENWEG here',
@@ -235,6 +245,7 @@ export function selfCheck() {
     ['private network address', `host 10.0.${0}.5`],
     ['e-mail address', `mail ${'someone'}@example.org`],
     ['secret', `token ${'ghp_'}${'a'.repeat(30)}`],
+    ['secret', `GEMINI_API_KEY=${'AIza'}${'b'.repeat(35)}`],
   ];
   for (const [rule, line] of samples) {
     const found = ERRORS.some(([name, test]) => name === rule && matches(test, line));

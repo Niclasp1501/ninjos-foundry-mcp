@@ -27,7 +27,7 @@ describe('area harness with requests to the server', () => {
           },
         },
       ],
-      start: context => void calls.push(`start ${context.config.comfyuiEnabled}`),
+      start: context => void calls.push(`start ${context.config.imagesEnabled}`),
       stop: () => void calls.push('stop'),
       onModuleConnection: event => void calls.push(event.type),
     };

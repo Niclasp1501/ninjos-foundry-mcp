@@ -36,6 +36,12 @@ are part of it as well.
 Once a chapter of your campaign has been played, the assistant can move it into a compendium, sort
 it there and lock it. Your world stays tidy, and nothing gets lost.
 
+With a Gemini key of your own it also paints battle maps and location pictures in a consistent
+style, matched to the scene pictures you already have, and fixes details on request. **Every
+image is a paid request on your own Google account.** Give the key a spending limit, restrict
+it to the Generative Language API, and put it only into the MCP server entry on your PC, never
+into Foundry. The [installation guide](docs/INSTALLATION.en.md#battle-maps-and-scene-images-with-gemini) shows how.
+
 The core tools work in every game system. For D&D 5e, Pathfinder 2e, Das Schwarze Auge 5,
 Warhammer Fantasy Roleplay 4e, the Cosmere RPG and Mongoose Traveller 2e, the module also knows
 the particulars of the system.
@@ -127,6 +133,12 @@ Kartenstapel, Wiedergabelisten, die Weltzeit und deine Dateien gehören ebenfall
 
 Wenn ein Abschnitt eurer Kampagne fertig gespielt ist, räumt der Assistent ihn in ein Kompendium,
 sortiert ihn dort und sperrt es. So bleibt deine Welt übersichtlich, ohne dass etwas verloren geht.
+
+Mit einem eigenen Gemini-Schlüssel malt er außerdem Battlemaps und Ortsbilder in einem einheitlichen
+Stil, passend zu den Szenenbildern, die du schon hast, und bessert auf Wunsch Details nach. **Jedes
+Bild ist eine bezahlte Anfrage über deinen eigenen Google-Zugang.** Gib dem Schlüssel ein
+Ausgabenlimit, beschränke ihn auf die Generative Language API und trag ihn nur beim MCP-Server auf
+deinem PC ein, nie in Foundry. Wie das geht, steht in der [Installationsanleitung](docs/INSTALLATION.md#battlemaps-und-szenenbilder-mit-gemini).
 
 Die Grundwerkzeuge laufen in jedem Spielsystem. Für D&D 5e, Pathfinder 2e, Das Schwarze Auge 5,
 Warhammer Fantasy Roleplay 4e, das Cosmere RPG und Mongoose Traveller 2e kennt das Modul außerdem die

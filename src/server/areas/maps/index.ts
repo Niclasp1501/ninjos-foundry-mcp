@@ -1,18 +1,10 @@
 /**
- * Area maps: map generator through ComfyUI, only when switched on.
+ * Area maps: battle maps and location pictures through Gemini, with the key
+ * of the PC that runs the server.
  *
- * Server side. The three tools belong to the group `maps`, which the core
- * lists only with COMFYUI_ENABLED=true. The runtime (queue, ComfyUI client,
- * process) is created when the area starts and only then, never at import
- * (area.ts).
+ * generate-battlemap, generate-scene-image and edit-map-image belong to the
+ * group `maps`, which the core lists only when GEMINI_API_KEY is set.
  */
 import { createMapsArea } from './area.js';
-import { createMapsRuntime } from './runtime.js';
-import { MapsRuntimeHolder } from './tools.js';
 
-/** The one runtime of this backend. */
-export const mapsRuntime = new MapsRuntimeHolder((env, logger) =>
-  createMapsRuntime(env, { logger })
-);
-
-export const mapsArea = createMapsArea(mapsRuntime);
+export const mapsArea = createMapsArea();

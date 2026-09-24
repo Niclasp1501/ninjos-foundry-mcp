@@ -27,7 +27,8 @@ export interface ToolRegistryOptions {
   logger: Logger;
   /** From FOUNDRY_MCP_TOOL_GROUPS. */
   groups: string[];
-  comfyuiEnabled: boolean;
+  /** GEMINI_API_KEY is set; without it the group `maps` is off. */
+  imagesEnabled: boolean;
   maxChars: number;
   /** How much of the startup wait for the module is left, in ms. */
   startupWaitLeft: () => number;
@@ -51,8 +52,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Group switch. Empty list: all. Plain names: only those. "!name": all but those. */
-export function groupEnabled(group: ToolGroup, groups: string[], comfyuiEnabled: boolean): boolean {
-  if (group === 'maps' && !comfyuiEnabled) return false;
+export function groupEnabled(group: ToolGroup, groups: string[], imagesEnabled: boolean): boolean {
+  if (group === 'maps' && !imagesEnabled) return false;
   const wanted = groups.map(g => g.toLowerCase());
   if (wanted.includes(`!${group}`)) return false;
   const positive = wanted.filter(g => !g.startsWith('!'));
@@ -163,7 +164,7 @@ export class ToolRegistry {
 
   async list(): Promise<ListedTool[]> {
     const own = [...this.builtins.values()]
-      .filter(tool => groupEnabled(tool.group, this.options.groups, this.options.comfyuiEnabled))
+      .filter(tool => groupEnabled(tool.group, this.options.groups, this.options.imagesEnabled))
       .filter(tool => !this.listFilter || this.listFilter(tool.name))
       .map(tool => ({
         name: tool.name,
@@ -208,7 +209,7 @@ export class ToolRegistry {
     args: Record<string, unknown>,
     options: CallOptions
   ): Promise<ToolResult> {
-    if (!groupEnabled(tool.group, this.options.groups, this.options.comfyuiEnabled)) {
+    if (!groupEnabled(tool.group, this.options.groups, this.options.imagesEnabled)) {
       return errorResult(
         `The tool "${tool.name}" belongs to the group "${tool.group}", which is switched off on this server.`
       );

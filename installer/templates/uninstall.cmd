@@ -1,5 +1,5 @@
 @echo off
-rem Removes Ninjo's Foundry MCP. Your allowed-origins.json, logs and ComfyUI stay.
+rem Removes Ninjo's Foundry MCP. Your allowed-origins.json, logs and the ComfyUI folder of an older version stay.
 rem Everything runs in one line, because this file is deleted while it runs.
 setlocal
 cd /d "%TEMP%"

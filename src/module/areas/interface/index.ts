@@ -21,7 +21,6 @@ export {
   provideInterfaceService,
   type CompendiumReleaseService,
   type CreatureIndexService,
-  type MapService,
 } from './services.js';
 
 export const interfaceArea: ModuleArea = {

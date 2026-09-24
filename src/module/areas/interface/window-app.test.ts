@@ -79,14 +79,10 @@ type TestWindow = FakeApplication & {
 };
 
 describe('settings entries', () => {
-  it('registers three windows for the Gamemaster only, with texts that exist in both languages', () => {
+  it('registers two windows for the Gamemaster only, with texts that exist in both languages', () => {
     const menus = setupWithMenus();
     expect(registerInterfaceMenus(api)).toBe(true);
-    expect(menus.map(menu => menu.key)).toEqual([
-      'creatureIndexMenu',
-      'compendiumReleaseMenu',
-      'mapGenerationMenu',
-    ]);
+    expect(menus.map(menu => menu.key)).toEqual(['creatureIndexMenu', 'compendiumReleaseMenu']);
     for (const code of ['en', 'de']) {
       const text = readFileSync(new URL(`./lang.${code}.json`, import.meta.url), 'utf8');
       const lang = JSON.parse(text) as Record<
@@ -127,7 +123,7 @@ describe('window class', () => {
       expect(options.window.resizable).toBe(true);
       return options.position.width;
     });
-    expect(widths).toEqual([560, 620, 560]);
+    expect(widths).toEqual([560, 620]);
 
     const spec = windowSpecs()[0];
     if (!spec) throw new Error('no spec');

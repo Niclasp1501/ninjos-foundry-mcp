@@ -14,7 +14,6 @@ import { MODULE_ID } from '../../../common/constants.js';
 import {
   CompendiumReleaseController,
   CreatureIndexController,
-  MapGenerationController,
   type FormSnapshot,
   type WindowController,
   type WindowHost,
@@ -110,15 +109,6 @@ export function windowSpecs(): WindowSpec[] {
       actions: ['save'],
       create: host => new CompendiumReleaseController(host),
       wire: wireReleaseExclusion,
-    },
-    {
-      key: 'mapGenerationMenu',
-      menu: 'menu.mapGeneration',
-      title: 'mapGeneration.title',
-      icon: 'fa-map',
-      width: 560,
-      actions: ['check', 'start', 'stop', 'apply'],
-      create: host => new MapGenerationController(host),
     },
   ];
 }

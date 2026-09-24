@@ -1,9 +1,8 @@
 /**
  * Start, stop and connection events of the server areas.
  *
- * The maps area had to create its runtime on the first map tool call, because
- * nothing ran at backend start, and ended ComfyUI through process.on('exit'),
- * because nothing ran at shutdown. Here the backend calls `start` of every
+ * An area that owns something running (a timer, a child process) needs a
+ * place to start and end it. Here the backend calls `start` of every
  * area once the bridge is open, `stop` in `close`, and hands each connection
  * event of the bridge to the areas in between.
  *

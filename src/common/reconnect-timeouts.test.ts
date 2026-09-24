@@ -58,5 +58,5 @@ describe('queryTimeoutMs', () => {
 it('reserves the tool names of the previous generation, returning ones included', () => {
   expect(RESERVED_TOOL_NAMES.has('list-scenes')).toBe(true);
   expect(RESERVED_TOOL_NAMES.has('move-token')).toBe(true);
-  expect(RESERVED_TOOL_NAMES.size).toBe(90);
+  expect(RESERVED_TOOL_NAMES.size).toBe(93);
 });

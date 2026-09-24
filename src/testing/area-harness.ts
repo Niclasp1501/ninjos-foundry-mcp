@@ -1,3 +1,10 @@
+/// <reference types="node" />
+/*
+ * The harness runs server code in Node. The module's type check reaches it
+ * through the testing helpers of the module areas, so the Node types are named
+ * here instead of arriving by chance through a library that happens to use them.
+ */
+
 /**
  * Server and module of the areas in one process, on a fake Foundry.
  *
@@ -46,7 +53,7 @@ export interface AreaHarnessOptions {
   /** FOUNDRY_MCP_TOOL_GROUPS. Default: all. */
   groups?: string[];
   /** Default true, so the maps group is not switched off in tests. */
-  comfyuiEnabled?: boolean;
+  imagesEnabled?: boolean;
   /** TOOL_RESPONSE_MAX_CHARS. Default 0, no limit. */
   maxChars?: number;
 }
@@ -126,7 +133,7 @@ export function createAreaHarness(options: AreaHarnessOptions = {}): AreaHarness
       bridge,
       logger: silentLogger,
       groups: options.groups ?? [],
-      comfyuiEnabled: options.comfyuiEnabled ?? true,
+      imagesEnabled: options.imagesEnabled ?? true,
       maxChars: options.maxChars ?? 0,
       startupWaitLeft: () => 0,
     });
@@ -145,7 +152,7 @@ export function createAreaHarness(options: AreaHarnessOptions = {}): AreaHarness
     const lifecycle = new AreaLifecycle({
       areas: serverAreas,
       logger: silentLogger,
-      config: readConfig(options.comfyuiEnabled === false ? {} : { COMFYUI_ENABLED: 'true' })
+      config: readConfig(options.imagesEnabled === false ? {} : { GEMINI_API_KEY: 'test-key' })
         .config,
       env: {},
       query: (name, data, queryOptions) => tools.query(name, data, queryOptions),

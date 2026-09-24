@@ -33,7 +33,8 @@ export interface ServerConfig {
   queryTimeoutMs: number;
   /** 0 means no limit. */
   toolResponseMaxChars: number;
-  comfyuiEnabled: boolean;
+  /** GEMINI_API_KEY is set: the image tools of the group `maps` are listed. The key itself is not kept here. */
+  imagesEnabled: boolean;
   /** Empty means every group. Entries starting with "!" switch a group off. */
   toolGroups: string[];
   lockFile: string;
@@ -73,9 +74,8 @@ function flag(env: Env, name: string, fallback: boolean): boolean {
 /**
  * A switch of the previous generation, off by default, where only `true`
  * switched it on.
- * `COMFYUI_ENABLED=1` meant off there and keeps meaning off, with a warning,
- * so an old configuration neither starts the map generator nor opens the
- * bridge to the network by surprise.
+ * `FOUNDRY_REMOTE_MODE=1` meant off there and keeps meaning off, with a warning,
+ * so an old configuration never opens the bridge to the network by surprise.
  */
 function onlyTrue(env: Env, name: string, warnings: string[]): boolean {
   const raw = env[name]?.trim();
@@ -140,12 +140,18 @@ export function readConfig(env: Env = process.env): { config: ServerConfig; warn
     webrtcEnabled: flag(env, 'FOUNDRY_WEBRTC', true),
     queryTimeoutMs: queryTimeout(env, warnings),
     toolResponseMaxChars: number(env, 'TOOL_RESPONSE_MAX_CHARS', 0, warnings),
-    comfyuiEnabled: onlyTrue(env, 'COMFYUI_ENABLED', warnings),
+    imagesEnabled: Boolean(env['GEMINI_API_KEY']?.trim()),
     toolGroups: list(env['FOUNDRY_MCP_TOOL_GROUPS']),
     lockFile: env['FOUNDRY_MCP_LOCK_FILE']?.trim() || join(tmpdir(), 'foundry-mcp-backend.lock'),
     startupModuleWaitMs: number(env, 'FOUNDRY_MCP_STARTUP_WAIT_MS', 10_000, warnings),
     logFile: env['FOUNDRY_MCP_LOG_FILE']?.trim() || null,
   };
+
+  if (env['COMFYUI_ENABLED']?.trim())
+    warnings.push(
+      'COMFYUI_ENABLED has no effect any more: the ComfyUI map generator was removed in 14.2609.6. ' +
+        'Battle maps now come from Gemini; set GEMINI_API_KEY to switch them on (see the installation guide).'
+    );
 
   return { config, warnings };
 }

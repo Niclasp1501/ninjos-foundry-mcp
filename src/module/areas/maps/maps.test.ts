@@ -1,20 +1,13 @@
 /**
- * The module side of the maps area through the dispatcher: storing the image,
- * the scene, the settings the server reads, failure messages, the service
- * channel, and the answers to a server of the previous generation.
+ * The module side of the maps area through the dispatcher: storing a
+ * generated image, reading images as references, and drawing previews.
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import { UPLOAD_CHUNK_CHARS } from '../../../common/areas/maps/constants.js';
-import { resolveAccess } from '../../../common/permissions.js';
 import { createAreaHarness, type AreaHarness } from '../../../testing/area-harness.js';
 import { FakeFoundry } from '../../../testing/fake-foundry.js';
 import { BridgeError } from '../../../server/bridge/foundry-bridge.js';
-import { useServerRequests } from '../../core-services.js';
-import { ServerRequestError } from '../../server-requests.js';
-import { clearInterfaceServices } from '../interface/services.js';
-import { mapService } from './channel.js';
-import { MAP_SETTING_ROWS } from './queries.js';
-import { createMapScene } from './scene.js';
+import { useImageTools, type ImageTools } from './read.js';
 import { withMaps, type FakeFilePicker, type MapsFakeOptions } from './testing.js';
 import { clearUploads, pendingUploadCount } from './upload.js';
 
@@ -23,7 +16,7 @@ afterEach(() => {
   harness?.close();
   harness = null;
   clearUploads();
-  clearInterfaceServices();
+  useImageTools();
 });
 
 function open(
@@ -46,7 +39,8 @@ async function upload(
   h: AreaHarness,
   base64: string,
   filename = 'Harbor-map-1.png',
-  uploadId = 'u1'
+  uploadId = 'u1',
+  directory?: string
 ) {
   const total = Math.ceil(base64.length / UPLOAD_CHUNK_CHARS);
   let answer: unknown;
@@ -57,6 +51,7 @@ async function upload(
       index,
       total,
       data: base64.slice(index * UPLOAD_CHUNK_CHARS, (index + 1) * UPLOAD_CHUNK_CHARS),
+      ...(directory ? { directory } : {}),
     });
   }
   return answer;
@@ -97,14 +92,14 @@ describe('uploadMapChunk', () => {
     ).toBe(true);
   });
 
-  it('accepts only PNG and JPEG', async () => {
+  it('accepts only PNG, JPEG and WebP', async () => {
     const { harness, picker } = open();
     const error = await refusal(
       upload(harness, Buffer.from('hello, this is text').toString('base64'))
     );
     expect(error).toMatchObject({
       moduleCode: 'UNSUPPORTED_IMAGE',
-      message: 'Only PNG and JPEG images are supported',
+      message: 'Only PNG, JPEG and WebP images are supported',
     });
     expect(picker.uploads).toBe(0);
   });
@@ -153,207 +148,147 @@ describe('uploadMapChunk', () => {
     expect(error).toMatchObject({ moduleCode: 'NOT_STORED' });
   });
 
-  it('answers the single upload of a server of the previous generation', async () => {
-    const { harness } = open();
-    const answer = await harness.query('upload-generated-map', {
-      filename: 'old-map.png',
-      imageData: `data:image/png;base64,${png(200)}`,
-    });
+  it('stores into the folder the call names, creating every missing level, with letters of any language', async () => {
+    const { harness, picker } = open();
+    const answer = await upload(harness, png(300), 'BM_Anker.png', 'u3', 'Maps/Grünau/Zum Anker');
     expect(answer).toEqual({
-      success: true,
-      path: 'worlds/test-world/ai-generated-maps/old-map.png',
-      message: 'Map uploaded successfully to worlds/test-world/ai-generated-maps/old-map.png',
+      path: 'Maps/Grünau/Zum Anker/BM_Anker.png',
+      bytes: 300,
     });
-  });
-});
-
-describe('createMapScene', () => {
-  const data = {
-    jobId: 'j',
-    name: 'Harbor',
-    path: 'worlds/test-world/ai-generated-maps/harbor.png',
-    width: 1536,
-    height: 1536,
-    gridSize: 70,
-  };
-
-  it('needs the right to change scenes only when it activates', () => {
-    expect(resolveAccess(createMapScene.access, data)).toEqual([
-      { kind: 'write', document: 'Scenes', action: 'create' },
-    ]);
-    expect(resolveAccess(createMapScene.access, { ...data, activate: true })).toEqual([
-      { kind: 'write', document: 'Scenes', action: 'create' },
-      { kind: 'write', document: 'Scenes', action: 'update' },
-    ]);
+    for (const level of ['Maps', 'Maps/Grünau', 'Maps/Grünau/Zum Anker'])
+      expect(picker.directories.has(level), level).toBe(true);
   });
 
-  it('creates the scene outside the folder, with a warning, when folders may not be created', async () => {
-    const { harness, foundry } = open({ 'ninjos-foundry-mcp.permFolders': 'read' });
-    const answer = (await harness.query('createMapScene', data)) as Record<string, unknown>;
-    expect(answer).toMatchObject({ name: 'Harbor', activated: false, folderId: null });
-    expect(answer['warnings']).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('The scene is not in the folder "AI Generated Maps": '),
-      ])
-    );
-    expect(foundry.collection('Scene').contents).toHaveLength(1);
-    expect(foundry.collection('Folder').contents).toHaveLength(0);
+  it('never replaces an existing file, it numbers the new one', async () => {
+    const { harness, picker } = open();
+    await upload(harness, png(100), 'BM_Hafen.png', 'a', 'Maps/Hafen');
+    await upload(harness, png(200), 'BM_Hafen.png', 'b', 'Maps/Hafen');
+    const third = await upload(harness, png(300), 'BM_Hafen.png', 'c', 'Maps/Hafen');
+    expect(third).toMatchObject({ path: 'Maps/Hafen/BM_Hafen-3.png' });
+    expect(picker.files.get('Maps/Hafen/BM_Hafen.png')).toMatchObject({ size: 100 });
+    expect(picker.files.get('Maps/Hafen/BM_Hafen-2.png')).toMatchObject({ size: 200 });
   });
 
-  it('reuses the folder "AI Generated Maps" when it exists', async () => {
-    const { harness, foundry } = open();
-    const folder = foundry.seed('Folder', {
-      name: 'ai generated maps',
-      type: 'Scene',
-      folder: null,
-    });
-    const answer = (await harness.query('createMapScene', data)) as Record<string, unknown>;
-    expect(answer['folderId']).toBe(folder.id);
-    expect(foundry.collection('Folder').contents).toHaveLength(1);
-  });
-
-  it('is refused as a whole where scenes may not be created', async () => {
-    const { harness, foundry } = open({ 'ninjos-foundry-mcp.permScenes': 'read' });
-    const error = await refusal(harness.query('createMapScene', data));
-    expect(error).toMatchObject({ moduleCode: 'PERMISSION_DENIED' });
-    expect(foundry.collection('Scene').contents).toHaveLength(0);
-  });
-});
-
-describe('getMapSettings and mapJobFailed', () => {
-  it('registers both settings outside the settings list and reports the stored quality', async () => {
-    expect(MAP_SETTING_ROWS).toEqual([
-      { key: 'mapGenAutoStart', kind: Boolean, initial: false, listed: false },
-      {
-        key: 'mapGenQuality',
-        kind: String,
-        initial: 'low',
-        listed: false,
-        options: ['low', 'medium', 'high'],
-      },
-    ]);
-    const { harness } = open({ 'ninjos-foundry-mcp.mapGenQuality': 'medium' });
-    await expect(harness.query('getMapSettings')).resolves.toEqual({
-      protocol: 1,
-      quality: 'medium',
-      sceneProblem: null,
-      notes: [],
-      // The server reads mapGenAutoStart from here when the module introduces itself.
-      autoStart: false,
-    });
-  });
-
-  it('falls back to low for a damaged quality and says so', async () => {
-    const { harness } = open({ 'ninjos-foundry-mcp.mapGenQuality': 'ultra' });
-    await expect(harness.query('getMapSettings')).resolves.toMatchObject({
-      quality: 'low',
-      notes: ['The world setting mapGenQuality holds "ultra", which is no quality; "low" is used.'],
-    });
-  });
-
-  it('tells the server why a map could not become a scene', async () => {
-    const { harness } = open({ 'ninjos-foundry-mcp.allowWriteOperations': false });
-    await expect(harness.query('getMapSettings')).resolves.toMatchObject({
-      sceneProblem: expect.stringContaining('"Allow Write Operations" is off'),
-    });
-  });
-
-  it('shows a failed job to the Gamemaster as an error', async () => {
-    const { harness, foundry } = open();
-    await harness.query('mapJobFailed', {
-      jobId: 'j',
-      name: 'Swamp',
-      reason: 'ComfyUI installation not found',
-    });
-    expect(foundry.notifications).toEqual([
-      {
-        level: 'error',
-        message: 'The map Swamp could not be made: ComfyUI installation not found',
-      },
-    ]);
-  });
-
-  it('tells a server of the previous generation that it has to be updated for maps', async () => {
-    const { harness } = open();
-    for (const name of ['generate-map', 'check-map-status', 'cancel-map-job']) {
-      const error = await refusal(harness.query(name, { job_id: 'x' }));
-      expect(error).toMatchObject({
-        moduleCode: 'SERVER_TOO_OLD',
-        message: expect.stringContaining('Update the MCP server'),
-      });
-    }
-  });
-});
-
-describe('the map service over requests', () => {
-  function answering(reply: (method: string, data: unknown) => Promise<unknown>) {
-    const sent: Array<{ method: string; data: unknown; timeoutMs?: number }> = [];
-    useServerRequests({
-      available: () => true,
-      request: (method, data, options) => {
-        sent.push({ method, data, ...(options.timeoutMs ? { timeoutMs: options.timeoutMs } : {}) });
-        return reply(method, data);
-      },
-    });
-    return sent;
-  }
-
-  it('asks the server once per click, with the time limit of the action, and passes the report on', async () => {
-    open();
-    const sent = answering(async () => ({ state: 'running', alreadyRunning: true, detail: 'ok' }));
-    await expect(mapService.start()).resolves.toEqual({
-      state: 'running',
-      alreadyRunning: true,
-      detail: 'ok',
-    });
-    expect(sent).toEqual([{ method: 'mapService', data: { action: 'start' }, timeoutMs: 150_000 }]);
-  });
-
-  it('shows disabled as the server reports it', async () => {
-    open();
-    answering(async () => ({ state: 'disabled', detail: 'COMFYUI_ENABLED is not true' }));
-    await expect(mapService.status()).resolves.toEqual({
-      state: 'disabled',
-      detail: 'COMFYUI_ENABLED is not true',
-    });
-  });
-
-  it('turns a missing bridge, a timeout, a refusal of the server and an unreadable answer into reasons', async () => {
-    open();
-    answering(async () => {
-      throw new ServerRequestError('NOT_CONNECTED', 'no bridge');
-    });
-    await expect(mapService.status()).rejects.toMatchObject({ code: 'BRIDGE_MISSING' });
-    answering(async () => {
-      throw new ServerRequestError('TIMEOUT', 'too slow');
-    });
-    await expect(mapService.stop()).rejects.toMatchObject({
-      code: 'FAILED',
-      message: 'The MCP server did not answer within 20 seconds.',
-    });
-    answering(async () => {
-      throw new ServerRequestError(
-        'NOT_OWN_PROCESS',
-        'ComfyUI on http://127.0.0.1:31411 was not started by this server'
+  it('refuses a folder outside the data folder before anything is stored', async () => {
+    const { harness, picker } = open();
+    for (const directory of ['../outside', '/etc', 'C:/Windows', 'Maps/../..', 'Maps/a:b']) {
+      const error = await refusal(
+        upload(harness, png(100), 'x.png', `bad-${directory}`, directory)
       );
+      expect(error, directory).toMatchObject({ moduleCode: 'INVALID_ARGUMENT' });
+    }
+    expect(picker.uploads).toBe(0);
+  });
+});
+
+function fakeTools(
+  files: Record<string, Uint8Array>,
+  sizes: Record<string, [number, number]> = {}
+): string[] {
+  const seen: string[] = [];
+  const tools: ImageTools = {
+    async fetchBytes(url) {
+      seen.push(url);
+      const bytes = files[decodeURI(url)];
+      return bytes
+        ? { ok: true, status: 200, bytes }
+        : { ok: false, status: 404, bytes: new Uint8Array() };
+    },
+    async loadPicture(url) {
+      seen.push(url);
+      const size = sizes[decodeURI(url)];
+      if (!size) throw new Error('the image could not be loaded');
+      return {
+        width: size[0],
+        height: size[1],
+        toJpegDataUrl: (width, height) =>
+          `data:image/jpeg;base64,${Buffer.from(`${width}x${height}`).toString('base64')}`,
+      };
+    },
+  };
+  useImageTools(tools);
+  return seen;
+}
+
+function jpegBytes(length: number): Uint8Array {
+  const bytes = new Uint8Array(length).fill(1);
+  bytes.set([0xff, 0xd8, 0xff]);
+  return bytes;
+}
+
+describe('readMapImage', () => {
+  it('reads an image of the data folder as base64 with its type', async () => {
+    const { harness } = open();
+    const seen = fakeTools({ 'Maps/Hafen Nacht.jpg': jpegBytes(50) });
+    const answer = await harness.query('readMapImage', { path: 'Maps/Hafen Nacht.jpg' });
+    expect(answer).toMatchObject({
+      path: 'Maps/Hafen Nacht.jpg',
+      mimeType: 'image/jpeg',
+      bytes: 50,
     });
-    await expect(mapService.stop()).rejects.toMatchObject({
-      code: 'FAILED',
-      message: expect.stringContaining('was not started by this server'),
-    });
-    answering(async () => ({ state: 'sleeping' }));
-    await expect(mapService.status()).rejects.toThrow('sent no readable state');
+    expect(Buffer.from((answer as { data: string }).data, 'base64')).toHaveLength(50);
+    expect(seen).toEqual(['Maps/Hafen%20Nacht.jpg']);
   });
 
-  it('reports mapGenAutoStart to the server with the other map settings', async () => {
-    const on = open({ 'ninjos-foundry-mcp.mapGenAutoStart': true });
-    await expect(on.harness.query('getMapSettings', {})).resolves.toMatchObject({
-      autoStart: true,
+  it('reads the background of a scene from its level', async () => {
+    const { harness } = open(
+      {},
+      { media: { 'Maps/Anker Innen.jpg': { width: 1376, height: 768 } } }
+    );
+    fakeTools({ 'Maps/Anker Innen.jpg': jpegBytes(20) });
+    await harness.query('createScene', {
+      name: 'Anker Innen',
+      background: 'Maps/Anker Innen.jpg',
     });
-    on.harness.close();
-    const off = open();
-    await expect(off.harness.query('getMapSettings', {})).resolves.toMatchObject({
-      autoStart: false,
+    const answer = await harness.query('readMapImage', { scene: 'Anker Innen' });
+    expect(answer).toMatchObject({
+      path: 'Maps/Anker Innen.jpg',
+      scene: 'Anker Innen',
+      mimeType: 'image/jpeg',
+    });
+  });
+
+  it('refuses paths outside the data folder, URLs and files that are no image', async () => {
+    const { harness } = open();
+    fakeTools({ 'notes.txt': new TextEncoder().encode('just text') });
+    for (const path of ['../secret.png', 'https://example.com/a.png', '/../../x.jpg'])
+      expect(await refusal(harness.query('readMapImage', { path })), path).toMatchObject({
+        moduleCode: 'INVALID_ARGUMENT',
+      });
+    expect(await refusal(harness.query('readMapImage', { path: 'notes.txt' }))).toMatchObject({
+      moduleCode: 'UNSUPPORTED_IMAGE',
+    });
+    expect(await refusal(harness.query('readMapImage', { path: 'Maps/none.png' }))).toMatchObject({
+      moduleCode: 'FILE_NOT_FOUND',
+    });
+    expect(await refusal(harness.query('readMapImage', {}))).toMatchObject({
+      moduleCode: 'INVALID_ARGUMENT',
+      message: 'Give exactly one of path or scene',
+    });
+  });
+});
+
+describe('previewMapImage', () => {
+  it('draws the image with its longest edge at 1024 pixels as JPEG', async () => {
+    const { harness } = open();
+    fakeTools({}, { 'Maps/BM_Hafen.jpg': [2752, 1536] });
+    const answer = await harness.query('previewMapImage', { path: 'Maps/BM_Hafen.jpg' });
+    expect(answer).toMatchObject({
+      mimeType: 'image/jpeg',
+      width: 1024,
+      height: 572,
+      originalWidth: 2752,
+      originalHeight: 1536,
+    });
+    expect(Buffer.from((answer as { data: string }).data, 'base64').toString()).toBe('1024x572');
+  });
+
+  it('never enlarges a small image', async () => {
+    const { harness } = open();
+    fakeTools({}, { 'small.png': [300, 200] });
+    expect(await harness.query('previewMapImage', { path: 'small.png' })).toMatchObject({
+      width: 300,
+      height: 200,
     });
   });
 });

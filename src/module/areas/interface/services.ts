@@ -60,26 +60,9 @@ export interface CompendiumReleaseService {
   write(entries: readonly string[]): Promise<void>;
 }
 
-/** disabled: the generator is switched off on the server (COMFYUI_ENABLED). */
-export type MapServiceState = 'running' | 'stopped' | 'error' | 'disabled';
-
-export interface MapServiceReport {
-  state: MapServiceState;
-  /** The server's own words, shown as they are. */
-  detail?: string;
-}
-
-export interface MapService {
-  status(): Promise<MapServiceReport>;
-  /** Resolves when the service runs or has failed to start; the maps area owns the time limit. */
-  start(): Promise<MapServiceReport & { alreadyRunning?: boolean }>;
-  stop(): Promise<MapServiceReport>;
-}
-
 export interface InterfaceServices {
   creatureIndex: CreatureIndexService;
   compendiumRelease: CompendiumReleaseService;
-  mapService: MapService;
 }
 
 const services: Partial<InterfaceServices> = {};

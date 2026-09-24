@@ -1,5 +1,5 @@
 /**
- * The three settings windows without a browser: what they show when the
+ * The two settings windows without a browser: what they show when the
  * package behind them is missing, what they store, and which message
  * appears. Never a silent click.
  */
@@ -10,17 +10,14 @@ import {
   CompendiumReleaseController,
   CreatureIndexController,
   EMPTY_FORM,
-  MapGenerationController,
   moduleSettings,
   type FormSnapshot,
 } from './controllers.js';
 import type { PackInfo } from './release-model.js';
 import {
   clearInterfaceServices,
-  InterfaceServiceError,
   provideInterfaceService,
   type CompendiumReleaseService,
-  type MapService,
 } from './services.js';
 
 let foundry: FakeFoundry;
@@ -258,120 +255,5 @@ describe('window "Release compendiums"', () => {
           'The release list was not saved: The release list was not stored as chosen. Stored now: world.archive',
       },
     ]);
-  });
-});
-
-describe('window "Map generation"', () => {
-  function service(overrides: Partial<MapService> = {}): MapService {
-    return {
-      status: async () => ({ state: 'stopped' }),
-      start: async () => ({ state: 'running' }),
-      stop: async () => ({ state: 'stopped', detail: 'ComfyUI service stopped successfully' }),
-      ...overrides,
-    };
-  }
-
-  function map(mapService: MapService | undefined, h = host()) {
-    return new MapGenerationController(h, { service: () => mapService, settings: moduleSettings });
-  }
-
-  it('without the map package: every service button disabled and a clear note', () => {
-    setup();
-    const html = map(undefined).render();
-    expect(html).toContain('the map service comes with the map generator.');
-    expect(html).toMatch(/data-action="check" disabled/);
-    expect(html).toMatch(/data-action="start" disabled/);
-    expect(html).toContain('these settings come with the map generator.');
-  });
-
-  it('checks the service when it opens and shows the state', async () => {
-    setup();
-    const window = map(service({ status: async () => ({ state: 'running' }) }));
-    window.opened();
-    await new Promise(resolve => setTimeout(resolve, 0));
-    const html = window.render();
-    expect(html).toContain('<strong>State:</strong> running');
-    expect(html).toMatch(/data-action="start" disabled/);
-    expect(foundry.notifications).toEqual([]);
-  });
-
-  it('cannot start a generator that is switched off on the server', async () => {
-    setup();
-    const window = map(service({ status: async () => ({ state: 'disabled' }) }));
-    await window.action('check', EMPTY_FORM);
-    const html = window.render();
-    expect(html).toMatch(/data-action="start" disabled/);
-    expect(html).toMatch(/data-action="stop" disabled/);
-    expect(html).toContain('COMFYUI_ENABLED=true');
-  });
-
-  it('reports a service that already runs', async () => {
-    setup();
-    await map(service({ start: async () => ({ state: 'running', alreadyRunning: true }) })).action(
-      'start',
-      EMPTY_FORM
-    );
-    expect(foundry.notifications.map(n => n.message)).toEqual([
-      'Starting the map service.',
-      'The map service is already running.',
-    ]);
-  });
-
-  it('warns when the bridge to the server is missing', async () => {
-    setup();
-    const window = map(
-      service({
-        start: async () => {
-          throw new InterfaceServiceError('BRIDGE_MISSING', 'not connected');
-        },
-      })
-    );
-    await window.action('start', EMPTY_FORM);
-    expect(foundry.notifications.at(-1)).toEqual({
-      level: 'warn',
-      message:
-        'The MCP server is not connected, so the map service cannot be controlled from here.',
-    });
-    expect(window.render()).toContain('mcp-mapgen__state--error');
-  });
-
-  it('shows the words of the server after stopping, and a start that failed as an error', async () => {
-    setup();
-    await map(service()).action('stop', EMPTY_FORM);
-    expect(foundry.notifications.at(-1)?.message).toBe(
-      'Map service: ComfyUI service stopped successfully'
-    );
-    await map(
-      service({ start: async () => ({ state: 'error', detail: 'ComfyUI installation not found' }) })
-    ).action('start', EMPTY_FORM);
-    expect(foundry.notifications.at(-1)).toEqual({
-      level: 'error',
-      message: 'The map service did not start: ComfyUI installation not found',
-    });
-  });
-
-  it('applies autostart and quality, refuses an unknown quality, and stays open', async () => {
-    setup();
-    register('mapGenAutoStart', false);
-    register('mapGenQuality', 'low');
-    const h = host();
-    const window = map(undefined, h);
-    await window.action(
-      'apply',
-      form({ flags: { mapGenAutoStart: true }, values: { mapGenQuality: 'high' } })
-    );
-    expect(moduleSettings.read('mapGenAutoStart')).toBe(true);
-    expect(moduleSettings.read('mapGenQuality')).toBe('high');
-    await window.action(
-      'apply',
-      form({ flags: { mapGenAutoStart: true }, values: { mapGenQuality: 'ultra' } })
-    );
-    expect(moduleSettings.read('mapGenQuality')).toBe('high');
-    expect(foundry.notifications.map(n => n.message)).toEqual([
-      'Map generation settings saved.',
-      'Map generation settings saved.',
-    ]);
-    expect(h.closes).toBe(0);
-    expect(window.render()).toContain('<option value="high" selected>');
   });
 });
