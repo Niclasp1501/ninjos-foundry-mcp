@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [14.2609.6] - 2026-09-30
 
 - **Battle maps and scene images from Gemini.** Three new tools, `generate-battlemap`,
   `generate-scene-image` and `edit-map-image`, paint pictures in one consistent style, store
@@ -15,10 +15,10 @@
   `cancel-map-job`, the map generation window and its two settings were removed.
   `COMFYUI_ENABLED` now only writes a hint into the log. A ComfyUI folder of an older
   version is left alone and can be deleted.
-- **The welcome window mentions Patreon.** Below the link to Ninjo's Forge, one line now
-  says that the modules are free and stay free, and that you can support the work on
-  Patreon and get premium add-ons. Only GMs see the window, and "Don't show again" still
-  hides it for good.
+- **A tidier bridge status.** The readout above the player list is now a panel in the look of
+  Foundry's own list, in the light and the dark theme, and no longer breaks over two lines.
+  It can be clicked again everywhere to retry a waiting bridge. The welcome window also
+  mentions Patreon below the link to Ninjo's Forge; "Don't show again" still hides it.
 
 ## [14.2609.5] - 2026-09-19
 
