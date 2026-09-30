@@ -1,24 +1,40 @@
-/* Status readout of the MCP bridge above the player list. Builds on ninjo-marke.css. */
+/*
+ * Status readout of the MCP bridge: a panel of its own above Foundry's player
+ * list. It takes the look of that list (width, background, border, radius, the
+ * 12 pixel dot of a player and the colours of the latency rating), so it reads
+ * as part of Foundry in the light and the dark theme and needs no colour of its
+ * own. Builds on ninjo-marke.css for the font and the focus ring.
+ */
 
 .mcp-status {
-  --mcp-status-ok: #3fa34d;
-  --mcp-status-wait: var(--ninjo-akzent);
-  --mcp-status-fault: #d23c2f;
+  --mcp-status-ok: var(--color-rating-good, #58e558);
+  --mcp-status-wait: var(--color-rating-fair, #e3e365);
+  --mcp-status-fault: var(--color-rating-poor, #e85555);
   --mcp-status-off: #8c8c8c;
 
+  box-sizing: border-box;
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 0.4rem;
-  margin: 0 0 0.25rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  background: rgb(0 0 0 / 45%);
-  color: #f3ece0;
+  gap: 6px;
+  width: 200px;
+  max-width: 100%;
+  padding: 6px 8px;
+  background: var(--background-color, rgb(11 10 19 / 75%));
+  border: 1px solid var(--border-color, rgb(48 40 49));
+  border-radius: 8px;
+  color: var(--player-name-color, #efe6d8);
   font-family: var(--ninjo-schrift);
-  font-size: 0.8rem;
-  line-height: 1.3;
+  font-size: var(--font-size-12, 12px);
+  line-height: 20px;
+  white-space: nowrap;
+  pointer-events: all;
   cursor: pointer;
   user-select: none;
+}
+
+.mcp-status:hover {
+  border-color: var(--mcp-status-dot, var(--border-color, rgb(48 40 49)));
 }
 
 .mcp-status:focus-visible {
@@ -34,30 +50,38 @@
 
 .mcp-status__dot {
   flex: none;
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 50%;
-  background: var(--mcp-status-off);
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgb(0 0 0 / 55%);
+  border-radius: 100%;
+  background: var(--mcp-status-dot, var(--mcp-status-off));
 }
 
-.mcp-status--connected .mcp-status__dot {
-  background: var(--mcp-status-ok);
+.mcp-status__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.mcp-status--connecting .mcp-status__dot,
-.mcp-status--outdated .mcp-status__dot,
-.mcp-status--standby .mcp-status__dot {
-  background: var(--mcp-status-wait);
+.mcp-status--connected {
+  --mcp-status-dot: var(--mcp-status-ok);
 }
 
+.mcp-status--connecting,
+.mcp-status--outdated,
+.mcp-status--standby {
+  --mcp-status-dot: var(--mcp-status-wait);
+}
+
+/* Loud and staying loud: a bridge that is down must not look like a quiet one. */
 .mcp-status--disconnected {
-  background: rgb(80 0 0 / 70%);
+  --mcp-status-dot: var(--mcp-status-fault);
+  border-color: var(--mcp-status-fault);
+  box-shadow: 0 0 6px rgb(232 85 85 / 45%);
 }
 
-.mcp-status--disconnected .mcp-status__dot {
-  background: var(--mcp-status-fault);
-}
-
-.mcp-status--disabled .mcp-status__dot {
-  background: var(--mcp-status-off);
+.mcp-status--disabled {
+  --mcp-status-dot: var(--mcp-status-off);
+  color: var(--text-color, #a9a9a9);
 }
