@@ -35,12 +35,12 @@
   "dependencies": {
     "@modelcontextprotocol/server": "2.2.0",
     "werift": "0.24.4",
-    "ws": "8.21.3"
+    "ws": "8.22.0"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "2.1.0",
     "@types/node": "26.6.2",
-    "@types/ws": "8.18.1",
+    "@types/ws": "8.18.2",
     "husky": "9.1.7",
     "lint-staged": "17.5.1",
     "prettier": "3.9.9",
