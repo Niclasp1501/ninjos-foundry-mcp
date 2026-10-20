@@ -33,7 +33,7 @@
     "*.{ts,js,json,md}": "node node_modules/prettier/bin/prettier.cjs --write"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.2.0",
+    "@modelcontextprotocol/server": "2.3.1",
     "werift": "0.25.0",
     "ws": "8.22.0"
   },
