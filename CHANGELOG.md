@@ -1,6 +1,6 @@
 # Changelog
 
-## [14.2611.1] - unreleased
+## [14.2611.1] - 2026-11-07
 
 - **The AI can delete macros, if you allow it.** "Permissions · Macros" is a new level next to
   the others, and deleting stays off until you set it to "Create, change and delete". The new
@@ -8,6 +8,12 @@
   Gamemaster's hotbar, it deletes nothing and names every hotbar, so the AI has to ask you
   first. `undo-change` recreates a deleted macro with its id, which also puts it back into its
   hotbar slots. Macros in compendiums now need this level as well as the one for compendiums.
+- **The bridge status shows its whole text again.** In Foundry 14 the panel above the player
+  list shrank to the narrow column of the scene controls and read "MCP..." instead of the
+  state of the bridge. It is now as wide as the player list below it.
+- **Updated libraries in the PC server:** the MCP server library 2.3.1 (was 2.0.0), ws 8.22.0
+  and werift 0.25.0. Nothing changes in how you use it. The setup bundle of this version
+  carries them, so run `setup.cmd` from it as with every update.
 
 ## [14.2609.6] - 2026-09-30
 
