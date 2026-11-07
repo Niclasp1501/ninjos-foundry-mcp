@@ -8,6 +8,8 @@
  * - A selection that covers every entry needs the exact label as well, so a
  *   full list of ids cannot empty a compendium through the back door.
  * - Only world compendiums can be deleted.
+ * - A compendium of macros needs the delete level for macros as well, so the
+ *   setting "permMacros" holds for macros wherever they are stored.
  */
 import { entriesNamed, selectEntries } from '../../../common/areas/compendiums/names.js';
 import {
@@ -15,6 +17,7 @@ import {
   type AmbiguousName,
   type EntryRef,
 } from '../../../common/areas/compendiums/shapes.js';
+import type { Access } from '../../../common/permissions.js';
 import { QueryError, type QueryHandler } from '../../dispatcher.js';
 import { requireWorld } from '../../world-ready.js';
 import {
@@ -29,6 +32,25 @@ import {
 import { checkWritable, withWritablePack } from './guard.js';
 import { documentClass, entryRef, findPack, packLabel, readIndex, requirePack } from './packs.js';
 
+const COMPENDIUM_DELETE: Access = { kind: 'write', document: 'Compendiums', action: 'delete' };
+const MACRO_DELETE: Access = { kind: 'write', document: 'Macros', action: 'delete' };
+
+/**
+ * The accesses of deleting from or deleting a compendium. A compendium that is
+ * not found needs only its own level here; the handler then names it as unknown.
+ */
+export function compendiumDeleteAccess(data: unknown): Access[] {
+  const packId =
+    typeof data === 'object' && data !== null ? (data as Record<string, unknown>)['packId'] : null;
+  let pack: FoundryCompendiumsPack | undefined;
+  try {
+    pack = typeof packId === 'string' ? findPack(packId) : undefined;
+  } catch {
+    pack = undefined;
+  }
+  return pack?.documentName === 'Macro' ? [COMPENDIUM_DELETE, MACRO_DELETE] : [COMPENDIUM_DELETE];
+}
+
 function labelMismatch(given: string, pack: FoundryCompendiumsPack): QueryError {
   return new QueryError(
     'LABEL_MISMATCH',
@@ -37,7 +59,7 @@ function labelMismatch(given: string, pack: FoundryCompendiumsPack): QueryError 
 }
 
 export const deleteCompendiumEntries: QueryHandler = {
-  access: { kind: 'write', document: 'Compendiums', action: 'delete' },
+  access: compendiumDeleteAccess,
   run: async (data, context) => {
     requireWorld();
     const input = asData(data);
@@ -188,7 +210,7 @@ export const deleteCompendiumEntries: QueryHandler = {
 };
 
 export const deleteCompendium: QueryHandler = {
-  access: { kind: 'write', document: 'Compendiums', action: 'delete' },
+  access: compendiumDeleteAccess,
   run: async (data, context) => {
     requireWorld();
     const input = asData(data);

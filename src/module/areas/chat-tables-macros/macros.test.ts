@@ -230,3 +230,117 @@ describe('executeMacro', () => {
     });
   });
 });
+
+describe('deleteMacro', () => {
+  const PERM = `${MODULE_ID}.permMacros`;
+  const players = [
+    { id: 'gm', name: 'Gamemaster', isGM: true },
+    { id: 'alice', name: 'Alice', hotbar: { '3': 'hello', '12': 'hello' } },
+  ];
+
+  it('is off by default and deletes nothing', async () => {
+    const { harness, foundry } = open();
+    seedMacros(foundry);
+    await expect(harness.query('deleteMacro', { macroId: 'Sum' })).rejects.toMatchObject({
+      moduleCode: 'PERMISSION_DENIED',
+      message: expect.stringContaining('permMacros'),
+    });
+    expect(foundry.collection('Macro').get('sum')).toBeDefined();
+  });
+
+  it('is held by the write switch even with the level on', async () => {
+    const { harness, foundry } = open({
+      [PERM]: 'full',
+      [`${MODULE_ID}.allowWriteOperations`]: false,
+    });
+    seedMacros(foundry);
+    await expect(harness.query('deleteMacro', { macroId: 'Sum' })).rejects.toMatchObject({
+      moduleCode: 'WRITE_DISABLED',
+    });
+    expect(foundry.collection('Macro').get('sum')).toBeDefined();
+  });
+
+  it('deletes with the level on, logs it, and undo recreates it with its id', async () => {
+    const { harness, foundry } = open({ [PERM]: 'full' });
+    seedMacros(foundry);
+    const answer = (await harness.query('deleteMacro', { macroId: 'Sum' })) as Record<
+      string,
+      unknown
+    >;
+    expect(answer).toMatchObject({ id: 'sum', deleted: true, hotbars: [], warnings: [] });
+    expect(foundry.collection('Macro').get('sum')).toBeUndefined();
+    const entry = harness.changeLog.list().find(change => change.tool === 'delete-macro');
+    expect(entry).toMatchObject({ document: 'Macros', action: 'delete' });
+
+    await harness.query('undoChanges', { changeId: entry?.id });
+    expect(foundry.collection('Macro').get('sum')).toMatchObject({
+      name: 'Sum',
+      type: 'script',
+      command: 'return a + b;',
+    });
+  });
+
+  it('asks before deleting a macro on a hotbar and deletes only with confirmHotbar', async () => {
+    const { harness, foundry } = (setup = openChatTables({
+      users: players,
+      settings: { [PERM]: 'full' },
+    }));
+    seedMacros(foundry);
+    const asked = (await harness.query('deleteMacro', { macroId: 'Hello' })) as Record<
+      string,
+      unknown
+    >;
+    expect(asked).toMatchObject({
+      deleted: false,
+      needsConfirmation: true,
+      hotbars: [{ userId: 'alice', user: 'Alice', gamemaster: false, slots: [3, 12] }],
+    });
+    expect(String(asked['question'])).toContain('Alice (player) in slot 3, 12');
+    expect(foundry.collection('Macro').get('hello')).toBeDefined();
+    expect(harness.changeLog.list().some(change => change.tool === 'delete-macro')).toBe(false);
+
+    const done = (await harness.query('deleteMacro', {
+      macroId: 'Hello',
+      confirmHotbar: true,
+    })) as Record<string, unknown>;
+    expect(done).toMatchObject({ deleted: true });
+    expect(String((done['warnings'] as string[])[0])).toContain('now show empty');
+    expect(foundry.collection('Macro').get('hello')).toBeUndefined();
+  });
+
+  it('reports a dry run without the level and deletes nothing', async () => {
+    const { harness, foundry } = (setup = openChatTables({ users: players }));
+    seedMacros(foundry);
+    const answer = (await harness.query('deleteMacro', {
+      macroId: 'hello',
+      dryRun: true,
+    })) as Record<string, unknown>;
+    expect(answer).toMatchObject({ dryRun: true, allowed: false, needsConfirmation: true });
+    expect(String((answer['refused'] as string[])[0])).toContain('permMacros');
+    expect(foundry.collection('Macro').get('hello')).toBeDefined();
+  });
+
+  it('leaves macros in compendiums to delete-compendium-entries', async () => {
+    const { harness } = (setup = openChatTables({
+      settings: { [PERM]: 'full' },
+      packs: [
+        {
+          id: 'world.tricks',
+          documentName: 'Macro',
+          label: 'Tricks',
+          documents: [{ _id: 'pm', name: 'Packed', type: 'chat', command: 'hi' }],
+        },
+      ],
+    }));
+    await expect(harness.query('deleteMacro', { macroId: 'Packed' })).rejects.toMatchObject({
+      moduleCode: 'IN_COMPENDIUM',
+      message: expect.stringContaining('world.tricks'),
+    });
+    await expect(
+      harness.query('deleteMacro', { macroId: 'Compendium.world.tricks.Macro.pm' })
+    ).rejects.toMatchObject({ moduleCode: 'IN_COMPENDIUM' });
+    await expect(harness.query('deleteMacro', { macroId: 'Nothing' })).rejects.toMatchObject({
+      moduleCode: 'NOT_FOUND',
+    });
+  });
+});

@@ -468,3 +468,29 @@ describe('deleteDocument', () => {
     ).rejects.toMatchObject({ moduleCode: 'READ_ONLY' });
   });
 });
+
+describe('deleteDocument with a macro', () => {
+  it('follows the level for macros and sends a macro on a hotbar to delete-macro', async () => {
+    const { harness, foundry } = (setup = openGeneric({
+      users: [
+        { id: 'gm', name: 'Gamemaster', isGM: true, hotbar: { '1': 'busy' } },
+        { id: 'alice', name: 'Alice' },
+      ],
+    }));
+    foundry.seed('Macro', { _id: 'free', name: 'Free', type: 'chat', command: 'hi' });
+    foundry.seed('Macro', { _id: 'busy', name: 'Busy', type: 'chat', command: 'ho' });
+    await expect(harness.query('deleteDocument', { uuid: 'Macro.free' })).rejects.toMatchObject({
+      moduleCode: 'PERMISSION_DENIED',
+      message: expect.stringContaining('permMacros'),
+    });
+    await game.settings.set(MODULE_ID, 'permMacros', 'full');
+    await expect(harness.query('deleteDocument', { uuid: 'Macro.busy' })).rejects.toMatchObject({
+      moduleCode: 'PROTECTED',
+      message: expect.stringContaining('delete-macro'),
+    });
+    expect(foundry.collection('Macro').get('busy')).toBeDefined();
+    const done = (await harness.query('deleteDocument', { uuid: 'Macro.free' })) as Answer;
+    expect(done['deleted']).toBe(true);
+    expect(foundry.collection('Macro').get('free')).toBeUndefined();
+  });
+});

@@ -52,6 +52,10 @@
         "name": "Rechte · Kompendien",
         "hint": "Was die KI mit Kompendien tun darf. Löschen ist ab Werk aus, weil es sich nicht rückgängig machen lässt."
       },
+      "permMacros": {
+        "name": "Rechte · Makros",
+        "hint": "Was die KI mit Makros tun darf. Löschen ist ab Werk aus. Liegt ein Makro in der Schnellleiste eines Spielers, fragt die KI vor dem Löschen nach. Makros in Kompendien brauchen zum Löschen zusätzlich die Stufe für Kompendien."
+      },
       "level": {
         "read": "Nur lesen",
         "write": "Anlegen und ändern",

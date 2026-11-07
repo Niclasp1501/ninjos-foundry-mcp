@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   checkAccess,
   checkAccessAll,
+  isMatrixKind,
+  PERMISSION_SETTINGS,
   resolveAccess,
   permissionLevel,
   permissionOverview,
@@ -121,7 +123,7 @@ describe('checkAccessAll', () => {
     ).toEqual({ allowed: true });
     expect(
       checkAccess(
-        { kind: 'write', document: 'Macros', action: 'create' },
+        { kind: 'write', document: 'Cards', action: 'create' },
         settings({ allowWriteOperations: false })
       )
     ).toMatchObject({ allowed: false, code: 'WRITE_DISABLED' });
@@ -131,6 +133,32 @@ describe('checkAccessAll', () => {
     );
     expect(deleting).toMatchObject({ allowed: false, code: 'PERMISSION_DENIED' });
     if (!deleting.allowed) expect(deleting.reason).toMatch(/no level of their own/);
+  });
+});
+
+describe('macros', () => {
+  it('have their own level since 14.2611.1, with deleting off by default', () => {
+    const macro = (action: 'create' | 'update' | 'delete') =>
+      ({ kind: 'write', document: 'Macros', action }) as const;
+    expect(isMatrixKind('Macros')).toBe(true);
+    expect(PERMISSION_SETTINGS.Macros.key).toBe('permMacros');
+    expect(checkAccess(macro('create'), settings({}))).toEqual({ allowed: true });
+    const refused = checkAccess(macro('delete'), settings({}));
+    expect(refused).toMatchObject({ allowed: false, code: 'PERMISSION_DENIED' });
+    if (!refused.allowed) {
+      expect(refused.reason).toContain('Deleting macros is not permitted');
+      expect(refused.reason).toContain('permMacros');
+    }
+    expect(checkAccess(macro('delete'), settings({ permMacros: 'full' }))).toEqual({
+      allowed: true,
+    });
+    expect(checkAccess(macro('create'), settings({ permMacros: 'read' }))).toMatchObject({
+      allowed: false,
+      code: 'PERMISSION_DENIED',
+    });
+    expect(
+      checkAccess(macro('delete'), settings({ permMacros: 'full', allowWriteOperations: false }))
+    ).toMatchObject({ allowed: false, code: 'WRITE_DISABLED' });
   });
 });
 
@@ -151,11 +179,12 @@ describe('resolveAccess', () => {
   });
 });
 
-it('the overview counts all seven kinds and takes the switch into account', () => {
+it('the overview counts all eight kinds and takes the switch into account', () => {
   const overview = permissionOverview(
     settings({ allowWriteOperations: false, permFolders: 'full' })
   );
-  expect(overview.kinds).toHaveLength(7);
+  expect(overview.kinds).toHaveLength(8);
   expect(overview.kinds.find(k => k.document === 'Compendiums')).toBeDefined();
+  expect(overview.kinds.find(k => k.document === 'Macros')).toMatchObject({ key: 'permMacros' });
   expect(overview.kinds.every(k => !k.canCreate && !k.canDelete)).toBe(true);
 });

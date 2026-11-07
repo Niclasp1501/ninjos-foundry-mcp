@@ -1,5 +1,5 @@
 /**
- * Area chat-tables-macros: chat, rolling and changing tables, macros (running off by default).
+ * Area chat-tables-macros: chat, rolling and changing tables, macros (running and deleting off by default).
  *
  * Server side: tools, resources and prompts of the package.
  */
@@ -10,7 +10,12 @@ import {
   sendChatMessageTool,
   updateChatMessageTool,
 } from './chat-tools.js';
-import { createMacroTool, executeMacroTool, listMacrosTool } from './macro-tools.js';
+import {
+  createMacroTool,
+  deleteMacroTool,
+  executeMacroTool,
+  listMacrosTool,
+} from './macro-tools.js';
 import {
   drawRollTableTool,
   getRollTableTool,
@@ -32,6 +37,7 @@ export const chatTablesMacrosArea: ServerArea = {
     listMacrosTool,
     createMacroTool,
     executeMacroTool,
+    deleteMacroTool,
   ],
   resources: [],
   prompts: [],

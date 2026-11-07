@@ -13,7 +13,7 @@ const open = (options: FakeFoundryOptions = {}) =>
   (harness = createAreaHarness({ foundry: new FakeFoundry(options) }));
 
 describe('getPermissions', () => {
-  it('shows the switch and all seven kinds with the defaults', async () => {
+  it('shows the switch and all eight kinds with the defaults', async () => {
     const answer = (await open().query('getPermissions')) as {
       writeOperationsEnabled: boolean;
       kinds: Array<{ document: string; canCreate: boolean; canDelete: boolean }>;
@@ -27,6 +27,7 @@ describe('getPermissions', () => {
       'Actors',
       'Folders',
       'Compendiums',
+      'Macros',
     ]);
     expect(answer.kinds.every(k => k.canCreate && !k.canDelete)).toBe(true);
   });

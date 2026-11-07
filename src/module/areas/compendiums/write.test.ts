@@ -427,6 +427,28 @@ describe('setCompendiumLock', () => {
 });
 
 describe('deleteCompendiumEntries', () => {
+  it('needs the delete level for macros as well when the compendium holds macros', async () => {
+    const macros = archive({ type: 'Macro', entries: [{ _id: 'm1', name: 'Roll' }] });
+    const first = open([macros], { permCompendiums: 'full' });
+    await expect(
+      first.h.query('deleteCompendiumEntries', { packId: 'world.archive', ids: ['m1'] })
+    ).rejects.toMatchObject({
+      moduleCode: 'PERMISSION_DENIED',
+      message: expect.stringContaining('permMacros'),
+    });
+    expect(first.world.get('world.archive').docs.has('m1')).toBe(true);
+    first.h.close();
+
+    const { h, world } = open([macros], { permCompendiums: 'full', permMacros: 'full' });
+    const done = (await h.query('deleteCompendiumEntries', {
+      packId: 'world.archive',
+      ids: ['m1'],
+      confirmLabel: 'Archive',
+    })) as Record<string, unknown>;
+    expect(done['deleted']).toBe(1);
+    expect(world.get('world.archive').docs.has('m1')).toBe(false);
+  });
+
   const forest = (): FakePackOptions =>
     archive({
       entries: [

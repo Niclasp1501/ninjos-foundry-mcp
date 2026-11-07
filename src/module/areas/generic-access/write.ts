@@ -52,6 +52,7 @@ import { folderCreationFlags } from '../../folders.js';
 import { readSetting } from '../../settings.js';
 import { requireWorld } from '../../world-ready.js';
 import { validTypes } from '../actors/common.js';
+import { hotbarText, hotbarUses } from '../chat-tables-macros/hotbar.js';
 import {
   argsOf,
   describeDocument,
@@ -622,6 +623,15 @@ function deleteProblems(info: TypeInfo, document: FoundryDocument, before: Data)
       problems.push(
         `${label} is linked to ${linked.length} scene(s): ${describeList(linked)}. Remove the link first ` +
           '(set-scene-playlist or update-scene-music), so no scene loses its music without anyone noticing.'
+      );
+    }
+  }
+  if (info.name === 'Macro') {
+    const uses = hotbarUses(id);
+    if (uses.length) {
+      problems.push(
+        `${label} is on the hotbar of ${hotbarText(uses)}. Use delete-macro, which asks before it ` +
+          'deletes a macro somebody keeps on the hotbar.'
       );
     }
   }

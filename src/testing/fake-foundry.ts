@@ -60,6 +60,8 @@ export interface FakeUser {
   name: string;
   isGM: boolean;
   active: boolean;
+  /** Macro ids by hotbar slot, as Foundry stores them: `{ "3": "<macro id>" }`. */
+  hotbar?: Record<string, string>;
   /** The targeted tokens, not enumerable. Set by `updateTokenTargets`. */
   targets?: Set<FakeTokenTarget>;
   /** Target these tokens of the viewed scene (`canvas.scene`, else the active one). */
@@ -778,6 +780,7 @@ export class FakeFoundry {
       name: data.name,
       isGM: data.isGM ?? false,
       active: data.active ?? true,
+      ...(data.hotbar ? { hotbar: { ...data.hotbar } } : {}),
     };
     // Not enumerable: code that copies users field by field does not see them.
     Object.defineProperty(user, 'targets', {

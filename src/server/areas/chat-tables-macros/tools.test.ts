@@ -24,18 +24,22 @@ const text = (result: { content: Array<{ type: string; text?: string }> }) =>
   result.content[0]?.text ?? '';
 
 describe('registration', () => {
-  it('offers eleven tools with groups and annotations', async () => {
+  it('offers twelve tools with groups and annotations', async () => {
     setup = openChatTables();
     const own = new Set((chatTablesMacrosArea.tools ?? []).map(tool => tool.name));
-    expect(own.size).toBe(11);
+    expect(own.size).toBe(12);
     const listed = (await setup.harness.tools.list()).filter(tool => own.has(tool.name));
-    expect(listed).toHaveLength(11);
+    expect(listed).toHaveLength(12);
     const byName = new Map(listed.map(tool => [tool.name, tool.annotations]));
     expect(byName.get('list-chat-messages')).toMatchObject({ readOnlyHint: true });
     expect(byName.get('get-roll-table')).toMatchObject({ readOnlyHint: true });
     expect(byName.get('delete-chat-message')).toMatchObject({
       destructiveHint: true,
       idempotentHint: true,
+    });
+    expect(byName.get('delete-macro')).toMatchObject({
+      destructiveHint: true,
+      readOnlyHint: false,
     });
     expect(byName.get('execute-macro')).toMatchObject({
       destructiveHint: true,
@@ -119,6 +123,46 @@ describe('tool texts', () => {
         'It posted no chat message.',
       ].join('\n')
     );
+  });
+
+  it('asks before deleting a macro on a hotbar, then deletes it', async () => {
+    setup = openChatTables({
+      users: [
+        { id: 'gm', name: 'Gamemaster', isGM: true },
+        { id: 'alice', name: 'Alice', hotbar: { '2': 'm' } },
+      ],
+      settings: { [`${MODULE_ID}.permMacros`]: 'full' },
+    });
+    setup.foundry.seed('Macro', {
+      _id: 'm',
+      name: 'M',
+      type: 'chat',
+      command: 'hi',
+      author: 'alice',
+    });
+    const asked = text(await setup.harness.call('delete-macro', { macroId: 'M' }));
+    expect(asked).toBe(
+      [
+        'QUESTION FOR THE GAMEMASTER. Macro "M" (id m, chat) was NOT deleted.',
+        'Created by Alice, a player.',
+        'It is on these hotbars:',
+        '- Alice (player), slot 2',
+        'Ask the Gamemaster whether it may go. Only then call delete-macro again with confirmHotbar true.',
+      ].join('\n')
+    );
+    const done = text(
+      await setup.harness.call('delete-macro', { macroId: 'M', confirmHotbar: true })
+    );
+    expect(done).toContain('Macro "M" (id m, chat) deleted.');
+    expect(done).toContain('undo-change can recreate it with its id.');
+  });
+
+  it('names the refusal of deleting a macro', async () => {
+    setup = openChatTables();
+    setup.foundry.seed('Macro', { _id: 'm', name: 'M', type: 'chat', command: 'hi' });
+    const result = await setup.harness.call('delete-macro', { macroId: 'M' });
+    expect(result.isError).toBe(true);
+    expect(text(result)).toMatch(/Failed to delete macro: Deleting macros is not permitted\./);
   });
 
   it('says the module is too old when it lacks the query', async () => {

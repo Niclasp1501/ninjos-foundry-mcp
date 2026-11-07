@@ -226,9 +226,10 @@ clients share one background process, which talks to the module over a local Web
 independently, and a server and a module one version apart still work together.
 
 Every change goes through one permission check in the module, whichever tool asks for it. The
-permission levels exist for scenes, playlists, journals, roll tables, actors, folders and
-compendiums; the default is create and change. Items, macros, card stacks, chat messages and
-combat encounters have no level yet: they can be created and changed while the write switch is
+permission levels exist for scenes, playlists, journals, roll tables, actors, folders,
+compendiums and macros; the default is create and change. A macro on somebody's hotbar is only
+deleted after the assistant has asked. Items, card stacks, chat messages and combat encounters
+have no level yet: they can be created and changed while the write switch is
 on, and deleting them is refused. Destructive tools can additionally require a one-time
 confirmation with a dry run first ("Confirm destructive tools"). `list-changes` shows the change
 log, and `undo-change` reverts an entry or a whole call where that is possible.

@@ -1,5 +1,5 @@
 /**
- * Macros: list, create, run.
+ * Macros: list, create, run, delete.
  *
  * Decisions:
  * - Running is off by default, behind the world setting `macroExecution`
@@ -12,9 +12,18 @@
  * - A chat macro goes through the chat log (`ui.chat.processMessage`), which
  *   is what `Macro#execute` does for it, awaited so its error arrives too.
  * - The Gamemaster sees a notification whenever the AI runs a macro.
+ * - Deleting needs the level "create, change and delete" for macros (setting
+ *   `permMacros`), off by default. A macro on somebody's hotbar is only
+ *   deleted with `confirmHotbar`; without it the answer names every hotbar and
+ *   nothing is deleted, so the model has to ask first. Foundry keeps the id in
+ *   the hotbar, so the slot shows empty, and undo-change, which recreates the
+ *   macro with its id, puts it back into the same slots.
+ * - Macros in compendiums are not deleted here: delete-compendium-entries
+ *   does that, under the levels for compendiums and for macros.
  */
 import { smallEnough } from '../../../common/change-log.js';
 import { MODULE_ID } from '../../../common/constants.js';
+import type { Access } from '../../../common/permissions.js';
 import { QueryError, type QueryHandler } from '../../dispatcher.js';
 import { ensureFolderPath, folderPathOf } from '../../folders.js';
 import { requireWorld } from '../../world-ready.js';
@@ -36,6 +45,7 @@ import {
   textOf,
   userLabel,
 } from './lookup.js';
+import { hotbarText, hotbarUses } from './hotbar.js';
 import { resolveSpeaker } from './speaker.js';
 
 const macros = () => game.macros as FoundryCollection<FoundryChatTablesMacro>;
@@ -384,5 +394,166 @@ export const executeMacro: QueryHandler = {
       }),
       warnings,
     };
+  },
+};
+
+const DELETE_ACCESS: Access = { kind: 'write', document: 'Macros', action: 'delete' };
+
+interface MacroPackEntry {
+  packId: string;
+  packLabel: string;
+  id: string;
+  name: string;
+}
+
+interface LooseMacroPack {
+  collection: string;
+  documentName: string;
+  title?: string;
+  metadata?: { label?: unknown };
+  getIndex?: () => Promise<unknown>;
+}
+
+/** The entries of a compendium index, a Foundry Collection or a plain list. */
+function indexEntries(index: unknown): unknown[] {
+  if (index instanceof Map) return [...index.values()];
+  if (Array.isArray(index)) return index;
+  const values = (index as { values?: unknown } | null)?.values;
+  if (typeof values === 'function') return [...(values.call(index) as Iterable<unknown>)];
+  return [];
+}
+
+/** Entries of macro compendiums whose id or exact name is `ref`. Never throws. */
+async function compendiumMacros(ref: string): Promise<MacroPackEntry[]> {
+  const packs = (game as unknown as { packs?: { values?: () => Iterable<unknown> } }).packs;
+  if (!packs || typeof packs.values !== 'function') return [];
+  const found: MacroPackEntry[] = [];
+  for (const raw of packs.values()) {
+    const pack = raw as LooseMacroPack;
+    if (pack.documentName !== 'Macro' || typeof pack.getIndex !== 'function') continue;
+    let entries: unknown[];
+    try {
+      entries = indexEntries(await pack.getIndex());
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!isRecord(entry)) continue;
+      const id = textOf(entry['_id']);
+      const name = textOf(entry['name']);
+      if (id !== ref && name !== ref) continue;
+      const label = textOf(pack.metadata?.label) || pack.title || pack.collection;
+      found.push({ packId: pack.collection, packLabel: label, id, name });
+    }
+  }
+  return found;
+}
+
+function compendiumRefusal(ref: string, entries: readonly MacroPackEntry[]): QueryError {
+  const where = entries.length
+    ? ` It is in ${entries
+        .map(entry => `the compendium "${entry.packLabel}" (${entry.packId}, entry id ${entry.id})`)
+        .join(' and ')}.`
+    : '';
+  return new QueryError(
+    'IN_COMPENDIUM',
+    `"${ref}" is no macro of the world.${where} delete-macro only deletes world macros. A macro in a compendium ` +
+      'is deleted with delete-compendium-entries, which needs the level "create, change and delete" for ' +
+      'compendiums and for macros and a compendium on the release list. Ask the Gamemaster before deleting ' +
+      'it there, because undo-change does not restore compendium entries. Nothing was deleted.'
+  );
+}
+
+export const deleteMacro: QueryHandler = {
+  access: data => (isRecord(data) && data['dryRun'] === true ? { kind: 'read' } : DELETE_ACCESS),
+  run: async (data, context) => {
+    requireWorld();
+    const input = inputOf(data);
+    const ref = requiredText(input, 'macroId').trim();
+    const dryRun = optionalBoolean(input, 'dryRun') === true;
+    const confirmHotbar = optionalBoolean(input, 'confirmHotbar') === true;
+
+    if (ref.startsWith('Compendium.')) throw compendiumRefusal(ref, []);
+    let macro = findMacroIfAny(ref);
+    if (!macro) {
+      const inPacks = await compendiumMacros(ref);
+      if (inPacks.length) throw compendiumRefusal(ref, inPacks);
+      macro = findMacro(ref);
+    }
+
+    const type = typeOf(macro);
+    const authorId = idOf(macro.author);
+    const base = {
+      id: macro.id,
+      uuid: macro.uuid,
+      name: macro.name,
+      type,
+      author: authorId ? userLabel(authorId) : null,
+      authorIsPlayer: authorId ? game.users?.get(authorId)?.isGM === false : false,
+      hotbars: hotbarUses(macro.id),
+    };
+    const { hotbars } = base;
+
+    if (dryRun) {
+      const problem = context.accessProblem(DELETE_ACCESS);
+      return {
+        ...base,
+        dryRun: true,
+        allowed: problem === null,
+        refused: problem ? [problem] : [],
+        needsConfirmation: hotbars.length > 0,
+      };
+    }
+
+    if (hotbars.length && !confirmHotbar) {
+      return {
+        ...base,
+        deleted: false,
+        needsConfirmation: true,
+        question:
+          `Macro "${macro.name}" (id ${macro.id}) is on the hotbar of ${hotbarText(hotbars)}. ` +
+          'Ask the Gamemaster whether it may go, then call delete-macro again with confirmHotbar true. ' +
+          'Nothing was deleted.',
+      };
+    }
+
+    const before = smallEnough(macro.toObject());
+    try {
+      await macro.delete();
+    } catch (error) {
+      throw new QueryError(
+        'DELETE_FAILED',
+        `Foundry refused to delete the macro "${macro.name}" (id ${macro.id}): ${messageOf(error)}.`
+      );
+    }
+    if (macros().get(macro.id)) {
+      throw new QueryError(
+        'NOT_APPLIED',
+        `Macro "${macro.name}" (id ${macro.id}) was deleted, but it is still in the world when read back.`
+      );
+    }
+
+    context.recordChange({
+      query: 'deleteMacro',
+      tool: 'delete-macro',
+      document: 'Macros',
+      action: 'delete',
+      targets: [{ id: macro.id, uuid: macro.uuid, name: macro.name }],
+      summary:
+        `Deleted the ${type} macro "${macro.name}"` +
+        (hotbars.length ? `, which was on the hotbar of ${hotbarText(hotbars)}` : '') +
+        '.',
+      before,
+    });
+
+    const warnings: string[] = [];
+    if (hotbars.length)
+      warnings.push(
+        `The hotbar slots of ${hotbarText(hotbars)} now show empty. undo-change recreates the macro with its id, ` +
+          'which puts it back into those slots.'
+      );
+    if (before === undefined)
+      warnings.push('The macro was too large to record, so undo-change cannot recreate it.');
+    return { ...base, deleted: true, warnings };
   },
 };

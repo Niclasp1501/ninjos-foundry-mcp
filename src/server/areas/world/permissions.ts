@@ -131,7 +131,7 @@ export const getPermissionsTool: ToolDefinition = {
   group: 'world',
   description:
     'Show what the AI is currently allowed to do in this world: the switch "Allow Write Operations", the level ' +
-    'per document kind (scenes, playlists, journals, roll tables, actors, folders, compendiums: read only, ' +
+    'per document kind (scenes, playlists, journals, roll tables, actors, folders, compendiums, macros: read only, ' +
     'create and change, or additionally delete), the release list of compendiums and the modules released to ' +
     'offer tools of their own. Deleting is off by default everywhere. Call this when an action was refused, to ' +
     'see which setting has to change.',

@@ -27,7 +27,7 @@ describe('permissions for a previous generation server', () => {
     expect(typeof answer['writeOperationsEnabled']).toBe('boolean');
     const rows = answer['permissions'] as Row[];
     expect(Array.isArray(rows)).toBe(true);
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(8);
     for (const row of rows) {
       expect(typeof row['label']).toBe('string');
       expect(['read', 'write', 'full']).toContain(row['level']);

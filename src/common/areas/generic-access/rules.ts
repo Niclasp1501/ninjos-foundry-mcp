@@ -252,7 +252,7 @@ export const SPECIALISED_TOOLS: Readonly<Record<string, readonly string[]>> = {
     'update-chat-message',
     'delete-chat-message',
   ],
-  Macro: ['list-macros', 'create-macro', 'execute-macro'],
+  Macro: ['list-macros', 'create-macro', 'execute-macro', 'delete-macro'],
   Folder: ['list-scene-folders', 'folder-rename', 'folder-delete'],
   // The canvas area: batches with dry run, checks before the first write and read back.
   Wall: [...CANVAS_ELEMENT_TOOLS, 'set-door-state', 'check-wall-collision', 'find-path'],

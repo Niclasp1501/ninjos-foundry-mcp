@@ -1,5 +1,5 @@
 /**
- * list-macros, create-macro, execute-macro.
+ * list-macros, create-macro, execute-macro, delete-macro.
  */
 import { readOnlyTool, writingTool, type ToolDefinition } from '../../tools/types.js';
 import {
@@ -168,6 +168,91 @@ export const executeMacroTool: ToolDefinition = {
         pick(args, ['macroId', 'speakerActor', 'speakerToken', 'sceneId', 'alias', 'args']),
         'run macro',
         { timeoutMs: EXECUTE_MACRO_TIMEOUT_MS }
+      )
+    ),
+};
+
+function hotbarLines(answer: Record<string, unknown>): string[] {
+  return listOf(answer['hotbars'])
+    .filter(isRecord)
+    .map(
+      use =>
+        `- ${str(use['user'])} (${use['gamemaster'] === true ? 'Gamemaster' : 'player'}), ` +
+        `slot ${listOf(use['slots']).map(String).join(', ')}`
+    );
+}
+
+export function formatDeletedMacro(answer: unknown): string {
+  if (!isRecord(answer) || typeof answer['id'] !== 'string') return unknownShape(answer);
+  const label = `Macro "${str(answer['name'])}" (id ${answer['id']}, ${str(answer['type'])})`;
+  const author = str(answer['author']);
+  const by = author
+    ? `Created by ${author}${answer['authorIsPlayer'] === true ? ', a player' : ''}.`
+    : '';
+  const hotbars = hotbarLines(answer);
+  if (answer['dryRun'] === true) {
+    const lines = [
+      answer['allowed'] === true
+        ? `Dry run: ${label} could be deleted. Nothing was deleted.`
+        : `Dry run: ${label} could not be deleted. Nothing was deleted.`,
+      ...listOf(answer['refused']).map(reason => `Refused: ${String(reason)}`),
+    ];
+    if (by) lines.push(by);
+    if (hotbars.length)
+      lines.push(
+        'It is on these hotbars, so the real call needs confirmHotbar true after asking the Gamemaster:',
+        ...hotbars
+      );
+    else lines.push('It is on no hotbar.');
+    return lines.join('\n');
+  }
+  if (answer['needsConfirmation'] === true && answer['deleted'] === false) {
+    const lines = [`QUESTION FOR THE GAMEMASTER. ${label} was NOT deleted.`];
+    if (by) lines.push(by);
+    lines.push('It is on these hotbars:', ...hotbars);
+    lines.push(
+      'Ask the Gamemaster whether it may go. Only then call delete-macro again with confirmHotbar true.'
+    );
+    return lines.join('\n');
+  }
+  if (answer['deleted'] !== true) return unknownShape(answer);
+  const lines = [`${label} deleted.`];
+  if (by) lines.push(by);
+  if (hotbars.length) lines.push('It was on these hotbars:', ...hotbars);
+  lines.push('undo-change can recreate it with its id.');
+  lines.push(...warningLines(answer));
+  return lines.join('\n');
+}
+
+export const deleteMacroTool: ToolDefinition = {
+  name: 'delete-macro',
+  title: 'Delete a macro',
+  group: 'macros',
+  description:
+    'Delete a macro of the world by id or exact name. Off by default: the permission level for macros ' +
+    '(setting "permMacros") must be "create, change and delete". If the macro is on the hotbar of a player ' +
+    'or a Gamemaster, nothing is deleted and the answer names every hotbar: ask the Gamemaster, then call again ' +
+    'with confirmHotbar true. Macros in compendiums are not deleted here (use delete-compendium-entries). ' +
+    'dryRun shows what would happen. undo-change can recreate a deleted macro with its id.',
+  inputSchema: schema(
+    {
+      macroId: param('string', 'Id or exact name of the macro'),
+      confirmHotbar: param(
+        'boolean',
+        "Delete even though the macro is on somebody's hotbar. Only after the Gamemaster agreed"
+      ),
+      dryRun: param('boolean', 'Only report what would happen, delete nothing'),
+    },
+    ['macroId']
+  ),
+  annotations: writingTool('Delete a macro', { destructive: true, idempotent: true }),
+  handler: async (args, context) =>
+    formatDeletedMacro(
+      await ask(
+        context,
+        'deleteMacro',
+        pick(args, ['macroId', 'confirmHotbar', 'dryRun']),
+        'delete macro'
       )
     ),
 };

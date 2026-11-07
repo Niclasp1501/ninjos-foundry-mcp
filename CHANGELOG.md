@@ -1,5 +1,14 @@
 # Changelog
 
+## [14.2611.1] - unreleased
+
+- **The AI can delete macros, if you allow it.** "Permissions · Macros" is a new level next to
+  the others, and deleting stays off until you set it to "Create, change and delete". The new
+  tool `delete-macro` deletes a world macro by id or name. If the macro is on a player's or a
+  Gamemaster's hotbar, it deletes nothing and names every hotbar, so the AI has to ask you
+  first. `undo-change` recreates a deleted macro with its id, which also puts it back into its
+  hotbar slots. Macros in compendiums now need this level as well as the one for compendiums.
+
 ## [14.2609.6] - 2026-09-30
 
 - **Battle maps and scene images from Gemini.** Three new tools, `generate-battlemap`,

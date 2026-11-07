@@ -52,6 +52,10 @@
         "name": "Permissions · Compendiums",
         "hint": "What the AI may do with compendiums. Deleting is off by default, because it cannot be undone."
       },
+      "permMacros": {
+        "name": "Permissions · Macros",
+        "hint": "What the AI may do with macros. Deleting is off by default. A macro on a player's hotbar is only deleted after the AI has asked. Deleting macros in compendiums needs the level for compendiums as well."
+      },
       "level": {
         "read": "Read only",
         "write": "Create and change",

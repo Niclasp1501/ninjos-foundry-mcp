@@ -20,7 +20,14 @@
 
 /** The kinds with their own level in the matrix. */
 export type MatrixKind =
-  'Scenes' | 'Playlists' | 'Journals' | 'RollTables' | 'Actors' | 'Folders' | 'Compendiums';
+  | 'Scenes'
+  | 'Playlists'
+  | 'Journals'
+  | 'RollTables'
+  | 'Actors'
+  | 'Folders'
+  | 'Compendiums'
+  | 'Macros';
 
 /**
  * World documents without a level of their own yet. Rule until they get one:
@@ -28,7 +35,7 @@ export type MatrixKind =
  * deleting is refused, because deleting needs "full" and there is no setting
  * that could say "full" for them.
  */
-export type UnleveledKind = 'Items' | 'Macros' | 'Cards' | 'ChatMessages' | 'Combats';
+export type UnleveledKind = 'Items' | 'Cards' | 'ChatMessages' | 'Combats';
 
 export type DocumentKind = MatrixKind | UnleveledKind;
 
@@ -73,11 +80,12 @@ export const PERMISSION_SETTINGS: Readonly<Record<MatrixKind, { key: string; lab
   Actors: { key: 'permActors', label: 'actors' },
   Folders: { key: 'permFolders', label: 'folders' },
   Compendiums: { key: 'permCompendiums', label: 'compendiums' },
+  // Since 14.2611.1. Before, macros had no level and deleting them was always refused.
+  Macros: { key: 'permMacros', label: 'macros' },
 };
 
 export const UNLEVELED_KINDS: Readonly<Record<UnleveledKind, { label: string }>> = {
   Items: { label: 'items' },
-  Macros: { label: 'macros' },
   Cards: { label: 'card stacks' },
   ChatMessages: { label: 'chat messages' },
   Combats: { label: 'combat encounters' },
