@@ -51,6 +51,15 @@ The server now lives in `~/Library/Application Support/FoundryMCPServer`.
    "Connected".
 3. Ask Claude: "Which world is open in Foundry?"
 
+### A device without the MCP server
+
+If you also run the game as Gamemaster on a device without the MCP server, such as a
+laptop at the table, the bridge keeps trying to connect there and shows messages. A click on
+the status indicator opens a small menu. "Switch off for this device" turns the bridge off in
+this browser only: no connection attempts, no messages. The indicator turns grey and stays
+visible; the same menu switches it back on with "Switch on for this device". Other devices
+connect as usual.
+
 ## Claude Code and other clients
 
 Setup adds the server **to Claude Desktop**. In Claude Code and Cursor it only updates

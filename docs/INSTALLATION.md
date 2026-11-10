@@ -51,6 +51,15 @@ Der Server liegt danach in `~/Library/Application Support/FoundryMCPServer`.
    „Verbunden".
 3. Claude fragen: „Welche Welt ist in Foundry geöffnet?"
 
+### Ein Gerät ohne MCP-Server
+
+Spielst du als Spielleitung auch an einem Gerät, auf dem kein MCP-Server läuft, etwa am
+Laptop am Spieltisch, versucht die Brücke dort ständig zu verbinden und meldet sich. Ein
+Klick auf die Statusanzeige öffnet ein kleines Menü. „Auf diesem Gerät abschalten“ stellt die
+Brücke nur in diesem Browser ab: kein Verbindungsversuch, keine Meldung. Die Anzeige wird grau
+und bleibt sichtbar; über dasselbe Menü schaltest du sie mit „Auf diesem Gerät einschalten“
+wieder an. Andere Geräte verbinden sich wie gewohnt.
+
 ## Claude Code und andere Programme
 
 Die Einrichtung trägt den Server **in Claude Desktop** ein. In Claude Code und Cursor

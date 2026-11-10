@@ -12,14 +12,23 @@
  * "off" never looks like a fault. New here: amber for a tab on standby while
  * another tab or world holds the bridge.
  *
+ * A click opens a small menu: "Connect now", and switching the bridge off or
+ * on for this device only. A laptop at the table without the MCP server keeps
+ * quiet that way, while the PC that runs the server connects as before. The
+ * readout stays visible when switched off, because it is the way back.
+ *
  * Grown from status-indicator.ts of the production module, which was written
  * in house.
  */
 import type { BridgeStatus } from './bridge-client.js';
 import { localize } from './notify.js';
+import { setBridgeOffOnDevice } from './settings.js';
 
 const ELEMENT_ID = 'mcp-bridge-status';
+const MENU_ID = 'mcp-bridge-status-menu';
 const POLL_MS = 5000;
+/** Distance of the menu from the edge of the visible area, wide enough to still hit it. */
+const EDGE_PX = 8;
 
 type Kind = 'connected' | 'outdated' | 'standby' | 'connecting' | 'disconnected' | 'disabled';
 
@@ -28,6 +37,23 @@ export interface Readout {
   text: string;
   detail: string;
   blocked?: true;
+  /** Off because of the switch of this device, not the one of the world. */
+  offOnDevice?: true;
+}
+
+export type MenuAction = 'connect' | 'deviceOff' | 'deviceOn';
+
+/**
+ * What the menu offers for a readout. Switched off here: only the way back.
+ * Otherwise switching off for this device, and "Connect now" whenever the
+ * bridge is not connected but could be.
+ */
+export function menuActions(readout: Readout): MenuAction[] {
+  if (readout.offOnDevice) return ['deviceOn'];
+  const actions: MenuAction[] = [];
+  if (readout.kind === 'disconnected' || readout.kind === 'connecting') actions.push('connect');
+  actions.push('deviceOff');
+  return actions;
 }
 
 interface BridgeHandle {
@@ -67,6 +93,19 @@ export function describeBridgeStatus(status: BridgeStatus | undefined): Readout 
 
   const info = status.connectionInfo;
   const where = `${info.config.host}:${info.config.port}`;
+
+  // Before every other state: a tab switched off here is off, whatever it was before.
+  if (status.offOnThisDevice) {
+    return {
+      kind: 'disabled',
+      offOnDevice: true,
+      text: t('offDevice', 'MCP: off on this device'),
+      detail: t(
+        'offDeviceDetail',
+        'The bridge is switched off on this device only. Other devices connect as usual. To switch it on, click here and choose "Switch on for this device".'
+      ),
+    };
+  }
 
   if (!status.enabled) {
     return {
@@ -139,7 +178,7 @@ export function describeBridgeStatus(status: BridgeStatus | undefined): Readout 
     text: t('down', 'MCP: disconnected'),
     detail: t(
       'downDetail',
-      'No bridge to {where}. Is the MCP server running on the PC? The bridge reconnects on its own once it is. Click to try right away.',
+      'No bridge to {where}. Is the MCP server running on the PC? The bridge reconnects on its own once it is. A click opens the menu with "Connect now".',
       { where }
     ),
   };
@@ -149,16 +188,7 @@ function anchor(): HTMLElement | null {
   return document.getElementById('players') ?? document.getElementById('ui-left') ?? document.body;
 }
 
-function onActivate(): void {
-  const { kind, detail } = read();
-  if (kind === 'connected' || kind === 'standby') {
-    ui.notifications?.info(detail);
-    return;
-  }
-  if (kind === 'disabled' || kind === 'outdated') {
-    ui.notifications?.warn(detail);
-    return;
-  }
+function connectNow(): void {
   ui.notifications?.info(t('retrying', 'Reconnecting the MCP bridge'));
   try {
     bridge()?.start();
@@ -172,16 +202,162 @@ function onActivate(): void {
   refreshStatusIndicator();
 }
 
+function switchDevice(off: boolean): void {
+  // The onChange of the setting starts or stops the bridge; the readout follows.
+  setBridgeOffOnDevice(off)
+    .catch(error => {
+      ui.notifications?.error(
+        t('switchFailed', 'The MCP bridge could not be switched on this device: {reason}', {
+          reason: error instanceof Error ? error.message : String(error),
+        })
+      );
+    })
+    .finally(refreshStatusIndicator);
+}
+
+function run(action: MenuAction): void {
+  if (action === 'connect') connectNow();
+  else switchDevice(action === 'deviceOff');
+}
+
+const MENU_TEXT: Record<MenuAction, { key: string; fallback: string; hint: string }> = {
+  connect: {
+    key: 'connectNow',
+    fallback: 'Connect now',
+    hint: 'Connect now: tries to reach the MCP server right away.',
+  },
+  deviceOff: {
+    key: 'deviceOff',
+    fallback: 'Switch off for this device',
+    hint: 'Switch off for this device: this browser no longer builds the bridge and shows no messages about it. Other devices are not affected.',
+  },
+  deviceOn: {
+    key: 'deviceOn',
+    fallback: 'Switch on for this device',
+    hint: 'Switch on for this device: this browser connects to the MCP server again.',
+  },
+};
+
+let closeOpenMenu: (() => void) | null = null;
+
+function closeMenu(): void {
+  closeOpenMenu?.();
+  closeOpenMenu = null;
+}
+
+/** The visible area, with the on screen keyboard and split screen taken into account. */
+function visibleArea(): { width: number; height: number } {
+  const viewport = window.visualViewport;
+  return {
+    width: viewport?.width ?? window.innerWidth,
+    height: viewport?.height ?? window.innerHeight,
+  };
+}
+
+/** Below the readout if it fits, else above; always wholly inside the visible area. */
+function placeMenu(menu: HTMLElement, anchorElement: HTMLElement): void {
+  const area = visibleArea();
+  menu.style.maxWidth = `${Math.max(0, area.width - 2 * EDGE_PX)}px`;
+  menu.style.maxHeight = `${Math.max(0, area.height - 2 * EDGE_PX)}px`;
+  const rect = anchorElement.getBoundingClientRect();
+  const { width, height } = menu.getBoundingClientRect();
+  let top = rect.bottom + 4;
+  if (top + height > area.height - EDGE_PX) top = rect.top - height - 4;
+  top = Math.min(Math.max(EDGE_PX, top), Math.max(EDGE_PX, area.height - height - EDGE_PX));
+  const left = Math.min(
+    Math.max(EDGE_PX, rect.left),
+    Math.max(EDGE_PX, area.width - width - EDGE_PX)
+  );
+  menu.style.top = `${top}px`;
+  menu.style.left = `${left}px`;
+}
+
+function openMenu(anchorElement: HTMLElement): void {
+  closeMenu();
+  const readout = read();
+  const menu = document.createElement('div');
+  menu.id = MENU_ID;
+  menu.className = 'mcp-status-menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', t('menu', 'MCP bridge'));
+
+  const detail = document.createElement('p');
+  detail.className = 'mcp-status-menu__detail';
+  // textContent, never innerHTML: the detail carries a host name from the settings.
+  detail.textContent = readout.detail;
+  menu.append(detail);
+
+  const items = menuActions(readout).map(action => {
+    const { key, fallback, hint } = MENU_TEXT[action];
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = `mcp-status-menu__item mcp-status-menu__item--${action}`;
+    item.setAttribute('role', 'menuitem');
+    item.textContent = t(key, fallback);
+    item.setAttribute('aria-label', t(`${key}Hint`, hint));
+    item.addEventListener('click', () => {
+      closeMenu();
+      run(action);
+    });
+    return item;
+  });
+  menu.append(...items);
+
+  menu.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeMenu();
+      anchorElement.focus();
+      return;
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    const index = items.indexOf(document.activeElement as HTMLButtonElement);
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    items[(index + step + items.length) % items.length]?.focus();
+  });
+
+  document.body.append(menu);
+  placeMenu(menu, anchorElement);
+  anchorElement.setAttribute('aria-expanded', 'true');
+
+  // A click beside the menu, a change of the visible area or Escape closes it; none of them acts.
+  const outside = (event: PointerEvent) => {
+    const target = event.target as Node | null;
+    if (target && (menu.contains(target) || anchorElement.contains(target))) return;
+    closeMenu();
+  };
+  const away = () => closeMenu();
+  document.addEventListener('pointerdown', outside, true);
+  window.addEventListener('resize', away);
+  window.visualViewport?.addEventListener('resize', away);
+  closeOpenMenu = () => {
+    document.removeEventListener('pointerdown', outside, true);
+    window.removeEventListener('resize', away);
+    window.visualViewport?.removeEventListener('resize', away);
+    menu.remove();
+    anchorElement.setAttribute('aria-expanded', 'false');
+  };
+  items[0]?.focus();
+}
+
+function toggleMenu(anchorElement: HTMLElement): void {
+  if (document.getElementById(MENU_ID)) closeMenu();
+  else openMenu(anchorElement);
+}
+
 function build(): HTMLElement {
   const element = document.createElement('div');
   element.id = ELEMENT_ID;
   element.setAttribute('role', 'button');
+  element.setAttribute('aria-haspopup', 'menu');
+  element.setAttribute('aria-expanded', 'false');
   element.tabIndex = 0;
-  element.addEventListener('click', onActivate);
+  element.addEventListener('click', () => toggleMenu(element));
   element.addEventListener('keydown', event => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      onActivate();
+      toggleMenu(element);
     }
   });
   const dot = document.createElement('span');
@@ -236,6 +412,7 @@ export function installStatusIndicator(): void {
 }
 
 export function removeStatusIndicator(): void {
+  closeMenu();
   if (pollTimer !== null) window.clearInterval(pollTimer);
   pollTimer = null;
   document.getElementById(ELEMENT_ID)?.remove();

@@ -58,7 +58,13 @@ export type ConnectionState =
   'disabled' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'rejected';
 
 export interface BridgeSettings {
+  /** The switch of the world: off means no Gamemaster tab connects. */
   enabled(): boolean;
+  /**
+   * The switch of this device (a client setting): on means this browser never
+   * connects, while other devices of the same world do. Absent means off.
+   */
+  offOnThisDevice?(): boolean;
   host(): string;
   port(): number;
   autoReconnect(): boolean;
@@ -148,7 +154,10 @@ export interface BridgeClientOptions {
 }
 
 export interface BridgeStatus {
+  /** Both switches allow connecting: the world's and this device's. */
   enabled: boolean;
+  /** Set when the switch of this device is what keeps the bridge off. */
+  offOnThisDevice?: true;
   connected: boolean;
   connectionState: ConnectionState;
   connectionInfo: {
@@ -207,6 +216,19 @@ export function bridgeUrl(host: string, port: number, pageProtocol: string): str
   return `${scheme}://${hostPart}:${port}${BRIDGE_PATH}`;
 }
 
+/**
+ * Follow the switch of this device after it changed. Off closes the bridge in
+ * this tab; on connects a tab that is off. A tab that is connected, also one
+ * on standby, keeps its connection, so a change never makes a holding tab
+ * hand the bridge over. `off` is the new value of the switch.
+ */
+export function applyDeviceSwitch(
+  bridge: Pick<BridgeClient, 'start' | 'getStatus'>,
+  off: boolean
+): void {
+  if (off || bridge.getStatus().connectionState === 'disabled') bridge.start();
+}
+
 export class BridgeClient {
   private socket: SocketLike | null = null;
   private state: ConnectionState = 'disconnected';
@@ -242,10 +264,24 @@ export class BridgeClient {
     this.now = options.now ?? Date.now;
   }
 
+  /** The switch of this device. A reader that throws counts as not switched off, as before it existed. */
+  private offHere(): boolean {
+    try {
+      return this.options.settings.offOnThisDevice?.() === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Whether connecting is allowed at all: the world's switch and this device's. */
+  private switchedOn(): boolean {
+    return this.options.settings.enabled() && !this.offHere();
+  }
+
   /** Connect now. Also the way out of a refusal, after the server was reconfigured. */
   start(): void {
     this.clearReconnect();
-    if (!this.options.settings.enabled()) {
+    if (!this.switchedOn()) {
       this.stopWaking();
       this.shutdownSocket();
       this.setState('disabled');
@@ -263,7 +299,7 @@ export class BridgeClient {
     this.stopWaking();
     this.clearReconnect();
     this.shutdownSocket();
-    this.setState(this.options.settings.enabled() ? 'disconnected' : 'disabled');
+    this.setState(this.switchedOn() ? 'disconnected' : 'disabled');
   }
 
   /**
@@ -277,7 +313,7 @@ export class BridgeClient {
   retryNow(): boolean {
     if (this.state !== 'reconnecting' && this.state !== 'connecting') return false;
     if (this.socket && this.socket.readyState <= OPEN) return false;
-    if (!this.options.settings.enabled()) return false;
+    if (!this.switchedOn()) return false;
     this.clearReconnect();
     this.open();
     return true;
@@ -302,7 +338,8 @@ export class BridgeClient {
     if (this.serverVersion) info.serverVersion = this.serverVersion;
     if (this.previousGeneration && this.state === 'connected') info.previousServer = true;
     return {
-      enabled: settings.enabled(),
+      enabled: this.switchedOn(),
+      ...(this.offHere() ? { offOnThisDevice: true as const } : {}),
       connected: this.state === 'connected',
       connectionState: this.state,
       connectionInfo: info,
@@ -528,7 +565,7 @@ export class BridgeClient {
       return;
     }
     if (verdict === 'stop-requested') {
-      this.setState(this.options.settings.enabled() ? 'disconnected' : 'disabled');
+      this.setState(this.switchedOn() ? 'disconnected' : 'disabled');
       return;
     }
 
@@ -543,8 +580,8 @@ export class BridgeClient {
       this.options.events.stillDown();
     }
 
-    if (!this.options.settings.enabled() || !this.options.settings.autoReconnect()) {
-      this.setState(this.options.settings.enabled() ? 'disconnected' : 'disabled');
+    if (!this.switchedOn() || !this.options.settings.autoReconnect()) {
+      this.setState(this.switchedOn() ? 'disconnected' : 'disabled');
       return;
     }
     this.attempts += 1;

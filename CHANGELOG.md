@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+- **Switch the bridge off on one device.** A click on the status indicator now opens a small
+  menu with "Connect now" and "Switch off for this device". Switched off, that browser makes
+  no connection attempts and shows no messages about the bridge, for example on a laptop at
+  the table without the MCP server, while the PC that runs it connects as before. The
+  indicator stays visible in grey, and the same menu switches it back on.
+
 ## [14.2611.1] - 2026-11-07
 
 - **The AI can delete macros, if you allow it.** "Permissions · Macros" is a new level next to

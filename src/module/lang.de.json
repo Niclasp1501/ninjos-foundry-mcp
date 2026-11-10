@@ -77,6 +77,10 @@
         "name": "Verhalten · Automatisch neu verbinden",
         "hint": "Versucht es nach einer verlorenen Verbindung erneut: erst schnell, dann alle 10 Sekunden, ohne aufzugeben."
       },
+      "bridgeOffOnDevice": {
+        "name": "Verbindung · Auf diesem Gerät aus",
+        "hint": "Gilt nur für diesen Browser. Er baut die Brücke nicht auf und meldet nichts über eine fehlende Verbindung. Geschaltet wird über die Statusanzeige über der Spielerliste."
+      },
       "heartbeatInterval": {
         "name": "Verhalten · Lebenszeichen in Sekunden",
         "hint": "Wie oft das Modul prüft, ob die Verbindung wirklich lebt. Eine tote Verbindung wird geschlossen und danach neu aufgebaut."
@@ -98,7 +102,17 @@
       "connecting": "MCP: verbindet",
       "attempt": "Versuch {count}, {where} zu erreichen",
       "down": "MCP: getrennt",
-      "downDetail": "Keine Brücke zu {where}. Läuft der MCP-Server auf dem PC? Die Brücke verbindet sich von selbst, sobald er läuft. Klick, um es sofort zu versuchen.",
+      "downDetail": "Keine Brücke zu {where}. Läuft der MCP-Server auf dem PC? Die Brücke verbindet sich von selbst, sobald er läuft. Ein Klick öffnet das Menü mit „Jetzt verbinden“.",
+      "offDevice": "MCP: auf diesem Gerät aus",
+      "offDeviceDetail": "Die Brücke ist nur auf diesem Gerät abgeschaltet. Andere Geräte verbinden sich wie gewohnt. Zum Einschalten hier klicken und „Auf diesem Gerät einschalten“ wählen.",
+      "menu": "MCP-Brücke",
+      "connectNow": "Jetzt verbinden",
+      "connectNowHint": "Jetzt verbinden: versucht sofort, den MCP-Server zu erreichen.",
+      "deviceOff": "Auf diesem Gerät abschalten",
+      "deviceOffHint": "Auf diesem Gerät abschalten: Dieser Browser baut die Brücke nicht mehr auf und meldet nichts. Andere Geräte sind nicht betroffen.",
+      "deviceOn": "Auf diesem Gerät einschalten",
+      "deviceOnHint": "Auf diesem Gerät einschalten: Dieser Browser verbindet sich wieder mit dem MCP-Server.",
+      "switchFailed": "Die MCP-Brücke ließ sich auf diesem Gerät nicht umschalten: {reason}",
       "retrying": "MCP-Brücke wird neu verbunden",
       "retryFailed": "Neu verbinden fehlgeschlagen: {reason}"
     },

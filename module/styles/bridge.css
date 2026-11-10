@@ -84,3 +84,61 @@
   --mcp-status-dot: var(--mcp-status-off);
   color: var(--text-color, #a9a9a9);
 }
+
+/*
+ * The menu of the readout: the current state as text (no tooltip on a tablet),
+ * then "Connect now" and the switch for this device. Same panel look as the
+ * readout. Placed by status-indicator.ts inside the visible area; what does
+ * not fit scrolls.
+ */
+.mcp-status-menu {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 260px;
+  padding: 8px;
+  overflow: auto;
+  background: var(--background-color, rgb(11 10 19 / 90%));
+  border: 1px solid var(--border-color, rgb(48 40 49));
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 45%);
+  color: var(--player-name-color, #efe6d8);
+  font-family: var(--ninjo-schrift);
+  font-size: var(--font-size-12, 12px);
+  pointer-events: all;
+}
+
+.mcp-status-menu__detail {
+  margin: 0 0 4px;
+  line-height: 1.4;
+  white-space: normal;
+  color: var(--text-color, #cfc6b8);
+}
+
+.mcp-status-menu__item {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 4px 8px;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.3;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.mcp-status-menu__item:focus-visible {
+  outline: 2px solid var(--ninjo-akzent);
+  outline-offset: 1px;
+}
+
+@media (pointer: coarse) {
+  .mcp-status-menu__item {
+    min-height: var(--ninjo-tippziel);
+  }
+}

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  applyDeviceSwitch,
   BridgeClient,
   browserWakeSignals,
   bridgeUrl,
@@ -49,7 +50,7 @@ class FakeSocket implements SocketLike {
 
 let sockets: FakeSocket[];
 let events: Record<keyof BridgeEvents, ReturnType<typeof vi.fn>>;
-let settings: { enabled: boolean; autoReconnect: boolean };
+let settings: { enabled: boolean; autoReconnect: boolean; offHere: boolean };
 
 type Dispatch = ConstructorParameters<typeof BridgeClient>[0]['dispatch'];
 
@@ -63,6 +64,7 @@ function makeClient(dispatch: Dispatch = vi.fn(async () => 'ok'), wakeSignals?: 
     },
     settings: {
       enabled: () => settings.enabled,
+      offOnThisDevice: () => settings.offHere,
       host: () => 'localhost',
       port: () => 41415,
       autoReconnect: () => settings.autoReconnect,
@@ -79,7 +81,7 @@ function makeClient(dispatch: Dispatch = vi.fn(async () => 'ok'), wakeSignals?: 
 beforeEach(() => {
   vi.useFakeTimers();
   sockets = [];
-  settings = { enabled: true, autoReconnect: true };
+  settings = { enabled: true, autoReconnect: true, offHere: false };
   events = {
     connected: vi.fn(),
     disconnected: vi.fn(),
@@ -482,5 +484,100 @@ describe('BridgeClient when the page wakes up', () => {
     expect(unsubscribe).toHaveBeenCalledOnce();
     client.start();
     expect(subscribe).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('BridgeClient switched off on this device', () => {
+  it('never connects, never reconnects and reports nothing while off here', () => {
+    settings.offHere = true;
+    const page = new FakePage();
+    const client = makeClient(undefined, page.signals());
+    client.start();
+    page.hide();
+    page.show();
+    page.fire('focus');
+    page.fire('online');
+    vi.advanceTimersByTime(5 * 60_000);
+    expect(sockets).toHaveLength(0);
+    expect(client.retryNow()).toBe(false);
+    expect(client.getStatus()).toMatchObject({
+      enabled: false,
+      offOnThisDevice: true,
+      connectionState: 'disabled',
+    });
+    for (const event of Object.values(events)) {
+      if (event !== events.changed) expect(event).not.toHaveBeenCalled();
+    }
+  });
+
+  it('stops a bridge that is still looking for its server, without warnings later', () => {
+    const client = makeClient();
+    client.start();
+    last().drop(1006);
+    expect(events.unreachable).toHaveBeenCalledOnce();
+    expect(client.getStatus().connectionState).toBe('reconnecting');
+
+    settings.offHere = true;
+    applyDeviceSwitch(client, true);
+    vi.advanceTimersByTime(5 * 60_000);
+    expect(sockets).toHaveLength(1);
+    expect(events.stillDown).not.toHaveBeenCalled();
+    expect(events.unreachable).toHaveBeenCalledOnce();
+    expect(client.getStatus()).toMatchObject({
+      offOnThisDevice: true,
+      connectionState: 'disabled',
+    });
+  });
+
+  it('closes a connected bridge on purpose: no message, no reconnect', () => {
+    const client = makeClient();
+    client.start();
+    last().open();
+    const socket = last();
+
+    settings.offHere = true;
+    applyDeviceSwitch(client, true);
+    socket.drop(1000);
+    vi.advanceTimersByTime(60_000);
+    expect(socket.closedWith).not.toBeNull();
+    expect(sockets).toHaveLength(1);
+    expect(events.disconnected).not.toHaveBeenCalled();
+    expect(client.getStatus().connectionState).toBe('disabled');
+  });
+
+  it('connects again when switched on', () => {
+    settings.offHere = true;
+    const client = makeClient();
+    client.start();
+    expect(sockets).toHaveLength(0);
+
+    settings.offHere = false;
+    applyDeviceSwitch(client, false);
+    expect(sockets).toHaveLength(1);
+    last().open();
+    expect(client.getStatus()).toMatchObject({ enabled: true, connected: true });
+    expect(client.getStatus().offOnThisDevice).toBeUndefined();
+  });
+
+  it('leaves a connected tab alone when the switch goes on, also one on standby', () => {
+    const client = makeClient();
+    client.start();
+    last().open();
+    last().receive({ type: 'bridge-role', data: { role: 'standby', activeWorld: 'World' } });
+
+    applyDeviceSwitch(client, false);
+    expect(sockets).toHaveLength(1);
+    expect(last().closedWith).toBeNull();
+    expect(client.getStatus().connectionInfo.role).toBe('standby');
+  });
+
+  it('stays off when the world switch is off, even with this device switched on', () => {
+    settings.enabled = false;
+    const client = makeClient();
+    client.start();
+    applyDeviceSwitch(client, false);
+    expect(sockets).toHaveLength(0);
+    expect(client.getStatus().connectionState).toBe('disabled');
+    expect(client.getStatus().offOnThisDevice).toBeUndefined();
   });
 });

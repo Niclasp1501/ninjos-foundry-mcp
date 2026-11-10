@@ -10,6 +10,7 @@ import type { HelloData } from '../common/protocol.js';
 import { MODULE_AREAS } from './areas/index.js';
 import { areaSettings, installAreaAdapters, installAreaQueries } from './areas.js';
 import {
+  applyDeviceSwitch,
   BridgeClient,
   browserWakeSignals,
   PREVIOUS_SERVER_HOOK,
@@ -19,7 +20,7 @@ import { changeLog, extensionTools, useServerRequests } from './core-services.js
 import { QueryDispatcher } from './dispatcher.js';
 import type { ExtensionToolDefinition } from './extension-tools.js';
 import { notify } from './notify.js';
-import { readSetting, registerSettings, SETTING } from './settings.js';
+import { bridgeOffOnDevice, readSetting, registerSettings, SETTING } from './settings.js';
 import { installStatusIndicator, refreshStatusIndicator } from './status-indicator.js';
 
 const isGM = () => game.user?.isGM === true;
@@ -50,6 +51,7 @@ function createClient(): BridgeClient {
     createSocket: url => new WebSocket(url) as unknown as SocketLike,
     settings: {
       enabled: () => readSetting(SETTING.enabled) !== false,
+      offOnThisDevice: bridgeOffOnDevice,
       host: () => String(readSetting(SETTING.serverHost) || 'localhost'),
       port: () => Number(readSetting(SETTING.serverPort)) || DEFAULT_BRIDGE_PORT,
       autoReconnect: () => readSetting(SETTING.autoReconnectEnabled) !== false,
@@ -106,9 +108,15 @@ const BRIDGE_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 function onSettingChange(key: string): void {
-  if (client && isGM() && BRIDGE_KEYS.has(key)) client.start();
+  if (client && isGM()) {
+    if (key === SETTING.bridgeOffOnDevice) applyDeviceSwitch(client, bridgeOffOnDevice());
+    else if (BRIDGE_KEYS.has(key)) client.start();
+  }
   refreshStatusIndicator();
 }
+
+/** Foundry keeps client settings in localStorage under "<module>.<key>". */
+const DEVICE_STORAGE_KEY = `${MODULE_ID}.${SETTING.bridgeOffOnDevice}`;
 
 /** The queries of the bridge itself. Everything a package answers comes from its area. */
 function registerCoreQueries(): void {
@@ -183,6 +191,13 @@ Hooks.once('ready', async () => {
     start: () => handle.start(),
     stop: () => handle.stop(),
   };
+
+  // The switch is shared by every tab of this browser; another tab learns of it through storage.
+  window.addEventListener('storage', event => {
+    if (event.key !== DEVICE_STORAGE_KEY) return;
+    applyDeviceSwitch(handle, bridgeOffOnDevice());
+    refreshStatusIndicator();
+  });
 
   installStatusIndicator();
   handle.start();

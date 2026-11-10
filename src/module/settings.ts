@@ -7,8 +7,10 @@
  * return; their stored values stay untouched in the meantime.
  *
  * One table, in the order of the settings list in the behaviour description:
- * connection, writing, behaviour. All live in the world. Names and hints come
- * from language keys derived from the setting key.
+ * connection, writing, behaviour. All live in the world, except the switch of
+ * one device (`bridgeOffOnDevice`), which lives in the browser and is not
+ * listed: it is set from the status readout. Names and hints come from
+ * language keys derived from the setting key.
  */
 import { MODULE_ID } from '../common/constants.js';
 import {
@@ -25,6 +27,7 @@ export const SETTING = {
   heartbeatInterval: 'heartbeatInterval',
   enableNotifications: 'enableNotifications',
   autoReconnectEnabled: 'autoReconnectEnabled',
+  bridgeOffOnDevice: 'bridgeOffOnDevice',
   toolProviderModules: 'toolProviderModules',
   legacyToolProviderModules: 'werkzeugModule',
 } as const;
@@ -38,6 +41,16 @@ export function readSetting(key: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+/** Whether the bridge is switched off in this browser. Unset or unreadable means no. */
+export function bridgeOffOnDevice(): boolean {
+  return readSetting(SETTING.bridgeOffOnDevice) === true;
+}
+
+/** Switch the bridge off or on for this browser only. The onChange of the setting applies it. */
+export async function setBridgeOffOnDevice(off: boolean): Promise<void> {
+  await game.settings.set(MODULE_ID, SETTING.bridgeOffOnDevice, off);
 }
 
 /**
@@ -87,6 +100,14 @@ const ROWS: readonly Row[] = [
   { key: SETTING.legacyToolProviderModules, kind: String, initial: '', listed: false },
   { key: SETTING.enableNotifications, kind: Boolean, initial: true, listed: true },
   { key: SETTING.autoReconnectEnabled, kind: Boolean, initial: true, listed: true },
+  // Per browser: a laptop at the table can stay off while the PC with the MCP server connects.
+  {
+    key: SETTING.bridgeOffOnDevice,
+    kind: Boolean,
+    initial: false,
+    listed: false,
+    scope: 'client',
+  },
   {
     key: SETTING.heartbeatInterval,
     kind: Number,
