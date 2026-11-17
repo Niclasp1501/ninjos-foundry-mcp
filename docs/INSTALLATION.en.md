@@ -64,7 +64,19 @@ connect as usual.
 
 The PC server can keep a browser logged in as a fixed Foundry user, for example an account
 just for the AI, so an agent can work in Foundry without anyone pressing the login button.
-It is optional; see [AGENT-CLIENT.md](AGENT-CLIENT.md).
+You set its password yourself; the agent never sees it. It is optional. The short version
+on Windows, in PowerShell, with Google Chrome installed:
+
+1. In Foundry, create a user just for the AI ("Settings", "User Management"), with a long
+   password of its own and the lowest role that is enough ("Assistant GM" for the bridge).
+2. `& "$env:LOCALAPPDATA\FoundryMCPServer\agent-client.cmd" add ai --url https://foundry.example.com --user "AI"`
+3. `& "$env:LOCALAPPDATA\FoundryMCPServer\agent-client.cmd" password ai` and type the
+   password yourself (hidden, asked twice).
+4. `... start ai`, then `... status ai` should say `ready`.
+5. Tell your agent about it; a template is in [AGENT-CLIENT.md](AGENT-CLIENT.md).
+
+All commands, options and the limits of the password protection are in
+[AGENT-CLIENT.md](AGENT-CLIENT.md).
 
 ## Claude Code and other clients
 

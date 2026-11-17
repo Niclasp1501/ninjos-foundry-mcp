@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [14.2611.2] - 2026-11-17
 
 - **Switch the bridge off on one device.** A click on the status indicator now opens a small
   menu with "Connect now" and "Switch off for this device". Switched off, that browser makes
@@ -11,8 +11,9 @@
   installed Google Chrome (or Edge) logged in as a fixed Foundry user, so an agent can work in Foundry
   without anyone pressing the login button. You set the password yourself; it is kept in the
   secret store of the operating system and never reaches the agent, a log or a screenshot.
-  After a restart of Foundry the client logs in again by itself. See
-  [docs/AGENT-CLIENT.md](docs/AGENT-CLIENT.md).
+  After a restart of Foundry the client logs in again by itself. It is optional; the setup
+  bundle of this version brings the command `agent-client`. The step by step guide, with a
+  template that tells your AI how to use it, is in [docs/AGENT-CLIENT.md](docs/AGENT-CLIENT.md).
 - **Your browser keeps the bridge.** A browser can now be marked as a fallback for the bridge.
   The agent client does that by default: it holds the bridge only while no other browser does
   and gives it back as soon as yours connects. Needs the module and the PC server of this

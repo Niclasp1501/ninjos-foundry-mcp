@@ -88,6 +88,58 @@ agent-client status ai
 ```
 
 `start ai --visible` shows the browser window, for example to watch what the agent does.
+To switch between the two, stop the client and start it again with or without
+`--visible`.
+
+**5. Check that it works.** `status` should say `ready`, with the name and role of the
+user and the world. Two more checks:
+
+```
+agent-client js ai "game.user.name"
+agent-client screenshot ai check.png
+```
+
+The first prints the name of the user, the second saves what the client sees. Then
+`agent-client stop ai`: in Foundry, the user is shown as logged out at once, and
+`agent-client start ai` logs it in again.
+
+**6. Tell your AI about it.** The agent uses the same commands. Put a few lines like these
+into the standing instructions of your agent (in Claude Code, the project instructions):
+
+```
+Foundry: the agent client "ai" keeps the user "AI Assistant" logged in.
+Command: & "$env:LOCALAPPDATA\FoundryMCPServer\agent-client.cmd" <command>
+- status ai: is it logged in? If not "ready", tell me the state, do not retry in a loop.
+- js ai "<code>": run JavaScript in Foundry, for example to read or change the world.
+- screenshot ai <file.png>: look at the game as that user sees it.
+- start ai / stop ai: start or end it. Never ask for or set the password; I do that.
+```
+
+### Two clients: one for the AI, one to see the player view
+
+Several profiles can run side by side, each with its own user and browser. A common pair:
+
+```
+agent-client add ai --url https://foundry.example.com --user "AI Assistant" --bridge fallback
+agent-client add player --url https://foundry.example.com --user "Test Player" --bridge off
+```
+
+`ai` does the work and holds the bridge while you are away. `player` is a "Player"
+account that only looks: with `screenshot player` the agent can check what your players
+will see, for example whether a hidden token or a secret journal page stays hidden.
+Give `player` no bridge (`--bridge off`); one bridge is enough.
+
+### Windows of other modules
+
+When the page loads, the client closes the welcome and update windows of this module. Other
+modules may open their own windows at start (an update notice, a question about settings),
+and those stay open, because the client cannot know what answering them would do. They
+cover part of a screenshot but do not stop `js`. Answer them once with `--visible`, or let
+the agent close them without choosing anything:
+
+```
+agent-client js ai "for (const a of foundry.applications.instances.values()) if (a.rendered && a.constructor.name === 'DialogV2') await a.close()"
+```
 
 ## Commands
 

@@ -64,8 +64,43 @@ wieder an. Andere Geräte verbinden sich wie gewohnt.
 
 Der PC-Server kann einen Browser als festen Foundry-Benutzer angemeldet halten, etwa mit
 einem Konto nur für die KI, damit ein Agent in Foundry arbeiten kann, ohne dass jemand den
-Anmeldeknopf drückt. Das ist freiwillig; die Anleitung steht auf Englisch in
-[AGENT-CLIENT.md](AGENT-CLIENT.md).
+Anmeldeknopf drückt. Das Kennwort legst du selbst ab; der Agent sieht es nie. Das ist
+freiwillig. Die vollständige Anleitung mit allen Befehlen, Einstellungen und den Grenzen des
+Kennwortschutzes steht auf Englisch in [AGENT-CLIENT.md](AGENT-CLIENT.md).
+
+Kurz unter Windows, in PowerShell. Voraussetzung ist ein installiertes Google Chrome.
+
+1. In Foundry in der Seitenleiste unter „Einstellungen“, „Nutzerverwaltung“ einen eigenen
+   Benutzer für die KI anlegen, mit eigenem, langem Kennwort und der niedrigsten Rolle, die
+   reicht (für die Brücke mindestens „SL-Assistent“). Nie dein eigenes Spielleiterkonto.
+2. Profil anlegen (Name frei wählbar, hier `ki`):
+
+   ```
+   & "$env:LOCALAPPDATA\FoundryMCPServer\agent-client.cmd" add ki --url https://foundry.example.com --user "KI"
+   ```
+
+3. Kennwort selbst eingeben. Die Eingabe bleibt verdeckt und wird zweimal abgefragt:
+
+   ```
+   & "$env:LOCALAPPDATA\FoundryMCPServer\agent-client.cmd" password ki
+   ```
+
+4. Starten und prüfen. `status` muss `ready` zeigen:
+
+   ```
+   & "$env:LOCALAPPDATA\FoundryMCPServer\agent-client.cmd" start ki
+   & "$env:LOCALAPPDATA\FoundryMCPServer\agent-client.cmd" status ki
+   ```
+
+   Mit `start ki --visible` siehst du das Browserfenster. `stop ki` beendet ihn, der Benutzer
+   ist danach sofort frei.
+
+5. Deinem Agenten sagen, dass es den Client gibt, zum Beispiel in den Projektanweisungen von
+   Claude Code. Eine Vorlage steht in [AGENT-CLIENT.md](AGENT-CLIENT.md) unter „Tell your AI
+   about it“.
+
+Dein eigener Browser behält die Brücke: Der Client übernimmt sie nur, solange kein anderer
+Browser verbunden ist. Dein normales Chrome-Profil bleibt unberührt.
 
 ## Claude Code und andere Programme
 
