@@ -44,13 +44,17 @@ Create a separate Foundry user for the agent client, in Foundry under "Game Sett
 
 ## Setting it up
 
-The commands below use `agent-client`. Where it lives:
+The commands below use `agent-client`. The setup of this release or newer puts a
+launcher next to the server:
 
 - Windows: `%LOCALAPPDATA%\FoundryMCPServer\agent-client.cmd`, for example
   `& "$env:LOCALAPPDATA\FoundryMCPServer\agent-client.cmd" help` in PowerShell.
 - macOS: `~/Library/Application Support/FoundryMCPServer/agent-client`
 - Linux: `~/.local/share/FoundryMCPServer/agent-client`
-- From a clone of the repository: `node build/server/agent-client/cli.js`
+
+Without that launcher (an older installation, or a clone of the repository after
+`npm run build`), call the command line directly:
+`node <repository>/build/server/agent-client/cli.js help`.
 
 **1. Find the id of the user.** The id is shown on the login screen of Foundry and
 does not change when the user is renamed.
@@ -186,8 +190,18 @@ Any of these ends it at once:
 
 ## Where things are stored
 
-- Windows: `%LOCALAPPDATA%\FoundryMCPServer\agent-clients\<name>\`
+- Windows: `%USERPROFILE%\.ninjos-foundry-mcp\agent-clients\<name>\`
 - macOS and Linux: `~/.config/ninjos-foundry-mcp/agent-clients/<name>/`
+- Anywhere else: set `FOUNDRY_MCP_AGENT_CLIENTS_DIR` to a folder, for every program that
+  uses the agent client.
+
+**Why not in AppData on Windows:** the Claude desktop app from the Microsoft Store or its
+own installer is a packaged app. Windows redirects every file that such an app, and every
+program it starts, writes below `AppData` into a private copy inside the package
+(`AppData\Local\Packages\Claude_...\LocalCache`). An agent working in the app would
+create a profile in that copy, and you would not find it from an ordinary PowerShell, so
+the password would end up in the other place. Your user folder is not redirected; the app
+and your terminal see the same files there.
 
 Each profile folder holds `profile.json` (address, user id, options; no password), the
 browser profile of the client, its log, and on Windows `password.dpapi`. Uninstalling

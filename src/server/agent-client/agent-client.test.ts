@@ -6,6 +6,7 @@ import { askClient, controlFile, endpointFor, NotRunningError, serveControl } fr
 import { evaluationCode, isSoftwareRenderer, placeOf, retryDelayMs } from './page.js';
 import {
   clientSettings,
+  clientsDir,
   listProfiles,
   normalizeUrl,
   parseProfile,
@@ -222,5 +223,19 @@ describe('agent client control channel', () => {
     expect(a).toMatch(/^\\\\\.\\pipe\\ninjos-foundry-mcp-agent-ai-[0-9a-f]{12}$/);
     expect(a).not.toBe(b);
     expect(profileDir('ai', { FOUNDRY_MCP_STATE_DIR: '/state' })).toMatch(/agent-clients[\\/]ai$/);
+  });
+
+  it('keeps the clients out of AppData, which a packaged app redirects', () => {
+    const dir = clientsDir({
+      USERPROFILE: 'C:\\Users\\someone',
+      LOCALAPPDATA: 'C:\\Users\\someone\\AppData\\Local',
+    });
+    expect(dir).not.toMatch(/AppData/i);
+    if (process.platform === 'win32') {
+      expect(dir).toBe('C:\\Users\\someone\\.ninjos-foundry-mcp\\agent-clients');
+    }
+    expect(clientsDir({ FOUNDRY_MCP_AGENT_CLIENTS_DIR: '/shared/clients' })).toBe(
+      '/shared/clients'
+    );
   });
 });

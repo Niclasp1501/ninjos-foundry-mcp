@@ -3,7 +3,7 @@
  * Windows, a Unix socket elsewhere, one JSON line per request and answer.
  *
  * Every request carries a random token from control.json in the profile
- * folder. That folder belongs to the user (on Windows %LOCALAPPDATA%), so
+ * folder. That folder belongs to the user (inside the user folder), so
  * another account on the same machine cannot drive the browser through the
  * pipe even though it can see that the pipe exists.
  */

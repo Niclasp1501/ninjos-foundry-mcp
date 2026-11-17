@@ -3,7 +3,7 @@
  * behaves. Everything here is plain configuration; the password is never part
  * of a profile and lives in the secret store of the operating system.
  *
- * On disk, below the state folder of the server:
+ * On disk, in the folder of the agent clients (clientsDir below):
  *
  *   agent-clients/<name>/profile.json   this file
  *   agent-clients/<name>/browser/       the browser profile of this client
@@ -12,9 +12,9 @@
  *   agent-clients/<name>/client.log     what the running client did
  */
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { MODULE_ID } from '../../common/constants.js';
-import { stateDir } from '../state-dir.js';
 
 /** `world`: the client sets nothing and the world decides (a sheet view module, for example). */
 export type CanvasMode = 'on' | 'off' | 'world';
@@ -48,8 +48,26 @@ const BROWSERS: readonly BrowserChoice[] = ['auto', 'chrome', 'msedge'];
 
 export class ProfileError extends Error {}
 
-export function clientsDir(env?: Record<string, string | undefined>): string {
-  return join(stateDir(env), 'agent-clients');
+/**
+ * Where the agent clients live.
+ *
+ * On Windows deliberately not in %LOCALAPPDATA%: the Claude desktop app from
+ * the Microsoft Store and its installer is a packaged app, and Windows
+ * redirects every file such an app, and every program it starts, writes
+ * below AppData into a private copy inside the package. An agent working in
+ * the app would create a profile there, and the person setting the password
+ * in an ordinary PowerShell would not find it (and the other way round). The
+ * user folder itself is not redirected, so both see the same files.
+ *
+ * FOUNDRY_MCP_AGENT_CLIENTS_DIR moves it; FOUNDRY_MCP_STATE_DIR, which the
+ * tests use, puts it below that folder.
+ */
+export function clientsDir(env: Record<string, string | undefined> = process.env): string {
+  if (env['FOUNDRY_MCP_AGENT_CLIENTS_DIR']) return env['FOUNDRY_MCP_AGENT_CLIENTS_DIR'];
+  if (env['FOUNDRY_MCP_STATE_DIR']) return join(env['FOUNDRY_MCP_STATE_DIR'], 'agent-clients');
+  if (process.platform === 'win32')
+    return join(env['USERPROFILE'] || homedir(), '.ninjos-foundry-mcp', 'agent-clients');
+  return join(homedir(), '.config', 'ninjos-foundry-mcp', 'agent-clients');
 }
 
 export function profileDir(name: string, env?: Record<string, string | undefined>): string {
