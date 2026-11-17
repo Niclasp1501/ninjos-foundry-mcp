@@ -36,8 +36,9 @@ Create a separate Foundry user for the agent client, in Foundry under "Game Sett
 ## Requirements
 
 - The PC server is installed (see [INSTALLATION.en.md](INSTALLATION.en.md)).
-- Google Chrome or Microsoft Edge is installed. The agent client uses that browser and
-  the graphics card of the computer; it downloads no browser of its own.
+- Google Chrome is installed. The agent client uses it and the graphics card of the
+  computer; it downloads no browser of its own. Without Chrome, Microsoft Edge works too:
+  add `--browser msedge` to the profile.
 - The Foundry module and the PC server are from the same release or newer. Older
   modules do not know the "fallback" bridge mode and would take the bridge from you.
 
@@ -112,7 +113,7 @@ back as plain data; a result is limited to 512 KB and 60 seconds.
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | `--canvas`  | `world`: the world decides (for example a sheet view module that switches the canvas off for some players); `on`; `off`                                    | `world`    |
 | `--bridge`  | `fallback`: hold the bridge only while no other browser does; `on`: like a normal browser, the newest connection holds it; `off`: never connect the bridge | `fallback` |
-| `--browser` | `auto` (Chrome, else Edge), `chrome`, `msedge`                                                                                                             | `auto`     |
+| `--browser` | `chrome`; `msedge` for a computer without Chrome; `auto` tries Chrome, then Edge                                                                           | `chrome`   |
 | `--size`    | window size, for example `1920x1080`                                                                                                                       | `1600x900` |
 
 ## Who holds the bridge

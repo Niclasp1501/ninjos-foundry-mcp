@@ -8,7 +8,7 @@
   the table without the MCP server, while the PC that runs it connects as before. The
   indicator stays visible in grey, and the same menu switches it back on.
 - **Agent client: a Foundry user that stays logged in for the AI.** The PC server can keep the
-  installed Chrome or Edge logged in as a fixed Foundry user, so an agent can work in Foundry
+  installed Google Chrome (or Edge) logged in as a fixed Foundry user, so an agent can work in Foundry
   without anyone pressing the login button. You set the password yourself; it is kept in the
   secret store of the operating system and never reaches the agent, a log or a screenshot.
   After a restart of Foundry the client logs in again by itself. See

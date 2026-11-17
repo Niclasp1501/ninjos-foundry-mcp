@@ -186,9 +186,12 @@ export class AgentClientRunner {
     if (!context) {
       const detail =
         lastError instanceof Error ? lastError.message.split('\n')[0] : String(lastError);
+      const tried = channels
+        .map(c => (c === 'chrome' ? 'Google Chrome' : 'Microsoft Edge'))
+        .join(' or ');
       throw new Error(
-        `Neither Google Chrome nor Microsoft Edge could be started (${detail}). ` +
-          'Install one of them, or close the window of this agent client if it is already open.'
+        `${tried} could not be started (${detail}). Install it, use --browser msedge on a ` +
+          'computer without Chrome, or close the window of this agent client if it is already open.'
       );
     }
     context.on('close', () => {

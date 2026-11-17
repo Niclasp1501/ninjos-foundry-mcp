@@ -20,7 +20,10 @@ import { stateDir } from '../state-dir.js';
 export type CanvasMode = 'on' | 'off' | 'world';
 /** `fallback`: hold the bridge only while no other browser does. */
 export type BridgeMode = 'fallback' | 'on' | 'off';
-/** `auto`: Google Chrome, else Microsoft Edge. The browser is the installed one, never a download. */
+/**
+ * The installed Google Chrome by default. `msedge` for computers without Chrome,
+ * `auto` tries Chrome and then Edge. Never a downloaded browser.
+ */
 export type BrowserChoice = 'auto' | 'chrome' | 'msedge';
 
 export interface Profile {
@@ -102,7 +105,7 @@ export function parseProfile(name: string, raw: Record<string, unknown>): Profil
     userId,
     canvas: raw['canvas'] === undefined ? 'world' : oneOf(raw['canvas'], CANVAS_MODES, 'canvas'),
     bridge: raw['bridge'] === undefined ? 'fallback' : oneOf(raw['bridge'], BRIDGE_MODES, 'bridge'),
-    browser: raw['browser'] === undefined ? 'auto' : oneOf(raw['browser'], BROWSERS, 'browser'),
+    browser: raw['browser'] === undefined ? 'chrome' : oneOf(raw['browser'], BROWSERS, 'browser'),
     width: size(raw['width'], 'width', 1600),
     height: size(raw['height'], 'height', 900),
   };

@@ -50,7 +50,7 @@ describe('agent client profiles', () => {
       userId: ID,
       canvas: 'world',
       bridge: 'fallback',
-      browser: 'auto',
+      browser: 'chrome',
       width: 1600,
       height: 900,
     });

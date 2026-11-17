@@ -38,7 +38,7 @@ Set up (a person does this):
   agent-client users --url <foundry address>          list the users and their ids
   agent-client add <name> --url <address> --user-id <id> [--user <user name>]
                    [--canvas world|on|off] [--bridge fallback|on|off]
-                   [--browser auto|chrome|msedge] [--size 1600x900] [--replace]
+                   [--browser chrome|msedge|auto] [--size 1600x900] [--replace]
   agent-client password <name>                         set or change the password (hidden input)
   agent-client password <name> --remove                remove the stored password
   agent-client remove <name>                           delete the profile, its password and browser data
@@ -107,6 +107,7 @@ async function listUsers(
   url: string
 ): Promise<Array<{ id: string; name: string; role: number; active: boolean }>> {
   let browser;
+  // Chrome first; Edge only on a computer without it.
   for (const channel of ['chrome', 'msedge'] as const) {
     try {
       browser = await chromium.launch({ channel, headless: true });
