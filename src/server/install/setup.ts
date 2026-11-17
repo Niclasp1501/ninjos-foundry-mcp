@@ -202,12 +202,18 @@ function copyBundle(host: SetupHost, source: string, layout: InstallLayout): voi
     [names.setup, layout.setupScript],
     [names.uninstall, layout.uninstallScript],
     [names.readme, layout.readme],
+    [names.agentClient, layout.agentClientScript],
   ] as const) {
     const file = p.join(source, name);
     if (existsSync(file)) copyFileSync(file, target);
   }
   if (host.platform !== 'win32') {
-    for (const file of [layout.node, layout.setupScript, layout.uninstallScript]) {
+    for (const file of [
+      layout.node,
+      layout.setupScript,
+      layout.uninstallScript,
+      layout.agentClientScript,
+    ]) {
       if (existsSync(file)) chmodSync(file, 0o755);
     }
   }
@@ -392,6 +398,7 @@ export async function uninstall(
     p.join(layout.root, 'foundry-mcp-server'),
     layout.setupScript,
     layout.readme,
+    layout.agentClientScript,
   ];
   for (const path of now) {
     if (!existsSync(path)) continue;

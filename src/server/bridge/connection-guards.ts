@@ -28,8 +28,8 @@
  * Found by 9atatimer while getting the server to run in their fork, 2026-09-12.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { stateDir } from '../state-dir.js';
 
 export type OriginDecision =
   { allowed: true; learned?: boolean } | { allowed: false; reason: string };
@@ -52,12 +52,7 @@ export interface OriginGuardOptions {
  * FOUNDRY_MCP_STATE_DIR moves it, which is also what the tests use.
  */
 export function defaultOriginStoreFile(): string {
-  const base =
-    process.env.FOUNDRY_MCP_STATE_DIR ||
-    (process.env.LOCALAPPDATA
-      ? join(process.env.LOCALAPPDATA, 'FoundryMCPServer')
-      : join(homedir(), '.config', 'ninjos-foundry-mcp'));
-  return join(base, 'allowed-origins.json');
+  return join(stateDir(), 'allowed-origins.json');
 }
 
 export function normalizeOrigin(origin: string): string {

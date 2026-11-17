@@ -75,6 +75,8 @@ export interface InstallLayout {
   setupScript: string;
   uninstallScript: string;
   readme: string;
+  /** Starts the agent client from a terminal (docs/AGENT-CLIENT.md). */
+  agentClientScript: string;
 }
 
 /** The names inside a bundle and inside an installation are the same. */
@@ -83,21 +85,29 @@ export function bundleNames(platform: NodeJS.Platform): {
   setup: string;
   uninstall: string;
   readme: string;
+  agentClient: string;
 } {
   return platform === 'win32'
-    ? { node: 'node.exe', setup: 'setup.cmd', uninstall: 'uninstall.cmd', readme: 'README.txt' }
+    ? {
+        node: 'node.exe',
+        setup: 'setup.cmd',
+        uninstall: 'uninstall.cmd',
+        readme: 'README.txt',
+        agentClient: 'agent-client.cmd',
+      }
     : {
         node: 'node',
         setup: 'setup.command',
         uninstall: 'uninstall.command',
         readme: 'README.txt',
+        agentClient: 'agent-client',
       };
 }
 
 export function appPaths(
   platform: NodeJS.Platform,
   root: string
-): Omit<InstallLayout, 'setupScript' | 'uninstallScript' | 'readme'> {
+): Omit<InstallLayout, 'setupScript' | 'uninstallScript' | 'readme' | 'agentClientScript'> {
   const p = pathApi(platform);
   const app = p.join(root, 'app');
   const server = p.join(app, 'build', 'server');
@@ -137,6 +147,7 @@ export function installLayout(host: HostPaths): InstallLayout {
     setupScript: p.join(root, names.setup),
     uninstallScript: p.join(root, names.uninstall),
     readme: p.join(root, names.readme),
+    agentClientScript: p.join(root, names.agentClient),
   };
 }
 

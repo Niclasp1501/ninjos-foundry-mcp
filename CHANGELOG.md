@@ -7,6 +7,16 @@
   no connection attempts and shows no messages about the bridge, for example on a laptop at
   the table without the MCP server, while the PC that runs it connects as before. The
   indicator stays visible in grey, and the same menu switches it back on.
+- **Agent client: a Foundry user that stays logged in for the AI.** The PC server can keep the
+  installed Chrome or Edge logged in as a fixed Foundry user, so an agent can work in Foundry
+  without anyone pressing the login button. You set the password yourself; it is kept in the
+  secret store of the operating system and never reaches the agent, a log or a screenshot.
+  After a restart of Foundry the client logs in again by itself. See
+  [docs/AGENT-CLIENT.md](docs/AGENT-CLIENT.md).
+- **Your browser keeps the bridge.** A browser can now be marked as a fallback for the bridge.
+  The agent client does that by default: it holds the bridge only while no other browser does
+  and gives it back as soon as yours connects. Needs the module and the PC server of this
+  release.
 
 ## [14.2611.1] - 2026-11-07
 

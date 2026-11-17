@@ -60,6 +60,12 @@ this browser only: no connection attempts, no messages. The indicator turns grey
 visible; the same menu switches it back on with "Switch on for this device". Other devices
 connect as usual.
 
+### A Foundry user that stays logged in for the AI
+
+The PC server can keep a browser logged in as a fixed Foundry user, for example an account
+just for the AI, so an agent can work in Foundry without anyone pressing the login button.
+It is optional; see [AGENT-CLIENT.md](AGENT-CLIENT.md).
+
 ## Claude Code and other clients
 
 Setup adds the server **to Claude Desktop**. In Claude Code and Cursor it only updates

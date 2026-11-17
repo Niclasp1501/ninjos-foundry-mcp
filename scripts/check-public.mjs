@@ -49,6 +49,7 @@ const SHIPPED = [
   'LICENSE',
   'README.md',
   'SECURITY.md',
+  'docs/AGENT-CLIENT.md',
   'docs/EXTENSION-TOOLS.md',
   'docs/INSTALLATION.en.md',
   'docs/INSTALLATION.md',

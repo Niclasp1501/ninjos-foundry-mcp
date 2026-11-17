@@ -17,6 +17,9 @@ Entfernen
 Das Foundry-Modul installiert und aktualisiert Foundry selbst.
 Anleitung und Fehlersuche: docs/INSTALLATION.md im Projekt.
 
+Agent-Client (freiwillig): agent-client.cmd bzw. agent-client hält einen
+Foundry-Benutzer für eine KI angemeldet. Anleitung: docs/AGENT-CLIENT.md.
+
 ENGLISH
 
 Install and update
@@ -32,3 +35,6 @@ Remove
 
 Foundry installs and updates the Foundry module itself.
 Guide and troubleshooting: docs/INSTALLATION.en.md in the project.
+
+Agent client (optional): agent-client.cmd or agent-client keeps a Foundry
+user logged in for an AI. Guide: docs/AGENT-CLIENT.md.

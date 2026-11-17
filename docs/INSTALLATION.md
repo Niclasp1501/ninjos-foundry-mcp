@@ -60,6 +60,13 @@ Brücke nur in diesem Browser ab: kein Verbindungsversuch, keine Meldung. Die An
 und bleibt sichtbar; über dasselbe Menü schaltest du sie mit „Auf diesem Gerät einschalten“
 wieder an. Andere Geräte verbinden sich wie gewohnt.
 
+### Ein Foundry-Benutzer, der für die KI angemeldet bleibt
+
+Der PC-Server kann einen Browser als festen Foundry-Benutzer angemeldet halten, etwa mit
+einem Konto nur für die KI, damit ein Agent in Foundry arbeiten kann, ohne dass jemand den
+Anmeldeknopf drückt. Das ist freiwillig; die Anleitung steht auf Englisch in
+[AGENT-CLIENT.md](AGENT-CLIENT.md).
+
 ## Claude Code und andere Programme
 
 Die Einrichtung trägt den Server **in Claude Desktop** ein. In Claude Code und Cursor

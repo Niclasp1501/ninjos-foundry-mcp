@@ -1,0 +1,5 @@
+#!/bin/sh
+# Agent client of Ninjo's Foundry MCP: keeps a Foundry user logged in for an AI agent.
+# Run it from a terminal, for example: ./agent-client help
+DIR="$(cd "$(dirname "$0")" && pwd)"
+exec "$DIR/node" "$DIR/app/build/server/agent-client/cli.js" "$@"

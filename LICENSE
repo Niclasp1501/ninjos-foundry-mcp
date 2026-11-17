@@ -147,6 +147,7 @@ THIRD-PARTY MATERIAL
       asn1js
       ieee754
     Apache License 2.0:
+      playwright-core
       reflect-metadata
     0BSD License:
       tslib
@@ -161,6 +162,11 @@ THIRD-PARTY MATERIAL
   mediabunny is used unmodified. Its source code is available at
   https://github.com/Vanilagy/mediabunny and in the npm package of the same
   name.
+
+  playwright-core ships its own NOTICE and ThirdPartyNotices.txt for the
+  libraries built into it; THIRD-PARTY-NOTICES.txt carries both. The agent
+  client drives the Google Chrome or Microsoft Edge installed on the
+  computer; no browser is part of this project or its setup bundles.
 
   The Foundry module contains no third-party code. The fonts and Font Awesome
   glyphs it shows are provided by Foundry Virtual Tabletop at runtime and are
@@ -337,6 +343,7 @@ FREMDES MATERIAL
       asn1js
       ieee754
     Apache-Lizenz 2.0:
+      playwright-core
       reflect-metadata
     0BSD-Lizenz:
       tslib
@@ -351,6 +358,12 @@ FREMDES MATERIAL
   mediabunny wird unverändert benutzt. Sein Quellcode ist unter
   https://github.com/Vanilagy/mediabunny und im gleichnamigen npm-Paket
   erhältlich.
+
+  playwright-core bringt eine eigene NOTICE und ThirdPartyNotices.txt für
+  die Bibliotheken mit, die in ihm enthalten sind; THIRD-PARTY-NOTICES.txt
+  enthält beide. Der Agent-Client steuert das auf dem Rechner installierte
+  Google Chrome oder Microsoft Edge; ein Browser ist weder Teil dieses
+  Projekts noch seiner Einrichtungspakete.
 
   Das Foundry-Modul enthält keinen fremden Code. Die Schriften und
   Font-Awesome-Zeichen, die es zeigt, stellt Foundry Virtual Tabletop zur

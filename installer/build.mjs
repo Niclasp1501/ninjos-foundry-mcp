@@ -19,7 +19,16 @@
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { productionPackages } from './dependencies.mjs';
@@ -70,7 +79,8 @@ if (platform === process.platform && arch === process.arch) {
   const version = run(`"${nodeBinary}"`, ['--version']).trim();
   const major = Number(/^v(\d+)/.exec(version)?.[1]);
   const wanted = Number(/(\d+)/.exec(pkg.engines?.node ?? '')?.[1] ?? 0);
-  if (!(major >= wanted)) fail(`${nodeBinary} is ${version}, the server needs Node ${pkg.engines.node}`);
+  if (!(major >= wanted))
+    fail(`${nodeBinary} is ${version}, the server needs Node ${pkg.engines.node}`);
 } else {
   console.warn(`Runtime for ${platform}-${arch} is not checked on this machine: ${nodeBinary}`);
 }
@@ -79,7 +89,14 @@ rmSync(stage, { recursive: true, force: true });
 mkdirSync(join(stage, 'app'), { recursive: true });
 
 console.log('Compiling the server');
-run('npx', ['--no-install', 'tsc', '-p', 'tsconfig.server.json', '--outDir', `"${join(stage, 'app', 'build')}"`]);
+run('npx', [
+  '--no-install',
+  'tsc',
+  '-p',
+  'tsconfig.server.json',
+  '--outDir',
+  `"${join(stage, 'app', 'build')}"`,
+]);
 
 console.log('Copying production dependencies');
 // From package-lock.json, not from paths npm prints (it may mask them as ***).
@@ -93,7 +110,8 @@ const copied = [];
 for (const path of listed) {
   if (copied.some(done => path.startsWith(done + sep))) continue;
   const target = join(stage, 'app', relative(project, path));
-  if (!relative(project, path).startsWith(`node_modules${sep}`)) fail(`unexpected dependency path ${path}`);
+  if (!relative(project, path).startsWith(`node_modules${sep}`))
+    fail(`unexpected dependency path ${path}`);
   cpSync(path, target, { recursive: true, dereference: true });
   copied.push(path);
 }
@@ -118,7 +136,9 @@ writeFileSync(
 console.log('Adding runtime and scripts');
 const runtimeName = windows ? 'node.exe' : 'node';
 cpSync(nodeBinary, join(stage, runtimeName));
-const nodeLicense = nodeLicenseOption ? resolve(nodeLicenseOption) : join(dirname(nodeBinary), 'LICENSE');
+const nodeLicense = nodeLicenseOption
+  ? resolve(nodeLicenseOption)
+  : join(dirname(nodeBinary), 'LICENSE');
 if (existsSync(nodeLicense)) {
   cpSync(nodeLicense, join(stage, 'NODE-LICENSE.txt'));
 } else {
@@ -133,7 +153,10 @@ if (existsSync(nodeLicense)) {
 console.log('Adding licences');
 // The project licence, and every notice of the packages in the bundle in one file.
 const projectLicense = readFileSync(join(project, 'LICENSE'), 'utf8');
-writeFileSync(join(stage, 'LICENSE.txt'), projectLicense.replace(/\r?\n/g, windows ? '\r\n' : '\n'));
+writeFileSync(
+  join(stage, 'LICENSE.txt'),
+  projectLicense.replace(/\r?\n/g, windows ? '\r\n' : '\n')
+);
 const MIT_TEXT = `Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -161,28 +184,42 @@ const notices = [
 const unlisted = [];
 for (const path of listed) {
   const info = JSON.parse(readFileSync(join(path, 'package.json'), 'utf8'));
-  const license = typeof info.license === 'string' ? info.license : JSON.stringify(info.licenses ?? null);
+  const license =
+    typeof info.license === 'string' ? info.license : JSON.stringify(info.licenses ?? null);
   // LICENSE lists every shipped package by name on a line of its own.
-  if (!new RegExp(`^\\s+${info.name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\\s*$`, 'm').test(projectLicense)) {
+  if (
+    !new RegExp(`^\\s+${info.name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\\s*$`, 'm').test(
+      projectLicense
+    )
+  ) {
     unlisted.push(info.name);
   }
-  const files = readdirSync(path).filter(file => /^(licen[cs]e|copying|notice|copyrightnotice)/i.test(file));
+  // ThirdPartyNotices: playwright-core bundles libraries into its own files and lists them there.
+  const files = readdirSync(path).filter(file =>
+    /^(licen[cs]e|copying|notice|copyrightnotice|third.?party.?notices)/i.test(file)
+  );
   let text = files.map(file => readFileSync(join(path, file), 'utf8').trim()).join('\n\n');
   if (!text) {
     if (license !== 'MIT') fail(`${info.name} ships no licence file and is not MIT (${license})`);
-    const holder = typeof info.author === 'string' ? info.author : (info.author?.name ?? 'the package authors');
+    const holder =
+      typeof info.author === 'string' ? info.author : (info.author?.name ?? 'the package authors');
     text = `Published without a licence file; package.json declares the MIT License.\n\nMIT License, copyright holder as named in package.json: ${holder}\n\n${MIT_TEXT}`;
   }
-  notices.push(`${'='.repeat(72)}\n${info.name} ${info.version} (${license})\n${'='.repeat(72)}\n\n${text}`);
+  notices.push(
+    `${'='.repeat(72)}\n${info.name} ${info.version} (${license})\n${'='.repeat(72)}\n\n${text}`
+  );
 }
-if (unlisted.length) fail(`LICENSE does not list these shipped packages: ${[...new Set(unlisted)].join(', ')}`);
+if (unlisted.length)
+  fail(`LICENSE does not list these shipped packages: ${[...new Set(unlisted)].join(', ')}`);
 writeFileSync(
   join(stage, 'THIRD-PARTY-NOTICES.txt'),
   `${notices.join('\n\n\n')}\n`.replace(/\r?\n/g, windows ? '\r\n' : '\n')
 );
 
 const templates = join(project, 'installer', 'templates');
-const scripts = windows ? ['setup.cmd', 'uninstall.cmd'] : ['setup.command', 'uninstall.command'];
+const scripts = windows
+  ? ['setup.cmd', 'uninstall.cmd', 'agent-client.cmd']
+  : ['setup.command', 'uninstall.command', 'agent-client'];
 for (const file of [...scripts, 'README.txt']) {
   let text = readFileSync(join(templates, file), 'utf8').replace(/\r\n/g, '\n');
   if (windows) text = text.replace(/\n/g, '\r\n');

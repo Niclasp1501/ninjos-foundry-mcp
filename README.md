@@ -242,6 +242,13 @@ The full installation guide, including updating and uninstalling, is in
 [docs/INSTALLATION.en.md](docs/INSTALLATION.en.md) (German:
 [docs/INSTALLATION.md](docs/INSTALLATION.md)).
 
+### A Foundry user that stays logged in for the AI
+
+The PC server can keep a browser logged in as a fixed Foundry user on your own computer, so an
+AI agent can work in Foundry and hold the bridge without anyone pressing the login button and
+without ever seeing the password. Your own browser keeps priority. Setup, the honest limits of
+the password protection and all commands are in [docs/AGENT-CLIENT.md](docs/AGENT-CLIENT.md).
+
 ### Tools of other modules
 
 Other Foundry modules can offer their own tools through this module. The interface is
