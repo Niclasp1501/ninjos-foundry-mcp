@@ -81,6 +81,10 @@
         "name": "Connection · Off on this device",
         "hint": "Applies to this browser only. It does not build the bridge and shows no messages about a missing connection. Switched from the status readout above the player list."
       },
+      "bridgeFallbackOnDevice": {
+        "name": "Connection · Fallback on this device",
+        "hint": "Applies to this browser only. It holds the bridge only while no other browser does, and gives it back as soon as one connects. The agent client of the PC server sets this for the browser it keeps logged in."
+      },
       "heartbeatInterval": {
         "name": "Behaviour · Heartbeat in seconds",
         "hint": "How often the module checks that the connection is really alive. A dead connection is closed and then reconnected."

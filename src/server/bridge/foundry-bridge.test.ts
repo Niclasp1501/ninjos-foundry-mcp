@@ -171,6 +171,43 @@ describe('FoundryBridge with several connections', () => {
     expect(bridge.status().connections).toMatchObject([{ role: 'active', world: 'World A' }]);
   });
 
+  it('keeps a fallback on standby while a person is connected, even when it is newer', () => {
+    const person = fakePeer('person');
+    const agent = fakePeer('agent');
+    bridge.attach(person).receive(JSON.stringify({ type: 'hello', data: { protocol: 2 } }));
+    bridge
+      .attach(agent)
+      .receive(JSON.stringify({ type: 'hello', data: { protocol: 2, fallback: true } }));
+
+    expect(agent.sent[0]).toMatchObject({ type: 'welcome', data: { role: 'standby' } });
+    // Standby for the moment before the hello, active again once it is clear who came.
+    expect(person.sent.slice(1)).toMatchObject([
+      { type: 'bridge-role', data: { role: 'standby' } },
+      { type: 'bridge-role', data: { role: 'active' } },
+    ]);
+    void bridge.query('getWorldInfo').catch(() => undefined);
+    expect(person.sent.at(-1)?.['type']).toBe('mcp-query');
+    expect(agent.sent.some(m => m['type'] === 'mcp-query')).toBe(false);
+  });
+
+  it('lets a fallback hold the bridge alone and hand it to a person who connects', () => {
+    const agent = fakePeer('agent');
+    const person = fakePeer('person');
+    bridge
+      .attach(agent)
+      .receive(JSON.stringify({ type: 'hello', data: { protocol: 2, fallback: true } }));
+    expect(agent.sent[0]).toMatchObject({ type: 'welcome', data: { role: 'active' } });
+
+    const p = bridge.attach(person);
+    p.receive(JSON.stringify({ type: 'hello', data: { protocol: 2 } }));
+    expect(agent.sent.at(-1)).toMatchObject({ type: 'bridge-role', data: { role: 'standby' } });
+    expect(person.sent[0]).toMatchObject({ type: 'welcome', data: { role: 'active' } });
+
+    p.detach();
+    expect(agent.sent.at(-1)).toMatchObject({ type: 'bridge-role', data: { role: 'active' } });
+    expect(bridge.status().connections).toMatchObject([{ role: 'active' }]);
+  });
+
   it('never sends generation 2 messages to a module that did not say hello', () => {
     const old = fakePeer('old');
     bridge.attach(old);

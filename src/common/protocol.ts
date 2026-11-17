@@ -78,6 +78,11 @@ export interface HelloData {
   worldTitle?: string;
   userId?: string;
   userName?: string;
+  /**
+   * This browser only holds the bridge while no other connection does, such as
+   * an agent client that stays logged in for an AI. Absent means a normal browser.
+   */
+  fallback?: boolean;
 }
 
 /** Generation 2: the first message of a new module after the socket opened. */
@@ -224,6 +229,7 @@ export function parseBridgeMessage(raw: string): BridgeMessage | null {
         const value = data[key];
         if (typeof value === 'string') hello[key] = value;
       }
+      if (data['fallback'] === true) hello.fallback = true;
       return { type: 'hello', data: hello };
     }
 

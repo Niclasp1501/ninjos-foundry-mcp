@@ -20,7 +20,13 @@ import { changeLog, extensionTools, useServerRequests } from './core-services.js
 import { QueryDispatcher } from './dispatcher.js';
 import type { ExtensionToolDefinition } from './extension-tools.js';
 import { notify } from './notify.js';
-import { bridgeOffOnDevice, readSetting, registerSettings, SETTING } from './settings.js';
+import {
+  bridgeFallbackOnDevice,
+  bridgeOffOnDevice,
+  readSetting,
+  registerSettings,
+  SETTING,
+} from './settings.js';
 import { installStatusIndicator, refreshStatusIndicator } from './status-indicator.js';
 
 const isGM = () => game.user?.isGM === true;
@@ -43,6 +49,7 @@ function hello(): HelloData {
     data.userId = game.user.id;
     data.userName = game.user.name;
   }
+  if (bridgeFallbackOnDevice()) data.fallback = true;
   return data;
 }
 

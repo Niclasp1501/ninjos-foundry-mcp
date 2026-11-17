@@ -13,6 +13,11 @@
  * standby and take over again when the newest goes away. Closing them would
  * make two tabs of a previous generation module, which reconnects after every
  * close, take the bridge from each other every few seconds.
+ *
+ * A browser can say in its hello that it is only a fallback (an agent client
+ * that stays logged in for an AI). A fallback holds the bridge only while no
+ * other connection is there; it never takes it from a person's browser, not
+ * even when it reconnects later and is the newest.
  */
 import { fullQueryName, shortQueryName, BRIDGE_PROTOCOL } from '../../common/constants.js';
 import {
@@ -155,10 +160,9 @@ export class FoundryBridge {
     this.connections.push(connection);
     this.options.logger.info(`Foundry connected (${peer.label})`, { connection: connection.id });
 
-    if (previous) {
-      this.options.logger.info(`${previous.id} is now on standby, ${connection.id} is the module`);
-      this.sendRole(previous, 'standby');
-    }
+    // Until its hello, a new connection counts as a person's browser: a
+    // module of the previous generation never says hello at all.
+    this.handOver(previous);
     this.notifyCount();
     for (const wake of [...this.waiters]) wake();
     this.emit({ type: 'connected', connection: this.info(connection), moduleConnected: true });
@@ -300,8 +304,30 @@ export class FoundryBridge {
     }
   }
 
+  /** The newest connection that is not a fallback; the newest fallback only when there is nothing else. */
   private active(): Connection | undefined {
+    for (let index = this.connections.length - 1; index >= 0; index--) {
+      const connection = this.connections[index]!;
+      if (connection.hello?.fallback !== true) return connection;
+    }
     return this.connections[this.connections.length - 1];
+  }
+
+  /**
+   * Tell the connections whose role changed since `before` was the module.
+   * `quiet` already learns its role another way (the welcome after its hello).
+   */
+  private handOver(before: Connection | undefined, quiet?: Connection): void {
+    const after = this.active();
+    if (after === before) return;
+    if (before && this.connections.includes(before)) {
+      this.options.logger.info(`${before.id} is now on standby`, { connection: before.id });
+      if (before !== quiet) this.sendRole(before, 'standby');
+    }
+    if (after) {
+      this.options.logger.info(`${after.id} is the module`, { connection: after.id });
+      if (after !== quiet) this.sendRole(after, 'active');
+    }
   }
 
   private receive(connection: Connection, raw: string): void {
@@ -341,6 +367,7 @@ export class FoundryBridge {
         connection.peer.send(JSON.stringify(pongFor(message, Date.now())));
         return;
       case 'hello': {
+        const before = this.active();
         connection.protocol = Math.min(message.data.protocol, BRIDGE_PROTOCOL);
         connection.hello = message.data;
         const role: BridgeRole = connection === this.active() ? 'active' : 'standby';
@@ -353,6 +380,8 @@ export class FoundryBridge {
         const world = this.active()?.hello?.worldTitle;
         if (world) welcome['activeWorld'] = world;
         connection.peer.send(JSON.stringify({ type: 'welcome', data: welcome }));
+        // A fallback that just said who it is gives the bridge back.
+        this.handOver(before, connection);
         this.options.logger.info('Module introduced itself', {
           connection: connection.id,
           ...message.data,
@@ -375,7 +404,7 @@ export class FoundryBridge {
   private detach(connection: Connection): void {
     const index = this.connections.indexOf(connection);
     if (index === -1) return;
-    const wasActive = index === this.connections.length - 1;
+    const before = this.active();
     const gone = this.info(connection);
     this.connections.splice(index, 1);
     this.options.logger.info(`Foundry disconnected (${connection.peer.label})`, {
@@ -394,11 +423,7 @@ export class FoundryBridge {
       );
     }
 
-    const next = this.active();
-    if (wasActive && next) {
-      this.options.logger.info(`${next.id} takes over as the module`);
-      this.sendRole(next, 'active');
-    }
+    this.handOver(before);
     this.notifyCount();
     this.emit({ type: 'disconnected', connection: gone, moduleConnected: this.isConnected() });
   }

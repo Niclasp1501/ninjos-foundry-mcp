@@ -81,6 +81,10 @@
         "name": "Verbindung · Auf diesem Gerät aus",
         "hint": "Gilt nur für diesen Browser. Er baut die Brücke nicht auf und meldet nichts über eine fehlende Verbindung. Geschaltet wird über die Statusanzeige über der Spielerliste."
       },
+      "bridgeFallbackOnDevice": {
+        "name": "Verbindung · Auf diesem Gerät nur als Ersatz",
+        "hint": "Gilt nur für diesen Browser. Er hält die Brücke nur, solange kein anderer Browser sie hält, und gibt sie ab, sobald einer sich verbindet. Der Agent-Client des PC-Servers setzt das für den Browser, den er angemeldet hält."
+      },
       "heartbeatInterval": {
         "name": "Verhalten · Lebenszeichen in Sekunden",
         "hint": "Wie oft das Modul prüft, ob die Verbindung wirklich lebt. Eine tote Verbindung wird geschlossen und danach neu aufgebaut."

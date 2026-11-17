@@ -28,6 +28,7 @@ export const SETTING = {
   enableNotifications: 'enableNotifications',
   autoReconnectEnabled: 'autoReconnectEnabled',
   bridgeOffOnDevice: 'bridgeOffOnDevice',
+  bridgeFallbackOnDevice: 'bridgeFallbackOnDevice',
   toolProviderModules: 'toolProviderModules',
   legacyToolProviderModules: 'werkzeugModule',
 } as const;
@@ -46,6 +47,14 @@ export function readSetting(key: string): unknown {
 /** Whether the bridge is switched off in this browser. Unset or unreadable means no. */
 export function bridgeOffOnDevice(): boolean {
   return readSetting(SETTING.bridgeOffOnDevice) === true;
+}
+
+/**
+ * Whether this browser holds the bridge only while no other one does. Set by
+ * the agent client of the PC server before the page loads; not listed.
+ */
+export function bridgeFallbackOnDevice(): boolean {
+  return readSetting(SETTING.bridgeFallbackOnDevice) === true;
 }
 
 /** Switch the bridge off or on for this browser only. The onChange of the setting applies it. */
@@ -103,6 +112,14 @@ const ROWS: readonly Row[] = [
   // Per browser: a laptop at the table can stay off while the PC with the MCP server connects.
   {
     key: SETTING.bridgeOffOnDevice,
+    kind: Boolean,
+    initial: false,
+    listed: false,
+    scope: 'client',
+  },
+  // Per browser: an agent client that keeps a fixed user logged in steps back for people.
+  {
+    key: SETTING.bridgeFallbackOnDevice,
     kind: Boolean,
     initial: false,
     listed: false,
