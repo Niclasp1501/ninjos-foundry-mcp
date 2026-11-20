@@ -194,17 +194,22 @@ for (const path of listed) {
   ) {
     unlisted.push(info.name);
   }
-  // ThirdPartyNotices: playwright-core bundles libraries into its own files and lists them there.
-  const files = readdirSync(path).filter(file =>
-    /^(licen[cs]e|copying|notice|copyrightnotice|third.?party.?notices)/i.test(file)
-  );
-  let text = files.map(file => readFileSync(join(path, file), 'utf8').trim()).join('\n\n');
+  // The package's own licence, then the notices of code it took from others:
+  // playwright-core lists its bundled libraries in ThirdPartyNotices.txt, werift
+  // the parts ported from libwebrtc in THIRD_PARTY_LICENSES_LIBWEBRTC.txt. The
+  // second kind never stands in for the first.
+  const entries = readdirSync(path);
+  const readText = file => readFileSync(join(path, file), 'utf8').trim();
+  const own = entries.filter(file => /^(licen[cs]e|copying|notice|copyrightnotice)/i.test(file));
+  const bundled = entries.filter(file => /^third.?party.?(notices?|licen[cs]es?)/i.test(file));
+  let text = own.map(readText).join('\n\n');
   if (!text) {
     if (license !== 'MIT') fail(`${info.name} ships no licence file and is not MIT (${license})`);
     const holder =
       typeof info.author === 'string' ? info.author : (info.author?.name ?? 'the package authors');
     text = `Published without a licence file; package.json declares the MIT License.\n\nMIT License, copyright holder as named in package.json: ${holder}\n\n${MIT_TEXT}`;
   }
+  for (const file of bundled) text += `\n\n----- ${file} -----\n\n${readText(file)}`;
   notices.push(
     `${'='.repeat(72)}\n${info.name} ${info.version} (${license})\n${'='.repeat(72)}\n\n${text}`
   );
