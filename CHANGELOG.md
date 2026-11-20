@@ -18,6 +18,9 @@
   The agent client does that by default: it holds the bridge only while no other browser does
   and gives it back as soon as yours connects. Needs the module and the PC server of this
   release.
+- **Updated WebRTC library in the PC server:** werift 0.27.0 (was 0.25.0), which carries the
+  bridge when it runs over WebRTC. It no longer slows down when many messages are sent at once,
+  and the server needs 30 fewer packages. Nothing changes in how you use it.
 
 ## [14.2611.1] - 2026-11-07
 

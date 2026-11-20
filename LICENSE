@@ -104,60 +104,33 @@ THIRD-PARTY MATERIAL
   bundle collects all of these notices in one file.
 
     MIT License:
-      @fidm/asn1
-      @fidm/x509
       @leichtgewicht/ip-codec
-      @noble/curves
-      @noble/hashes
-      @peculiar/asn1-cms
-      @peculiar/asn1-csr
-      @peculiar/asn1-ecc
-      @peculiar/asn1-pfx
-      @peculiar/asn1-pkcs8
-      @peculiar/asn1-pkcs9
-      @peculiar/asn1-rsa
-      @peculiar/asn1-schema
-      @peculiar/asn1-x509
-      @peculiar/asn1-x509-attr
-      @peculiar/utils
-      @peculiar/x509
-      @shinyoshiaki/binary-data
       @types/dom-mediacapture-transform
       @types/dom-webcodecs
       base64-js
       buffer
-      debug
       dns-packet
-      generate-function
-      is-plain-object
-      is-property
-      isobject
-      ms
       multicast-dns
-      pvtsutils
-      pvutils
       thunky
-      tsyringe
       werift
       ws
       zod
     BSD 3-Clause License:
-      asn1js
       ieee754
     Apache License 2.0:
       @modelcontextprotocol/core
       @modelcontextprotocol/server
       playwright-core
-      reflect-metadata
-    0BSD License:
-      tslib
-    The Unlicense:
-      tweetnacl
     Mozilla Public License 2.0:
       mediabunny
 
   werift is published without a licence file; its package.json declares the
   MIT License, and THIRD-PARTY-NOTICES.txt carries that licence text for it.
+
+  werift contains code ported from libwebrtc
+  (https://webrtc.googlesource.com/src), copyright The WebRTC project authors,
+  under the BSD 3-Clause License. The package ships that licence as
+  THIRD_PARTY_LICENSES_LIBWEBRTC.txt, and THIRD-PARTY-NOTICES.txt carries it.
 
   mediabunny is used unmodified. Its source code is available at
   https://github.com/Vanilagy/mediabunny and in the npm package of the same
@@ -300,60 +273,34 @@ FREMDES MATERIAL
   zusammen.
 
     MIT-Lizenz:
-      @fidm/asn1
-      @fidm/x509
       @leichtgewicht/ip-codec
-      @noble/curves
-      @noble/hashes
-      @peculiar/asn1-cms
-      @peculiar/asn1-csr
-      @peculiar/asn1-ecc
-      @peculiar/asn1-pfx
-      @peculiar/asn1-pkcs8
-      @peculiar/asn1-pkcs9
-      @peculiar/asn1-rsa
-      @peculiar/asn1-schema
-      @peculiar/asn1-x509
-      @peculiar/asn1-x509-attr
-      @peculiar/utils
-      @peculiar/x509
-      @shinyoshiaki/binary-data
       @types/dom-mediacapture-transform
       @types/dom-webcodecs
       base64-js
       buffer
-      debug
       dns-packet
-      generate-function
-      is-plain-object
-      is-property
-      isobject
-      ms
       multicast-dns
-      pvtsutils
-      pvutils
       thunky
-      tsyringe
       werift
       ws
       zod
     BSD-3-Clause-Lizenz:
-      asn1js
       ieee754
     Apache-Lizenz 2.0:
       @modelcontextprotocol/core
       @modelcontextprotocol/server
       playwright-core
-      reflect-metadata
-    0BSD-Lizenz:
-      tslib
-    The Unlicense:
-      tweetnacl
     Mozilla Public License 2.0:
       mediabunny
 
   werift ist ohne Lizenzdatei veröffentlicht; seine package.json nennt die
   MIT-Lizenz, und THIRD-PARTY-NOTICES.txt enthält den Lizenztext dafür.
+
+  werift enthält Code, der aus libwebrtc (https://webrtc.googlesource.com/src)
+  übernommen ist, Copyright The WebRTC project authors, unter der
+  BSD-3-Clause-Lizenz. Das Paket liefert diese Lizenz als
+  THIRD_PARTY_LICENSES_LIBWEBRTC.txt mit, und THIRD-PARTY-NOTICES.txt
+  enthält sie.
 
   mediabunny wird unverändert benutzt. Sein Quellcode ist unter
   https://github.com/Vanilagy/mediabunny und im gleichnamigen npm-Paket
