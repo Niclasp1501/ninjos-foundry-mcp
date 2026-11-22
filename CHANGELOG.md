@@ -1,6 +1,6 @@
 # Changelog
 
-## [14.2611.2] - 2026-11-17
+## [14.2611.2] - 2026-11-23
 
 - **Switch the bridge off on one device.** A click on the status indicator now opens a small
   menu with "Connect now" and "Switch off for this device". Switched off, that browser makes
@@ -21,6 +21,10 @@
 - **Updated WebRTC library in the PC server:** werift 0.27.0 (was 0.25.0), which carries the
   bridge when it runs over WebRTC. It no longer slows down when many messages are sent at once,
   and the server needs 30 fewer packages. Nothing changes in how you use it.
+- **Fixes.** The windows "Creature index" and "Release compendiums" now work: since 14.2609.4
+  they said "Not available yet" and could not be used. Quest journals whose text contains an
+  apostrophe no longer report a failed write although they were created. Minimized windows stay
+  minimized, and the settings windows read well in Foundry's dark theme.
 
 ## [14.2611.1] - 2026-11-07
 

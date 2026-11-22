@@ -59,6 +59,27 @@ back. Running macros is off by default too.
 Every change goes into a log. There you can read what the assistant did and undo single steps or
 a whole request, wherever that is possible.
 
+### A look inside
+
+![A scene with walls, doors, lights and monsters next to its quest journal](docs/images/mcp-1-ai-at-work.png)
+_Prepared by the AI through the module: a scene with walls, doors, lights and monsters from the
+SRD, and the quest journal next to it. The status readout at the bottom left shows the bridge and
+switches it off for one device._
+
+![The module settings with the write switch and the permission levels](docs/images/mcp-2-settings.png)
+_The master switch for writing, and a level for each kind of document: read only, create and
+change, or delete as well._
+
+![The window "Release compendiums"](docs/images/mcp-3-release-compendiums.png)
+_Choose which compendiums the AI may write to. Reading is never restricted._
+
+![The window "Creature index"](docs/images/mcp-4-creature-index.png)
+_The creature index lets the AI search every actor compendium by challenge rating or creature
+type without loading them all._
+
+![The welcome window](docs/images/mcp-5-welcome.png)
+_The welcome window on the first start, for the Gamemaster only._
+
 ### Two parts that belong together
 
 The Foundry MCP has two parts, and you need both. The **module** runs in Foundry, in your browser,
@@ -87,6 +108,10 @@ rights for this. Then quit Claude Desktop completely and start it again.
 
 **Finally, load your world.** Open your world as the GM, and the module connects to the server.
 To try it out, just ask Claude which world is open in Foundry.
+
+Do you also open the world as GM on a device without the server, such as a laptop at the table?
+Click the status readout above the player list there and choose **Switch off for this device**.
+That browser then stays quiet, while your PC connects as before.
 
 For Claude Code, other clients and troubleshooting there is a detailed
 [installation guide](https://github.com/Niclasp1501/ninjos-foundry-mcp/blob/main/docs/INSTALLATION.en.md).
@@ -158,6 +183,27 @@ die sich nicht zurücknehmen lässt. Makros ausführen darf der Assistent ab Wer
 Jede Änderung landet in einem Protokoll. Dort kannst du nachlesen, was der Assistent getan hat, und
 einzelne Schritte oder einen ganzen Auftrag wieder rückgängig machen, wo das möglich ist.
 
+### Ein Blick hinein
+
+![Eine Szene mit Wänden, Türen, Lichtern und Monstern neben ihrem Quest-Journal](docs/images/mcp-1-ai-at-work.png)
+_Von der KI über das Modul vorbereitet: eine Szene mit Wänden, Türen, Lichtern und Monstern aus
+dem SRD, daneben das Quest-Journal. Die Statusanzeige links unten zeigt die Brücke und schaltet
+sie für ein Gerät ab._
+
+![Die Moduleinstellungen mit dem Schreibschalter und den Rechtestufen](docs/images/mcp-2-settings.png)
+_Der Hauptschalter fürs Schreiben und eine Stufe je Dokumentart: nur lesen, anlegen und ändern,
+oder zusätzlich löschen._
+
+![Das Fenster „Kompendien freigeben“](docs/images/mcp-3-release-compendiums.png)
+_Hier wählst du, in welche Kompendien die KI schreiben darf. Lesen ist nie eingeschränkt._
+
+![Das Fenster „Kreaturenindex“](docs/images/mcp-4-creature-index.png)
+_Mit dem Kreaturenindex durchsucht die KI alle Akteur-Kompendien nach Herausforderungsgrad oder
+Kreaturentyp, ohne jedes einzeln zu laden._
+
+![Das Willkommensfenster](docs/images/mcp-5-welcome.png)
+_Das Willkommensfenster beim ersten Start, nur für die Spielleitung._
+
 ### Zwei Teile, die zusammengehören
 
 Der Foundry MCP besteht aus zwei Teilen, und du brauchst beide. Das **Modul** läuft in Foundry, in
@@ -187,6 +233,10 @@ noch Administratorrechte. Beende Claude Desktop danach ganz und starte es neu.
 
 **Zum Schluss die Welt laden.** Öffne deine Welt als Spielleiter, und das Modul verbindet sich mit
 dem Server. Frag Claude zum Ausprobieren einfach, welche Welt gerade in Foundry geöffnet ist.
+
+Öffnest du die Welt auch auf einem Gerät ohne Server als Spielleiter, etwa auf einem Laptop am
+Tisch? Klick dort auf die Statusanzeige über der Spielerliste und wähle **Auf diesem Gerät
+abschalten**. Dieser Browser bleibt dann still, dein PC verbindet sich wie gewohnt.
 
 Für Claude Code, andere Programme und die Fehlersuche gibt es eine ausführliche
 [Installationsanleitung](https://github.com/Niclasp1501/ninjos-foundry-mcp/blob/main/docs/INSTALLATION.md).
