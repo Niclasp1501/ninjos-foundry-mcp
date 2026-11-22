@@ -112,6 +112,26 @@
   font-family: var(--ninjo-schrift);
 }
 
+/*
+ * The other buttons take the paper of the window. Left to Foundry's dark
+ * interface theme they were dark grey on light paper and looked switched
+ * off while they worked.
+ */
+.mcp-window button:not(.mcp-window__primary) {
+  border: 1px solid var(--ninjo-rand);
+  background: var(--ninjo-flaeche);
+  color: var(--ninjo-text);
+}
+
+.mcp-window button:not(.mcp-window__primary):hover:not(:disabled) {
+  border-color: var(--ninjo-akzent);
+}
+
+.mcp-window button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .mcp-window button:focus-visible,
 .mcp-window input:focus-visible,
 .mcp-window select:focus-visible {
