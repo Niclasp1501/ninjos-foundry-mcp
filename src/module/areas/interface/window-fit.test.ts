@@ -75,6 +75,22 @@ describe('window fitting', () => {
     expect(state.width).toBe(700);
   });
 
+  it('leaves a minimized window alone', () => {
+    const { app, state } = fakeWindow({ left: 900, top: 660, width: 200, height: 30 });
+    (app as FitApp).minimized = true;
+    fitWindow(app, { width: 1000, height: 700 });
+    expect(state).toEqual({ left: 900, top: 660, width: 200, height: 30 });
+  });
+
+  it('leaves a window alone whose frame is marked minimized', () => {
+    const { app, state } = fakeWindow({ left: 900, top: 660, width: 200, height: 30 }, [
+      MODULE_ID,
+      'minimized',
+    ]);
+    fitWindow(app, { width: 1000, height: 700 });
+    expect(state).toEqual({ left: 900, top: 660, width: 200, height: 30 });
+  });
+
   it('recognises only windows of this module', () => {
     expect(isOurs(fakeWindow({ left: 0, top: 0, width: 1, height: 1 }).app)).toBe(true);
     expect(isOurs(fakeWindow({ left: 0, top: 0, width: 1, height: 1 }, ['other']).app)).toBe(false);

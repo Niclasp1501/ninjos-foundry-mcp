@@ -57,6 +57,7 @@ interface FitElement {
 
 export interface FitApp {
   element?: unknown;
+  minimized?: boolean;
   position?: { width?: unknown };
   setPosition(position: { width?: number; height?: number; left?: number; top?: number }): unknown;
 }
@@ -115,6 +116,10 @@ function missingHeight(element: FitElement): number {
 export function fitWindow(app: FitApp, viewport: Viewport = viewportSize()): void {
   const element = elementOf(app);
   if (!element || !element.isConnected) return;
+  // A minimized window stays minimized. Foundry restores its size when it is
+  // opened again; setting a height here grew the title bar into half a window
+  // on every redraw (found in Shops at the table on 21.11.2026).
+  if (app.minimized || element.classList.contains('minimized')) return;
 
   const maxHeight = viewport.height - 2 * MARGIN;
   const maxWidth = viewport.width - 2 * MARGIN;
