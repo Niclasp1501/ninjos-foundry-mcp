@@ -33,9 +33,27 @@ import {
 /** CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE: only Gamemasters see the journal. */
 const OWNERSHIP_NONE = 0;
 
-/** Compare what Foundry stored with what was sent, and say where it differs. */
+/**
+ * The markup as the browser writes it out again. Foundry stores page HTML
+ * after its sanitizer has parsed it, so an entity such as `&#39;` comes
+ * back as the character it stands for. Outside a browser it stays as is.
+ */
+function serialized(html: string): string {
+  if (typeof document === 'undefined') return html;
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  return template.innerHTML;
+}
+
+/**
+ * Compare what Foundry stored with what was sent, and say where it differs.
+ * Markup that only reads differently after parsing (`&#39;` for an
+ * apostrophe, the quotes around an attribute) counts as the same; anything
+ * the sanitizer removed, such as a script, does not.
+ */
 export function checkStored(what: string, expected: string, actual: string): void {
   if (expected === actual) return;
+  if (serialized(expected) === serialized(actual)) return;
   let at = 0;
   while (at < expected.length && expected[at] === actual[at]) at += 1;
   verifyFailed(
