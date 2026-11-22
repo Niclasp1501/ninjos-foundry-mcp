@@ -8,6 +8,8 @@ import { FakeFoundry } from '../../../testing/fake-foundry.js';
 import { registerCompendiumAdapter, type CompendiumAdapter } from './adapter.js';
 import { creatureIndex } from './creature-index.js';
 import { releaseWindowModel, saveReleaseList } from './release-window.js';
+import { provideWindowServices } from './index.js';
+import { clearInterfaceServices, interfaceService } from '../interface/services.js';
 import {
   getModuleSetting,
   memoryIndexStore,
@@ -500,5 +502,25 @@ describe('release window logic', () => {
       'world.archive, monster-module.a'
     );
     await expect(saveReleaseList([])).resolves.toEqual({ entries: [], allowAllUnlocked: true });
+  });
+
+  it('hands the release list and the creature index to the windows', async () => {
+    const { foundry } = open(
+      [
+        { id: 'monster-module.a', label: 'A pack', type: 'Actor' },
+        { id: 'world.archive', label: 'Archive', type: 'JournalEntry' },
+      ],
+      { writableCompendiums: 'monster-module' }
+    );
+    clearInterfaceServices();
+    provideWindowServices();
+    const release = interfaceService('compendiumRelease');
+    expect(interfaceService('creatureIndex')).toBeDefined();
+    expect(release?.read()).toEqual(['monster-module']);
+    expect(release?.problem?.()).toBeNull();
+    await release?.write(['world.archive']);
+    expect(getModuleSetting(foundry, 'writableCompendiums')).toBe('world.archive');
+    expect(release?.read()).toEqual(['world.archive']);
+    clearInterfaceServices();
   });
 });

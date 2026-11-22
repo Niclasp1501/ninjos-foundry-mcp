@@ -12,16 +12,20 @@
  */
 import type { ModuleArea } from '../../areas.js';
 import { RELEASE_LIST_SETTING } from '../../../common/areas/compendiums/release-list.js';
+import { readReleaseList } from '../../compendium-release.js';
+import { provideInterfaceService } from '../interface/services.js';
 import { getEnhancedCreatureIndex, listCreaturesByCriteria } from './creatures.js';
 import {
   AUTO_REBUILD_SETTING,
   INDEX_SETTING,
   prepareCreatureIndex,
+  rebuildCreatureIndex,
   watchCompendiumActors,
 } from './creature-index.js';
 import { deleteCompendium, deleteCompendiumEntries } from './delete.js';
 import { importFromCompendium } from './import.js';
 import { getAvailablePacks, getPackIndex, listCompendiumEntries, listCompendiums } from './read.js';
+import { saveReleaseList } from './release-window.js';
 import { getCompendiumDocumentFull, getCompendiumItem, searchCompendium } from './search.js';
 import {
   createCompendium,
@@ -71,9 +75,35 @@ export const compendiumsArea: ModuleArea = {
     { key: INDEX_SETTING, kind: Boolean, initial: true, listed: false },
     { key: AUTO_REBUILD_SETTING, kind: Boolean, initial: true, listed: false },
   ],
+  // The windows "Creature index" and "Release compendiums" only draw; this
+  // area does the work behind them. Without these two services both windows
+  // said "not available yet" and kept their controls disabled.
+  init: provideWindowServices,
   ready: () => {
     if (!game.user?.isGM) return;
     watchCompendiumActors();
     void prepareCreatureIndex();
   },
 };
+
+/** Hand the creature index and the release list to the windows of the interface area. */
+export function provideWindowServices(): void {
+  provideInterfaceService('creatureIndex', {
+    rebuild: async () => {
+      const { data, storeProblem } = await rebuildCreatureIndex();
+      return {
+        creatures: data.rows.length,
+        packs: data.packs.length,
+        failed: data.failed,
+        storeProblem,
+      };
+    },
+  });
+  provideInterfaceService('compendiumRelease', {
+    read: () => readReleaseList().entries,
+    problem: () => readReleaseList().problem,
+    write: async entries => {
+      await saveReleaseList(entries);
+    },
+  });
+}
